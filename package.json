@@ -1,26 +1,31 @@
 {
-  "name": "id",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "react": "^18",
-    "react-dom": "^18",
-    "next": "14.2.13"
-  },
-  "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "eslint": "^8",
-    "eslint-config-next": "14.2.13"
-  }
+   "name": "imaging_dungeons",
+   "version": "0.1.0",
+   "private": true,
+   "scripts": {
+      "dev": "next dev",
+      "build": "next build",
+      "start": "ts-node src/index.ts",
+      "lint": "next lint",
+      "typeorm": "typeorm-ts-node-commonjs"
+   },
+   "dependencies": {
+      "next": "14.2.13",
+      "react": "^18",
+      "react-dom": "^18",
+      "typeorm": "0.3.20",
+      "reflect-metadata": "^0.1.13",
+      "pg": "^8.4.0"
+   },
+   "devDependencies": {
+      "@types/node": "^16.11.10",
+      "@types/react": "^18",
+      "@types/react-dom": "^18",
+      "eslint": "^8",
+      "eslint-config-next": "14.2.13",
+      "postcss": "^8",
+      "tailwindcss": "^3.4.1",
+      "typescript": "4.5.2",
+      "ts-node": "10.9.1"
+   }
 }
