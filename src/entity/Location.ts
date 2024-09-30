@@ -12,8 +12,10 @@ export class Location {
     kind: GameObjectKind = GameObjectKind.LOCATION;
 
     @OneToOne(() => BaseItem)
-    @JoinColumn({ name: "base_item_id" })
+    @JoinColumn({ name: "location_id", referencedColumnName: "base_item_id" })
     base_item: BaseItem;
+
+
 
     exits: Exit[];
     characters: Character[];
