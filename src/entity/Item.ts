@@ -1,4 +1,4 @@
-import { JoinColumn, OneToOne, PrimaryColumn, ViewColumn, ViewEntity } from "typeorm";
+import { JoinColumn, ManyToOne, OneToOne, PrimaryColumn, ViewColumn, ViewEntity } from "typeorm";
 import { BaseItem, BaseItemDto, GameObjectKind, IBaseProperties } from "./BaseItem";
 import { Exit } from "./Exit";
 import { Character } from "./Character";
@@ -28,6 +28,10 @@ export class Item implements IBaseProperties {
     @OneToOne(() => BaseItem)
     @JoinColumn({ name: "item_id", referencedColumnName: "base_item_id" })
     baseItem: BaseItem;
+
+    // @ManyToOne(() => Location, location => location.containedItems)
+    // @JoinColumn({ name: "owner_id", referencedColumnName: "locationId" })
+    // location?: Location;
 
     @ViewColumn({name: "capacity"})
     capacity: number;

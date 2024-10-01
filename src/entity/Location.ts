@@ -59,7 +59,9 @@ export class Location implements IBaseProperties {
             shortDescription: this.shortDescription,
             longDescription: this.longDescription,
             ownerId: this.ownerId,
-            exits: this.exits.map(exit => exit.toDto())
+            items: this.containedItems.map(item => item.toDto()),
+            exits: this.exits.map(exit => exit.toDto()),
+            characters: this.characters.map(character => character.toDto())
         };
     }
 }
@@ -71,4 +73,6 @@ export class LocationDto implements IBaseProperties {
     longDescription: string;
     ownerId: string;
     exits: ExitDto[]; //BaseItemDto[];
+    items: BaseItemDto[];
+    characters: BaseItemDto[];
 }
