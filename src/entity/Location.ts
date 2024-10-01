@@ -1,5 +1,6 @@
 import {
     JoinColumn,
+    OneToMany,
     OneToOne,
     PrimaryColumn,
     ViewColumn,
@@ -11,6 +12,7 @@ import {
     GameObjectKind,
     IBaseProperties
 } from "./BaseItem";
+import { Exit, ExitDto } from "./Exit";
 
 @ViewEntity("v_locations")
 export class Location implements IBaseProperties {
@@ -35,11 +37,8 @@ export class Location implements IBaseProperties {
     @JoinColumn({ name: "location_id", referencedColumnName: "base_item_id" })
     baseItem: BaseItem;
 
-    get exits(): BaseItem[] {
-        return this.baseItem.contents.filter(
-            item => item.kind === GameObjectKind.EXIT
-        );
-    }
+    @OneToMany(() => Exit, exit => exit.location)
+    exits: Exit[];
 
     get containedItems(): BaseItem[] {
         return this.baseItem.contents.filter(
@@ -71,5 +70,5 @@ export class LocationDto implements IBaseProperties {
     shortDescription: string;
     longDescription: string;
     ownerId: string;
-    exits: BaseItemDto[];
+    exits: ExitDto[]; //BaseItemDto[];
 }

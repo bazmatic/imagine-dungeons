@@ -1,12 +1,13 @@
-import { ViewEntity, PrimaryColumn, ViewColumn } from "typeorm";
+import { ViewEntity, PrimaryColumn, ViewColumn, ManyToOne, JoinColumn } from "typeorm";
 import { GameObjectKind, IBaseProperties } from "./BaseItem";
+import { Location } from "./Location";
 
 @ViewEntity("v_exits")
-export class Exit {
+export class Exit implements IBaseProperties {
     @PrimaryColumn()
     exit_id: string;
     
-    @ViewColumn({name: "destination_id"})
+    @ViewColumn({ name: "destination_id" })
     destinationId: string;
 
     kind: GameObjectKind = GameObjectKind.EXIT;
@@ -23,12 +24,12 @@ export class Exit {
     @ViewColumn({ name: "owner_id"})
     ownerId: string;
 
-    @ViewColumn({name: "direction"})
+    @ViewColumn({ name: "direction"})
     direction: string;
 
-    // @OneToOne(() => BaseItem)
-    // @JoinColumn({ name: "base_item_id" })
-    // private baseItem: BaseItem;
+    @ManyToOne(() => Location, location => location.exits)
+    @JoinColumn({ name: "owner_id", referencedColumnName: "locationId" })
+    location: Location;
 
     public toDto(): ExitDto {
         return {
@@ -39,7 +40,7 @@ export class Exit {
             longDescription: this.longDescription,
             destinationId: this.destinationId,
             direction: this.direction,
-        }
+        };
     }
 }
 

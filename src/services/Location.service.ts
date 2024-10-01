@@ -1,6 +1,7 @@
 import { Location } from "@/entity/Location";
 import { AppDataSource } from "@/data-source";
 import { Repository } from "typeorm";
+import { Exit } from "@/entity/Exit";
 
 export class LocationService {
     private locationRepository: Repository<Location>;
@@ -11,12 +12,14 @@ export class LocationService {
 
     async getAllLocations(): Promise<Location[]> {
         
-        return this.locationRepository.find({
+        const locations = await this.locationRepository.find({
             relations: [
                 "baseItem",
-                "baseItem.contents"
+                //"baseItem.contents",
+                "exits"
             ]
         });
+        return locations;  
     }
 
     async getLocationById(id: string): Promise<Location | undefined> {
