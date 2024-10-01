@@ -1,23 +1,75 @@
-import { Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
-import { BaseItem, GameObjectKind } from "./BaseItem";
-import { Character } from "./Character";
-import { Item } from "./Item";
-import { Exit } from "./Exit";
+import {
+    JoinColumn,
+    OneToOne,
+    PrimaryColumn,
+    ViewColumn,
+    ViewEntity
+} from "typeorm";
+import {
+    BaseItem,
+    BaseItemDto,
+    GameObjectKind,
+    IBaseProperties
+} from "./BaseItem";
 
-@Entity()
-export class Location {
-    @PrimaryGeneratedColumn()
-    location_id: number;
+@ViewEntity("v_locations")
+export class Location implements IBaseProperties {
+    @PrimaryColumn({ name: "location_id" })
+    locationId: string;
 
     kind: GameObjectKind = GameObjectKind.LOCATION;
 
+    @ViewColumn({ name: "name" })
+    name: string;
+
+    @ViewColumn({ name: "short_description" })
+    shortDescription: string;
+
+    @ViewColumn({ name: "long_description" })
+    longDescription: string;
+
+    @ViewColumn({ name: "owner_id" })
+    ownerId: string;
+
     @OneToOne(() => BaseItem)
     @JoinColumn({ name: "location_id", referencedColumnName: "base_item_id" })
-    base_item: BaseItem;
+    baseItem: BaseItem;
 
+    get exits(): BaseItem[] {
+        return this.baseItem.contents.filter(
+            item => item.kind === GameObjectKind.EXIT
+        );
+    }
 
+    get containedItems(): BaseItem[] {
+        return this.baseItem.contents.filter(
+            item => item.kind === GameObjectKind.ITEM
+        );
+    }
 
-    exits: Exit[];
-    characters: Character[];
-    items: Item[];
+    get characters(): BaseItem[] {
+        return this.baseItem.contents.filter(
+            item => item.kind === GameObjectKind.CHARACTER
+        );
+    }
+
+    public toDto(): LocationDto {
+        return {
+            id: this.locationId,
+            name: this.name,
+            shortDescription: this.shortDescription,
+            longDescription: this.longDescription,
+            ownerId: this.ownerId,
+            exits: this.exits.map(exit => exit.toDto())
+        };
+    }
+}
+
+export class LocationDto implements IBaseProperties {
+    id: string;
+    name: string;
+    shortDescription: string;
+    longDescription: string;
+    ownerId: string;
+    exits: BaseItemDto[];
 }

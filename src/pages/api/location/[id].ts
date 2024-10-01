@@ -10,7 +10,7 @@ export default async function handler(
 ) {
     await initialiseDatabase();
     const locationService  = new LocationService();
-    const id = parseInt(req.query.id as string);
+    const id = req.query.id as string;
     const location = await locationService.getLocationById(id);
     res.status(200).json(location);
 }

@@ -13,7 +13,7 @@ export class BaseItemService {
         return this.baseItemRepository.find();
     }
 
-    async getBaseItemById(id: number): Promise<BaseItem | undefined> {
+    async getBaseItemById(id: string): Promise<BaseItem | undefined> {
         return this.baseItemRepository.findOneOrFail({
             where: { base_item_id: id }
         });
@@ -27,14 +27,10 @@ export class BaseItemService {
     }
 
     async updateBaseItem(
-        id: number,
+        id: string,
         baseItemData: Partial<BaseItem>
     ): Promise<BaseItem | undefined> {
         await this.baseItemRepository.update(id, baseItemData);
         return this.getBaseItemById(id);
-    }
-
-    async deleteBaseItem(id: number): Promise<void> {
-        await this.baseItemRepository.delete(id);
     }
 }

@@ -1,7 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from "typeorm";
-import { InventoryItem, Item } from "./Item";
-import { Exit } from "./Exit";
-import { Character } from "./Character";
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany, PrimaryColumn } from "typeorm";
 
 export enum GameObjectKind {
     ITEM = "item",
@@ -10,10 +7,18 @@ export enum GameObjectKind {
     CHARACTER = "character"
 }
 
+export interface IBaseProperties {
+    name: string;
+    shortDescription: string;
+    longDescription: string;
+    //kind: GameObjectKind;
+    ownerId: string;
+}
+
 @Entity("base_item")
-export class BaseItem {
-    @PrimaryGeneratedColumn()
-    base_item_id: number;
+export class BaseItem implements IBaseProperties {
+    @PrimaryColumn({ name: "base_item_id" })
+    base_item_id: string;
 
     @Column({ name: "name"})
     name: string;
@@ -30,17 +35,37 @@ export class BaseItem {
         enum: GameObjectKind
     })
     kind: GameObjectKind;
+    
     @Column({
         name: "owner_id",
         nullable: true
     })
-    owner_id: number;
+    ownerId: string;
 
-    @ManyToOne(() => BaseItem, baseItem => baseItem.inventory)
-    @JoinColumn({ name: "owner_id" })
+    @ManyToOne(() => BaseItem, baseItem => baseItem.contents)
+    @JoinColumn({ name: "owner_id", referencedColumnName: "base_item_id" })
     owner: BaseItem;
 
-    @OneToMany(() => BaseItem, baseItem => baseItem.owner)
-    inventory: BaseItem[];
+    @OneToMany(() => BaseItem, baseItem => baseItem.owner, { eager: true })
+    contents: BaseItem[];
+
+    public toDto(): BaseItemDto {
+        return {
+            id: this.base_item_id,
+            name: this.name,
+            shortDescription: this.shortDescription,
+            longDescription: this.longDescription,
+            kind: this.kind,
+            ownerId: this.ownerId,
+        }
+    }
 }
 
+export interface BaseItemDto {
+    id: string;
+    name: string;
+    shortDescription: string;
+    longDescription: string;
+    kind: GameObjectKind;
+    ownerId: string;
+}

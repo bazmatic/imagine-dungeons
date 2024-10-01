@@ -10,8 +10,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 	if (req.method === 'GET') {
 		try {
-			const items = await itemService.getAllItems()
-			res.status(200).json(items)
+			const items = await itemService.getAllItems();
+			const itemDtoList = items.map((item) => {
+				return item.toDto()
+			});
+			res.status(200).json(itemDtoList)
 		} catch (error) {
 			console.error('Error fetching items:', error)
 			res.status(500).json({ error: 'Internal Server Error' })

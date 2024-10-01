@@ -1,20 +1,54 @@
-import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from "typeorm";
-import { BaseItem, GameObjectKind } from "./BaseItem";
+import { ViewEntity, PrimaryColumn, ViewColumn } from "typeorm";
+import { GameObjectKind, IBaseProperties } from "./BaseItem";
 
-@Entity()
+@ViewEntity("v_exits")
 export class Exit {
-    @PrimaryGeneratedColumn()
-    exit_id: number;
+    @PrimaryColumn()
+    exit_id: string;
+    
+    @ViewColumn({name: "destination_id"})
+    destinationId: string;
 
     kind: GameObjectKind = GameObjectKind.EXIT;
 
-    @Column({name: "direction"})
+    @ViewColumn({ name: "name"})
+    name: string;
+
+    @ViewColumn({ name: "short_description"})
+    shortDescription: string;
+
+    @ViewColumn({ name: "long_description"})
+    longDescription: string;
+
+    @ViewColumn({ name: "owner_id"})
+    ownerId: string;
+
+    @ViewColumn({name: "direction"})
     direction: string;
 
-    @Column({name: "destination_id"})
-    destination_id: number;
+    // @OneToOne(() => BaseItem)
+    // @JoinColumn({ name: "base_item_id" })
+    // private baseItem: BaseItem;
 
-    @OneToOne(() => BaseItem)
-    @JoinColumn({ name: "base_item_id" })
-    base_item: BaseItem;
+    public toDto(): ExitDto {
+        return {
+            id: this.exit_id,
+            name: this.name,
+            ownerId: this.ownerId,
+            shortDescription: this.shortDescription,
+            longDescription: this.longDescription,
+            destinationId: this.destinationId,
+            direction: this.direction,
+        }
+    }
+}
+
+export class ExitDto implements IBaseProperties {
+    id: string;
+    name: string;
+    ownerId: string;
+    shortDescription: string;
+    longDescription: string;
+    destinationId: string;
+    direction: string;
 }

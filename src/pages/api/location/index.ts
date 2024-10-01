@@ -9,8 +9,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 	if (req.method === 'GET') {
 		try {
-			const locations = await locationService.getAllLocations()
-			res.status(200).json(locations)
+			const locations = await locationService.getAllLocations();
+            const locationDtoList = locations.map((location) => {
+                return location.toDto()
+            });
+			res.status(200).json(locationDtoList)
 		} catch (error) {
 			console.error('Error fetching locations:', error)
 			res.status(500).json({ error: 'Internal Server Error' })

@@ -1,6 +1,5 @@
 import "reflect-metadata"
 import { DataSource } from "typeorm"
-import { User } from "./entity/User"
 import { BaseItem } from "./entity/BaseItem"
 import { Exit } from "./entity/Exit"
 import { Item } from "./entity/Item"

@@ -12,16 +12,19 @@ export class LocationService {
     async getAllLocations(): Promise<Location[]> {
         
         return this.locationRepository.find({
-            relations: ["base_item"]
+            relations: [
+                "baseItem",
+                "baseItem.contents"
+            ]
         });
     }
 
-    async getLocationById(id: number): Promise<Location | undefined> {
+    async getLocationById(id: string): Promise<Location | undefined> {
         return this.locationRepository.findOneOrFail({
-            where: { location_id: id },
+            where: { locationId: id },
             relations: [
-                "base_item",
-                "base_item.inventory"
+                "baseItem",
+                "baseItem.contents"
             ]
         });
     }
@@ -31,8 +34,8 @@ export class LocationService {
         return this.locationRepository.save(location);
     }
 
-    async updateLocation(id: number, locationData: Partial<Location>): Promise<Location | undefined> {
-        const location = await this.locationRepository.findOneOrFail({ where: { location_id: id } });
+    async updateLocation(id: string, locationData: Partial<Location>): Promise<Location | undefined> {
+        const location = await this.locationRepository.findOneOrFail({ where: { locationId: id } });
         return this.locationRepository.save({ ...location, ...locationData });
     }
 }

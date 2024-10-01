@@ -11,14 +11,14 @@ export class ItemService {
     
     async getAllItems(): Promise<Item[]> {
         return this.itemRepository.find({
-            relations: ["base_item"] //, "base_item.inventory"]
+            relations: ["baseItem", "baseItem.contents"]
         });
     }
 
-    async getItemById(id: number): Promise<Item | undefined> {
+    async getItemById(id: string): Promise<Item | undefined> {
         return this.itemRepository.findOneOrFail({
-            where: { item_id: id },
-            relations: ["base_item", "base_item.inventory"]
+            where: { itemId: id },
+            relations: ["baseItem", "baseItem.contents"]
         });
     }
 
@@ -30,14 +30,14 @@ export class ItemService {
     }
 
     async updateItem(
-        id: number,
+        id: string,
         itemData: Partial<Item>
     ): Promise<Item | undefined> {
         await this.itemRepository.update(id, itemData);
         return this.getItemById(id);
     }
 
-    async deleteItem(id: number): Promise<void> {
+    async deleteItem(id: string): Promise<void> {
         await this.itemRepository.delete(id);
     }
 }

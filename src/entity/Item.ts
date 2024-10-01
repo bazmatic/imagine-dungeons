@@ -1,30 +1,67 @@
-import { Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
-import { BaseItem, GameObjectKind } from "./BaseItem";
+import { JoinColumn, OneToOne, PrimaryColumn, ViewColumn, ViewEntity } from "typeorm";
+import { BaseItem, BaseItemDto, GameObjectKind, IBaseProperties } from "./BaseItem";
 import { Exit } from "./Exit";
 import { Character } from "./Character";
 import { Location } from "./Location";
 
 export type InventoryItem = Item | Exit | Character | Location;
 
-@Entity("item")
-export class Item {
-    @PrimaryGeneratedColumn()
-    item_id: number;
+@ViewEntity("v_items")
+export class Item implements IBaseProperties {
+    @PrimaryColumn({ name: "item_id"})
+    itemId: string;
 
     kind: GameObjectKind = GameObjectKind.ITEM;
 
-    // @OneToOne(() => BaseItem)
-    // @JoinColumn({ name: "base_item_id" })
-    // base_item: BaseItem;
+    @ViewColumn({ name: "name"})
+    name: string;
+
+    @ViewColumn({ name: "short_description"})
+    shortDescription: string;
+
+    @ViewColumn({ name: "long_description"})
+    longDescription: string;
+
+    @ViewColumn({ name: "owner_id"})
+    ownerId: string;
 
     @OneToOne(() => BaseItem)
     @JoinColumn({ name: "item_id", referencedColumnName: "base_item_id" })
-    base_item: BaseItem;
+    baseItem: BaseItem;
 
-    @Column({name: "capacity", type: "integer"})
+    @ViewColumn({name: "capacity"})
     capacity: number;
 
-    @Column()
+    @ViewColumn()
     weight: number;
 
+    get items(): BaseItem[] {
+        return this.baseItem.contents.filter((item) => item.kind === GameObjectKind.ITEM);
+    }
+
+    public toDto(): ItemDto {
+        return {
+            id: this.itemId,
+            name: this.name,
+            shortDescription: this.shortDescription,
+            longDescription: this.longDescription,
+            kind: this.kind,
+            ownerId: this.ownerId,
+            capacity: this.capacity,
+            weight: this.weight,
+            containedItems: this.items.map((item) => item.toDto()),
+        }
+    }
+}
+
+export class ItemDto implements IBaseProperties {
+    id: string;
+    name: string;
+    shortDescription: string;
+    longDescription: string;
+    kind: GameObjectKind;
+    ownerId: string;
+    capacity: number;
+    weight: number;
+    containedItems: BaseItemDto[];
 }

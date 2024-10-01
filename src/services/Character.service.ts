@@ -11,14 +11,14 @@ export class CharacterService {
     
     async getAllCharacters(): Promise<Character[]> {
         return this.characterRepository.find({
-            relations: ["base_item", "inventory", "location"]
+            relations: ["baseItem", "location"]
         });
     }
 
-    async getCharacterById(id: number): Promise<Character | undefined> {
+    async getCharacterById(id: string): Promise<Character | undefined> {
         return this.characterRepository.findOneOrFail({
             where: { character_id: id },
-            relations: ["base_item", "inventory", "location"]
+            relations: ["baseItem", "location"]
         });
     }
 
@@ -30,14 +30,10 @@ export class CharacterService {
     }
 
     async updateCharacter(
-        id: number,
+        id: string,
         characterData: Partial<Character>
     ): Promise<Character | undefined> {
         await this.characterRepository.update(id, characterData);
         return this.getCharacterById(id);
-    }
-
-    async deleteCharacter(id: number): Promise<void> {
-        await this.characterRepository.delete(id);
     }
 }
