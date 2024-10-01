@@ -37,8 +37,13 @@ export class Location implements IBaseProperties {
     @JoinColumn({ name: "location_id", referencedColumnName: "base_item_id" })
     baseItem: BaseItem;
 
-    @OneToMany(() => Exit, exit => exit.location)
-    exits: Exit[];
+    // @OneToMany(() => Exit, exit => exit.location)
+    // exits: Exit[];
+    get exits(): BaseItem[] {
+        return this.baseItem.contents.filter(
+            item => item.kind === GameObjectKind.EXIT
+        );
+    }
 
     get containedItems(): BaseItem[] {
         return this.baseItem.contents.filter(
@@ -72,7 +77,7 @@ export class LocationDto implements IBaseProperties {
     shortDescription: string;
     longDescription: string;
     ownerId: string;
-    exits: ExitDto[]; //BaseItemDto[];
+    exits: BaseItemDto[];
     items: BaseItemDto[];
     characters: BaseItemDto[];
 }

@@ -15,7 +15,7 @@ export class ItemService {
         });
     }
 
-    async getItemById(id: string): Promise<Item | undefined> {
+    async getItemById(id: string): Promise<Item> {
         return this.itemRepository.findOneOrFail({
             where: { itemId: id },
             relations: ["baseItem", "baseItem.contents"]

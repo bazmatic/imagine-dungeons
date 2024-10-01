@@ -46,7 +46,7 @@ export class BaseItem implements IBaseProperties {
     @JoinColumn({ name: "owner_id", referencedColumnName: "base_item_id" })
     owner: BaseItem;
 
-    @OneToMany(() => BaseItem, baseItem => baseItem.owner, { eager: true })
+    @OneToMany(() => BaseItem, baseItem => baseItem.owner)
     contents: BaseItem[];
 
     public toDto(): BaseItemDto {

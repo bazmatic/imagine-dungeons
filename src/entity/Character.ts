@@ -54,7 +54,7 @@ export class Character implements IBaseProperties {
             name: this.baseItem.name,
             shortDescription: this.baseItem.shortDescription,
             longDescription: this.baseItem.longDescription,
-            kind: this.kind,
+            kind: this.baseItem.kind,
             ownerId: this.baseItem.ownerId,
             capacity: this.capacity,
             backstory: this.backstory,

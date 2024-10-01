@@ -1,12 +1,14 @@
 import { Character } from "@/entity/Character";
 import { AppDataSource } from "@/data-source";
 import { Repository } from "typeorm";
+import { BaseItem } from "@/entity/BaseItem";
 
 export class CharacterService {
     private characterRepository: Repository<Character>;
-
+    private baseItemRepository: Repository<BaseItem>;
     constructor() {
         this.characterRepository = AppDataSource.getRepository(Character);
+        this.baseItemRepository = AppDataSource.getRepository(BaseItem);
     }
     
     async getAllCharacters(): Promise<Character[]> {
@@ -15,7 +17,7 @@ export class CharacterService {
         });
     }
 
-    async getCharacterById(id: string): Promise<Character | undefined> {
+    async getCharacterById(id: string): Promise<Character> {
         return this.characterRepository.findOneOrFail({
             where: { character_id: id },
             relations: ["baseItem", "location"]
@@ -29,11 +31,12 @@ export class CharacterService {
         return this.characterRepository.save(character);
     }
 
-    async updateCharacter(
+    async updateCharacterLocation(
         id: string,
-        characterData: Partial<Character>
-    ): Promise<Character | undefined> {
-        await this.characterRepository.update(id, characterData);
+        locationId: string
+    ): Promise<Character> {
+
+        await this.baseItemRepository.update(id, { ownerId: locationId });
         return this.getCharacterById(id);
     }
 }

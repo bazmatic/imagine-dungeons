@@ -13,7 +13,7 @@ export class BaseItemService {
         return this.baseItemRepository.find();
     }
 
-    async getBaseItemById(id: string): Promise<BaseItem | undefined> {
+    async getBaseItemById(id: string): Promise<BaseItem> {
         return this.baseItemRepository.findOneOrFail({
             where: { base_item_id: id }
         });

@@ -1,4 +1,4 @@
-import { JoinColumn, ManyToOne, OneToOne, PrimaryColumn, ViewColumn, ViewEntity } from "typeorm";
+import { JoinColumn, OneToOne, PrimaryColumn, ViewColumn, ViewEntity } from "typeorm";
 import { BaseItem, BaseItemDto, GameObjectKind, IBaseProperties } from "./BaseItem";
 import { Exit } from "./Exit";
 import { Character } from "./Character";
