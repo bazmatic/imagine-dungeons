@@ -1,5 +1,5 @@
-import { JoinColumn, OneToOne, PrimaryColumn, ViewColumn, ViewEntity } from "typeorm";
-import { BaseItem, BaseItemDto, GameObjectKind, IBaseProperties } from "./BaseItem";
+import { JoinColumn, ManyToOne, OneToMany, PrimaryColumn, ViewColumn, ViewEntity } from "typeorm";
+import { GameObjectKind, IBaseProperties } from "./BaseItem";
 import { Exit } from "./Exit";
 import { Character } from "./Character";
 import { Location } from "./Location";
@@ -25,25 +25,21 @@ export class Item implements IBaseProperties {
     @ViewColumn({ name: "owner_id"})
     ownerId: string;
 
-    @OneToOne(() => BaseItem)
-    @JoinColumn({ name: "item_id", referencedColumnName: "base_item_id" })
-    baseItem: BaseItem;
-
-    // @ManyToOne(() => Location, location => location.containedItems)
-    // @JoinColumn({ name: "owner_id", referencedColumnName: "locationId" })
-    // location?: Location;
-
     @ViewColumn({name: "capacity"})
     capacity: number;
 
     @ViewColumn()
     weight: number;
 
-    get items(): BaseItem[] {
-        return this.baseItem.contents.filter((item) => item.kind === GameObjectKind.ITEM);
-    }
+    @ManyToOne(() => Item, owner => owner.items)
+    @JoinColumn({ name: "owner_id", referencedColumnName: "itemId" })
+    owner: Item;
 
-    public toDto(): ItemDto {
+    @OneToMany(() => Item, item => item.owner, { lazy: true })
+    items: Promise<Item[]>;
+
+    public async toDto(): Promise<ItemDto> {
+        const items: Item[] = await this.items;
         return {
             id: this.itemId,
             name: this.name,
@@ -53,7 +49,7 @@ export class Item implements IBaseProperties {
             ownerId: this.ownerId,
             capacity: this.capacity,
             weight: this.weight,
-            containedItems: this.items.map((item) => item.toDto()),
+            items: await Promise.all(items.map(item => item.toDto()))
         }
     }
 }
@@ -67,5 +63,5 @@ export class ItemDto implements IBaseProperties {
     ownerId: string;
     capacity: number;
     weight: number;
-    containedItems: BaseItemDto[];
+    items: ItemDto[];
 }

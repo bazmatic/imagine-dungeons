@@ -7,7 +7,6 @@ import { LocationService } from "@/services/Location.service";
 import { initialiseDatabase } from "..";
 import { GameObjectKind } from "@/entity/BaseItem";
 import { Item } from "@/entity/Item";
-import { LocationActor } from "./location.actor";
 import { BaseItemService } from "@/services/BaseItem.service";
 
 
@@ -33,7 +32,7 @@ export class CharacterActor {
     public async ownsItem(itemId: string): Promise<boolean> {
         await initialiseDatabase();
         const character = await this.character();
-        const ownedItem = character.containedItems.find(item => item.base_item_id === itemId);
+        const ownedItem = character.items.find(item => item.itemId === itemId);
         return !!ownedItem;
     }
 
@@ -41,9 +40,7 @@ export class CharacterActor {
         await initialiseDatabase();
         const character = await this.characterService.getCharacterById(this.characterId);
         
-        const items: Item[] = await Promise.all(character.containedItems.map(async (item) => {
-            return this.itemService.getItemById(item.base_item_id);
-        }));
+        const items: Item[] = character.items;
         return items;
     }
 
@@ -52,7 +49,7 @@ export class CharacterActor {
         await initialiseDatabase();
         const character = await this.character();
         const location = await this.locationService.getLocationById(character.location.locationId);
-        const exit = location.exits.find(e => e.base_item_id === exitId);
+        const exit = location.exits.find(e => e.exit_id === exitId);
         if (!exit) {
             throw new Error("Exit not found");
         }
@@ -91,11 +88,11 @@ export class CharacterActor {
     public async drop(itemId: string): Promise<void> {
         await initialiseDatabase();
         const character = await this.character();
-        const itemOwned = character.containedItems.find(i => i.base_item_id === itemId);
+        const itemOwned = character.items.find(i => i.itemId === itemId);
         if (!itemOwned) {
             throw new Error("Item not found");
         }
-        const item = itemOwned.toDto();
+        const item = await this.itemService.getItemById(itemId);
         item.ownerId = character.location.locationId;
         await this.itemService.updateItem(itemId, item);
     }
@@ -104,13 +101,13 @@ export class CharacterActor {
         await initialiseDatabase();
         const character = await this.character();
         const location = await this.locationService.getLocationById(character.location.locationId);
-        const locationActor = new LocationActor(character.location.locationId, this.characterId);
+        //const locationActor = new LocationActor(character.location.locationId, this.characterId);
 
 
-        const exits = await locationActor.exits();
+        const exits = await location.exits;
         const result: string[] = [];
         result.push(location.longDescription);
-        location.containedItems.forEach(i => {
+        location.items.forEach(i => {
             result.push(i.shortDescription);
         });
         exits.forEach(e => {
@@ -122,17 +119,18 @@ export class CharacterActor {
     public async itemIsAccessible(itemId: string): Promise<boolean> {
         await initialiseDatabase();
         const character = await this.characterService.getCharacterById(this.characterId);
-        const locationActor = new LocationActor(character.location.locationId, this.characterId);
+        //const location = //await this.locationService.getLocationById(character.location.)
+        //const locationActor = new LocationActor(character.location.locationId, this.characterId);
         const inventory = await this.inventory();
-        const itemsHere = await locationActor.itemsPresent();
-        const accessibleItems = inventory.concat(itemsHere);
+        //const itemsHere = await locationActor.itemsPresent();
+        const accessibleItems = inventory.concat(character.location.items);
         return !!(accessibleItems.find(i => i.itemId === itemId));
     }
 
     public async lookAtItem(itemId: string): Promise<string[]> {
         await initialiseDatabase();
         
-        const character = await this.characterService.getCharacterById(this.characterId);
+        //const character = await this.characterService.getCharacterById(this.characterId);
         
         // If item is not in my inventory or present in my location,
         if (!this.itemIsAccessible(itemId)) {

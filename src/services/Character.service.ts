@@ -13,14 +13,14 @@ export class CharacterService {
     
     async getAllCharacters(): Promise<Character[]> {
         return this.characterRepository.find({
-            relations: ["baseItem", "location", "baseItem.contents"]
+            relations: ["items"]
         });
     }
 
     async getCharacterById(id: string): Promise<Character> {
         return this.characterRepository.findOneOrFail({
             where: { character_id: id },
-            relations: ["baseItem", "location", "baseItem.contents"]
+            relations: ["items"]
         });
     }
 

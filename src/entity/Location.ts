@@ -1,18 +1,16 @@
 import {
     JoinColumn,
-    OneToMany,
-    OneToOne,
-    PrimaryColumn,
+    OneToMany, PrimaryColumn,
     ViewColumn,
     ViewEntity
 } from "typeorm";
 import {
-    BaseItem,
-    BaseItemDto,
     GameObjectKind,
     IBaseProperties
 } from "./BaseItem";
 import { Exit, ExitDto } from "./Exit";
+import { Item, ItemDto } from "./Item";
+import { Character, CharacterDto } from "./Character";
 
 @ViewEntity("v_locations")
 export class Location implements IBaseProperties {
@@ -33,40 +31,30 @@ export class Location implements IBaseProperties {
     @ViewColumn({ name: "owner_id" })
     ownerId: string;
 
-    @OneToOne(() => BaseItem)
-    @JoinColumn({ name: "location_id", referencedColumnName: "base_item_id" })
-    baseItem: BaseItem;
+    @OneToMany(() => Item, item => item.ownerId)
+    @JoinColumn({ name: "location_id", referencedColumnName: "owner_id" })
+    items: Item[];
 
-    // @OneToMany(() => Exit, exit => exit.location)
-    // exits: Exit[];
-    get exits(): BaseItem[] {
-        return this.baseItem.contents.filter(
-            item => item.kind === GameObjectKind.EXIT
-        );
-    }
+    @OneToMany(() => Exit, exit => exit.ownerId)
+    @JoinColumn({ name: "location_id", referencedColumnName: "owner_id" })
+    exits: Exit[];
 
-    get containedItems(): BaseItem[] {
-        return this.baseItem.contents.filter(
-            item => item.kind === GameObjectKind.ITEM
-        );
-    }
+    @OneToMany(() => Character, character => character.ownerId)
+    @JoinColumn({ name: "location_id", referencedColumnName: "owner_id" })
+    characters: Character[];
 
-    get characters(): BaseItem[] {
-        return this.baseItem.contents.filter(
-            item => item.kind === GameObjectKind.CHARACTER
-        );
-    }
-
-    public toDto(): LocationDto {
+    public async toDto(): Promise<LocationDto> {
+        const items: Item[] = await this.items;
+        //const characters: Character[] = await this.characters;
         return {
             id: this.locationId,
             name: this.name,
             shortDescription: this.shortDescription,
             longDescription: this.longDescription,
             ownerId: this.ownerId,
-            items: this.containedItems.map(item => item.toDto()),
+            items: await Promise.all(items.map(item => item.toDto())),
             exits: this.exits.map(exit => exit.toDto()),
-            characters: this.characters.map(character => character.toDto())
+            characters: await Promise.all(this.characters.map(character => character.toDto()))
         };
     }
 }
@@ -77,7 +65,7 @@ export class LocationDto implements IBaseProperties {
     shortDescription: string;
     longDescription: string;
     ownerId: string;
-    exits: BaseItemDto[];
-    items: BaseItemDto[];
-    characters: BaseItemDto[];
+    exits: ExitDto[];
+    items: ItemDto[];
+    characters: CharacterDto[];
 }

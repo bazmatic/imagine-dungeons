@@ -13,9 +13,7 @@ export class LocationService {
         
         const locations = await this.locationRepository.find({
             relations: [
-                "baseItem",
-                "baseItem.contents",
-                //"exits"
+                "exits"
             ]
         });
         return locations;  
@@ -24,10 +22,9 @@ export class LocationService {
     async getLocationById(id: string): Promise<Location> {
         return this.locationRepository.findOneOrFail({
             where: { locationId: id },
-            relations: [
-                "baseItem",
-                "baseItem.contents"
-            ]
+            // relations: [
+
+            // ]
         });
     }
     

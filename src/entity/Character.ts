@@ -1,14 +1,15 @@
 import {
-    OneToOne,
     JoinColumn,
     ManyToOne,
     PrimaryColumn,
     ViewEntity,
-    ViewColumn
+    ViewColumn,
+    OneToMany
 } from "typeorm";
-import { BaseItem, BaseItemDto, GameObjectKind, IBaseProperties } from "./BaseItem";
+import { GameObjectKind, IBaseProperties } from "./BaseItem";
 
 import { Location } from "./Location";
+import { Item, ItemDto } from "./Item";
 
 @ViewEntity("v_characters")
 export class Character implements IBaseProperties {
@@ -29,9 +30,9 @@ export class Character implements IBaseProperties {
     @ViewColumn({ name: "long_description"})
     longDescription: string;
 
-    @OneToOne(() => BaseItem)
-    @JoinColumn({ name: "character_id", referencedColumnName: "base_item_id" })
-    baseItem: BaseItem;
+    @OneToMany(() => Item, item => item.owner)
+    //@JoinColumn({ name: "character_id", referencedColumnName: "owner_id" })
+    items: Item[];
 
     @ViewColumn()
     capacity: number;
@@ -44,22 +45,17 @@ export class Character implements IBaseProperties {
     @JoinColumn({ name: "owner_id", referencedColumnName: "locationId" })
     location: Location;
 
-    get containedItems(): BaseItem[] {
-        return this.baseItem.contents.filter((item) => item.kind === GameObjectKind.ITEM);
-    }
-
-    public toDto(): CharacterDto {
+    public async toDto(): Promise<CharacterDto> {
         return {
             id: this.character_id,
-            name: this.baseItem.name,
-            shortDescription: this.baseItem.shortDescription,
-            longDescription: this.baseItem.longDescription,
-            kind: this.baseItem.kind,
-            ownerId: this.baseItem.ownerId,
+            name: this.name,
+            shortDescription: this.shortDescription,
+            longDescription: this.longDescription,
+            ownerId: this.ownerId,
             capacity: this.capacity,
             backstory: this.backstory,
             locationId: this.location?.locationId,
-            containedItems: this.containedItems.map(item => item.toDto())
+            items: await Promise.all(this.items.map(item => item.toDto()))
         };
     }
 }
@@ -69,10 +65,9 @@ export class CharacterDto implements IBaseProperties {
     name: string;
     shortDescription: string;
     longDescription: string;
-    kind: GameObjectKind;
     ownerId: string;
     capacity: number;
     backstory: string;
     locationId: string;
-    containedItems: BaseItemDto[];
+    items: ItemDto[];
 }

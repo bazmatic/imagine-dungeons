@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn, OneToMany, PrimaryColumn } from "typeorm";
+import { Entity, Column, PrimaryColumn } from "typeorm";
 
 export enum GameObjectKind {
     ITEM = "item",
@@ -42,12 +42,12 @@ export class BaseItem implements IBaseProperties {
     })
     ownerId: string;
 
-    @ManyToOne(() => BaseItem, baseItem => baseItem.contents)
-    @JoinColumn({ name: "owner_id", referencedColumnName: "base_item_id" })
-    owner: BaseItem;
+    // @ManyToOne(() => BaseItem, baseItem => baseItem.contents)
+    // @JoinColumn({ name: "owner_id", referencedColumnName: "base_item_id" })
+    // owner: BaseItem;
 
-    @OneToMany(() => BaseItem, baseItem => baseItem.owner)
-    contents: BaseItem[];
+    // @OneToMany(() => BaseItem, baseItem => baseItem.owner)
+    // contents: BaseItem[];
 
     public toDto(): BaseItemDto {
         return {

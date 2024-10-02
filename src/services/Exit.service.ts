@@ -1,4 +1,3 @@
-import { Item } from "@/entity/Item";
 import { AppDataSource } from "@/data-source";
 import { Repository } from "typeorm";
 import { Exit } from "@/entity/Exit";
@@ -11,14 +10,14 @@ export class ExitService {
     
     async getAllItems(): Promise<Exit[]> {
         return this.exitRepository.find({
-            relations: ["baseItem", "baseItem.contents"]
+            relations: ["location"]
         });
     }
 
     async getById(id: string): Promise<Exit> {
         return this.exitRepository.findOneOrFail({
             where: { exit_id: id },
-            relations: ["baseItem", "baseItem.contents"]
+            relations: ["location"]
         });
     }
 
