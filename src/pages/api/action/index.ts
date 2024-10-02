@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (actor.kind !== GameObjectKind.CHARACTER) {
         throw new Error("Actor is not a character");
     }
-    let text: string[] = [];
+    let result: string[] = [];
 
     const characterActor = new CharacterActor(actorId);
     switch (action) {
@@ -57,11 +57,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             await characterActor.drop(primaryTarget);
             break;
         case ActionType.LOOK:
-            text = await characterActor.look(primaryTarget);
+            result = await characterActor.look(primaryTarget);
             break;
         default:
             throw new Error("Invalid action type");
 
     }
-    res.status(200).json({ success: true, text });
+    res.status(200).json({ success: true, result });
 }
