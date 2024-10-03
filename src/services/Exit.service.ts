@@ -7,7 +7,7 @@ export class ExitService {
     constructor() {
         this.exitRepository = AppDataSource.getRepository(Exit);
     }
-    
+
     async getAllItems(): Promise<Exit[]> {
         return this.exitRepository.find({
             relations: ["location"]
@@ -16,22 +16,17 @@ export class ExitService {
 
     async getById(id: string): Promise<Exit> {
         return this.exitRepository.findOneOrFail({
-            where: { exit_id: id },
+            where: { exitId: id },
             relations: ["location"]
         });
     }
 
-    async createItem(
-        itemData: Partial<Exit>
-    ): Promise<Exit> {
+    async createItem(itemData: Partial<Exit>): Promise<Exit> {
         const exit = this.exitRepository.create(itemData);
         return this.exitRepository.save(exit);
     }
 
-    async updateItem(
-        id: string,
-        itemData: Partial<Exit>
-    ): Promise<Exit> {
+    async updateItem(id: string, itemData: Partial<Exit>): Promise<Exit> {
         await this.exitRepository.update(id, itemData);
         return this.getById(id);
     }

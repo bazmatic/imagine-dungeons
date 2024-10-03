@@ -1,38 +1,52 @@
-import { ViewEntity, PrimaryColumn, ViewColumn, JoinColumn, OneToOne, ManyToOne } from "typeorm";
-import { BaseItem, GameObjectKind, IBaseProperties } from "./BaseItem";
+import {
+    Entity,
+    PrimaryColumn,
+    Column,
+    ManyToOne,
+    JoinColumn
+} from "typeorm";
 import { Location } from "./Location";
 
-@ViewEntity("v_exits")
-export class Exit implements IBaseProperties {
-    @PrimaryColumn()
-    exit_id: string;
-    
-    @ViewColumn({ name: "destination_id" })
+export class ExitDto {
+    id: string;
+    name: string;
+    ownerId: string;
+    shortDescription: string;
+    longDescription: string;
+    destinationId: string;
+    direction: string;
+}
+
+@Entity("exit")
+export class Exit {
+    @PrimaryColumn({ name: "exit_id" })
+    exitId: string;
+
+    @Column({ name: "destination_id" })
     destinationId: string;
 
-    kind: GameObjectKind = GameObjectKind.EXIT;
-
-    @ViewColumn({ name: "name"})
+    @Column({ name: "name" })
     name: string;
 
-    @ViewColumn({ name: "short_description"})
+    @Column({ name: "short_description" })
     shortDescription: string;
 
-    @ViewColumn({ name: "long_description"})
+    @Column({ name: "long_description" })
     longDescription: string;
 
-    @ViewColumn({ name: "owner_id"})
+    @Column({ name: "owner_id" })
     ownerId: string;
 
-    @ViewColumn({ name: "direction"})
+    @Column({ name: "direction" })
     direction: string;
 
-    @ViewColumn({ name: "owner_id"})
-    locationId: string;
+    @ManyToOne(() => Location, location => location.exits)
+    @JoinColumn({ name: "owner_id", referencedColumnName: "locationId" })
+    location: Location;
 
-    public toDto(): ExitDto {
+    public async toDto(): Promise<ExitDto> {
         return {
-            id: this.exit_id,
+            id: this.exitId,
             name: this.name,
             ownerId: this.ownerId,
             shortDescription: this.shortDescription,
@@ -41,14 +55,4 @@ export class Exit implements IBaseProperties {
             direction: this.direction,
         };
     }
-}
-
-export class ExitDto implements IBaseProperties {
-    id: string;
-    name: string;
-    ownerId: string;
-    shortDescription: string;
-    longDescription: string;
-    destinationId: string;
-    direction: string;
 }

@@ -1,67 +1,73 @@
-import { CharacterActor } from "@/actor/character.actor";
-import { GameObjectKind } from "@/entity/BaseItem";
+import { AgentActor } from "@/actor/agent.actor";
 import { initialiseDatabase } from "@/index";
-import { BaseItemService } from "@/services/BaseItem.service";
 import { NextApiRequest, NextApiResponse } from "next";
 
 export class ActionDTO {
-    actorId: string;
+    agentId: string;
     action: ActionType;
     primaryTarget?: string;
     secondaryTarget?: string;
 }
 
 export enum ActionType {
-    GO = "go",
-    PICK_UP = "pick_up",
-    DROP = "drop",
-    LOOK = "look"
+    GO_EXIT = "go_exit",
+    PICK_UP_ITEM = "pick_up_item",
+    DROP_ITEM = "drop_item",
+    LOOK_AT_ITEM = "look_at_item",
+    LOOK_AT_AGENT = "look_at_agent",
+    LOOK_AT_LOCATION = "look_at_location",
+    LOOK_AT_EXIT = "look_at_exit"
 }
-
 
 // Receive a POST ActionDTO and execute the action
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+    req: NextApiRequest,
+    res: NextApiResponse
+) {
     await initialiseDatabase();
     const actionDTO = req.body as ActionDTO;
-    const { actorId, action, primaryTarget, secondaryTarget } = actionDTO;
-    if (!actorId || !action) {
-        throw new Error("actorId and action are required");
+    const { agentId, action, primaryTarget, secondaryTarget } = actionDTO;
+    if (!agentId || !action || !primaryTarget) {
+        throw new Error("actorId, action and primaryTarget are required");
     }
-    
-    const baseItemService = new BaseItemService();
-    const actor = await baseItemService.getBaseItemById(actorId);
-    if (actor.kind !== GameObjectKind.CHARACTER) {
-        throw new Error("Actor is not a character");
-    }
+
     let result: string[] = [];
 
-    const characterActor = new CharacterActor(actorId);
+    const agentActor = new AgentActor(agentId);
     switch (action) {
-        case ActionType.GO:
+        case ActionType.GO_EXIT:
             if (!primaryTarget) {
                 throw new Error("Missing exit id");
             }
-            await characterActor.go(primaryTarget);
+            await agentActor.goExit(primaryTarget);
             break;
-        case ActionType.PICK_UP:
+        case ActionType.PICK_UP_ITEM:
             if (!primaryTarget) {
                 throw new Error("Missing item id");
             }
-            await characterActor.pickUp(primaryTarget, secondaryTarget);
+            await agentActor.pickUp(primaryTarget, secondaryTarget);
             break;
-        case ActionType.DROP:
+        case ActionType.DROP_ITEM:
             if (!primaryTarget) {
                 throw new Error("Missing item id");
             }
-            await characterActor.drop(primaryTarget);
+            await agentActor.dropItem(primaryTarget);
             break;
-        case ActionType.LOOK:
-            result = await characterActor.look(primaryTarget);
+        case ActionType.LOOK_AT_ITEM:
+            result = await agentActor.lookAtItem(primaryTarget);
+            break;
+        case ActionType.LOOK_AT_AGENT:
+            result = await agentActor.lookAtAgent(primaryTarget);
+            break;
+        case ActionType.LOOK_AT_LOCATION:
+            result = await agentActor.lookAtLocation(primaryTarget);
+            break;
+        case ActionType.LOOK_AT_EXIT:
+            result = await agentActor.lookAtExit(primaryTarget);
             break;
         default:
             throw new Error("Invalid action type");
-
     }
     res.status(200).json({ success: true, result });
 }

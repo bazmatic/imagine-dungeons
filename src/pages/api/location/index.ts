@@ -10,9 +10,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 	if (req.method === 'GET') {
 		try {
 			const locations = await locationService.getAllLocations();
-            const locationDtoList = locations.map((location) => {
-                return location.toDto()
-            });
+            const locationDtoList = await Promise.all(locations.map(async location => {
+                return location.toDto();
+            }));
 			res.status(200).json(locationDtoList)
 		} catch (error) {
 			console.error('Error fetching locations:', error)

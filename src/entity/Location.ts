@@ -1,65 +1,16 @@
 import {
-    JoinColumn,
-    OneToMany, PrimaryColumn,
-    ViewColumn,
-    ViewEntity
+    Entity,
+    OneToMany,
+    PrimaryColumn,
+    Column,
+    JoinColumn
 } from "typeorm";
-import {
-    GameObjectKind,
-    IBaseProperties
-} from "./BaseItem";
+
 import { Exit, ExitDto } from "./Exit";
 import { Item, ItemDto } from "./Item";
-import { Character, CharacterDto } from "./Character";
+import { Agent, AgentDto } from "./Agent";
 
-@ViewEntity("v_locations")
-export class Location implements IBaseProperties {
-    @PrimaryColumn({ name: "location_id" })
-    locationId: string;
-
-    kind: GameObjectKind = GameObjectKind.LOCATION;
-
-    @ViewColumn({ name: "name" })
-    name: string;
-
-    @ViewColumn({ name: "short_description" })
-    shortDescription: string;
-
-    @ViewColumn({ name: "long_description" })
-    longDescription: string;
-
-    @ViewColumn({ name: "owner_id" })
-    ownerId: string;
-
-    @OneToMany(() => Item, item => item.ownerId)
-    @JoinColumn({ name: "location_id", referencedColumnName: "owner_id" })
-    items: Item[];
-
-    @OneToMany(() => Exit, exit => exit.ownerId)
-    @JoinColumn({ name: "location_id", referencedColumnName: "owner_id" })
-    exits: Exit[];
-
-    @OneToMany(() => Character, character => character.ownerId)
-    @JoinColumn({ name: "location_id", referencedColumnName: "owner_id" })
-    characters: Character[];
-
-    public async toDto(): Promise<LocationDto> {
-        const items: Item[] = await this.items;
-        //const characters: Character[] = await this.characters;
-        return {
-            id: this.locationId,
-            name: this.name,
-            shortDescription: this.shortDescription,
-            longDescription: this.longDescription,
-            ownerId: this.ownerId,
-            items: await Promise.all(items.map(item => item.toDto())),
-            exits: this.exits.map(exit => exit.toDto()),
-            characters: await Promise.all(this.characters.map(character => character.toDto()))
-        };
-    }
-}
-
-export class LocationDto implements IBaseProperties {
+export class LocationDto {
     id: string;
     name: string;
     shortDescription: string;
@@ -67,5 +18,53 @@ export class LocationDto implements IBaseProperties {
     ownerId: string;
     exits: ExitDto[];
     items: ItemDto[];
-    characters: CharacterDto[];
+    agents: AgentDto[];
+}
+
+@Entity("location")
+export class Location {
+    @PrimaryColumn({ name: "location_id" })
+    locationId: string;
+
+    @Column({ name: "name" })
+    name: string;
+
+    @Column({ name: "short_description" })
+    shortDescription: string;
+
+    @Column({ name: "long_description" })
+    longDescription: string;
+
+    @Column({ name: "owner_id" })
+    ownerId: string;
+
+    // Items whose owner is this location
+    @OneToMany(() => Item, item => item.owner, { lazy: true })
+    @JoinColumn({ name: "location_id", referencedColumnName: "owner_id" })
+    items: Promise<Item[]>;
+
+    @OneToMany(() => Exit, exit => exit.location, { lazy: true })
+    @JoinColumn({ name: "location_id", referencedColumnName: "owner_id" })
+    exits: Promise<Exit[]>;
+
+    @OneToMany(() => Agent, agent => agent.location, { lazy: true })
+    @JoinColumn({ name: "location_id", referencedColumnName: "owner_id" })
+    agents: Promise<Agent[]>;
+
+    public async toDto(): Promise<LocationDto> {
+        const items: Item[] = await this.items;
+        const exits: Exit[] = await this.exits;
+        const agents: Agent[] = await this.agents;
+
+        return {
+            id: this.locationId,
+            name: this.name,
+            shortDescription: this.shortDescription,
+            longDescription: this.longDescription,
+            ownerId: this.ownerId,
+            items: await Promise.all(items.map(item => item.toDto())),
+            exits: await Promise.all(exits.map(exit => exit.toDto())),
+            agents: await Promise.all(agents.map(agent => agent.toDto()))
+        };
+    }
 }
