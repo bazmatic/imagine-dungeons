@@ -11,14 +11,14 @@ export class ItemService {
     
     async getAllItems(): Promise<Item[]> {
         return this.itemRepository.find({
-            //relations: ["items"]
+            relations: ["items"]
         });
     }
 
     async getItemById(id: string): Promise<Item> {
         return this.itemRepository.findOneOrFail({
             where: { itemId: id },
-            //relations: ["items"]
+            relations: ["items"]
         });
     }
 

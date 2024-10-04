@@ -14,7 +14,6 @@ export class LocationDto {
     name: string;
     shortDescription: string;
     longDescription: string;
-    ownerId: string;
     exits: ExitDto[];
     items: ItemDto[];
     agents: AgentDto[];
@@ -59,7 +58,6 @@ export class Location {
             name: this.name,
             shortDescription: this.shortDescription,
             longDescription: this.longDescription,
-            ownerId: this.ownerId,
             items: await Promise.all(items.map(item => item.toDto())),
             exits: await Promise.all(exits.map(exit => exit.toDto())),
             agents: await Promise.all(agents.map(agent => agent.toDto()))

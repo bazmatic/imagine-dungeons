@@ -9,5 +9,4 @@ export interface IBaseProperties {
     name: string;
     shortDescription: string;
     longDescription: string;
-    ownerId: string;
 }

@@ -28,7 +28,7 @@ export class AgentService {
     }
 
     async updateAgentLocation(id: string, locationId: string): Promise<Agent> {
-        await this.agentRepository.update(id, { ownerId: locationId });
+        await this.agentRepository.update(id, { ownerLocationId: locationId });
         return this.getAgentById(id);
     }
 }

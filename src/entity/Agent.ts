@@ -23,8 +23,8 @@ export class Agent implements IBaseProperties {
     @Column({ name: "short_description" })
     shortDescription: string;
 
-    @Column({ name: "owner_id" })
-    ownerId: string;
+    @Column({ name: "owner_location_id" })
+    ownerLocationId: string;
 
     @Column({ name: "long_description" })
     longDescription: string;
@@ -41,7 +41,7 @@ export class Agent implements IBaseProperties {
 
     // Relation to Location (Owner)
     @ManyToOne(() => Location, location => location.agents, { lazy: true, nullable: true })
-    @JoinColumn({ name: "owner_id", referencedColumnName: "locationId" })
+    @JoinColumn({ name: "owner_location_id", referencedColumnName: "locationId" })
     location: Promise<Location>;
 
     public async toDto(): Promise<AgentDto> {
@@ -51,7 +51,7 @@ export class Agent implements IBaseProperties {
             name: this.name,
             shortDescription: this.shortDescription,
             longDescription: this.longDescription,
-            ownerId: this.ownerId,
+            locationId: this.ownerLocationId,
             capacity: this.capacity,
             backstory: this.backstory,
             items: await Promise.all(items.map(item => item.toDto()))
@@ -64,7 +64,7 @@ export class AgentDto implements IBaseProperties {
     name: string;
     shortDescription: string;
     longDescription: string;
-    ownerId: string;
+    locationId: string;
     capacity: number;
     backstory: string;
     items: ItemDto[];

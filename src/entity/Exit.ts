@@ -10,7 +10,7 @@ import { Location } from "./Location";
 export class ExitDto {
     id: string;
     name: string;
-    ownerId: string;
+    locationId: string;
     shortDescription: string;
     longDescription: string;
     destinationId: string;
@@ -34,21 +34,21 @@ export class Exit {
     @Column({ name: "long_description" })
     longDescription: string;
 
-    @Column({ name: "owner_id" })
-    ownerId: string;
+    @Column({ name: "owner_location_id" })
+    ownerLocationId: string;
 
     @Column({ name: "direction" })
     direction: string;
 
-    @ManyToOne(() => Location, location => location.exits)
-    @JoinColumn({ name: "owner_id", referencedColumnName: "locationId" })
-    location: Location;
+    @ManyToOne(() => Location, location => location.exits, { lazy: true })
+    @JoinColumn({ name: "owner_location_id", referencedColumnName: "locationId" })
+    location: Promise<Location>;
 
     public async toDto(): Promise<ExitDto> {
         return {
             id: this.exitId,
             name: this.name,
-            ownerId: this.ownerId,
+            locationId: this.ownerLocationId,
             shortDescription: this.shortDescription,
             longDescription: this.longDescription,
             destinationId: this.destinationId,

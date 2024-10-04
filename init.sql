@@ -21,13 +21,13 @@ CREATE TABLE IF NOT EXISTS agent (
     name TEXT NOT NULL,
     short_description TEXT NOT NULL,
     long_description TEXT NOT NULL,
-    owner_id TEXT,
+    owner_location_id TEXT,
     capacity INTEGER NOT NULL,
     backstory TEXT NOT NULL,
     mood TEXT NULL,
     current_intent TEXT NULL,
     goal TEXT NULL,
-    FOREIGN KEY (owner_id) REFERENCES location(location_id) ON DELETE SET NULL
+    FOREIGN KEY (owner_location_id) REFERENCES location(location_id) ON DELETE SET NULL
 );
 
 -- Create Item Table with Distinct Foreign Keys
@@ -52,10 +52,10 @@ CREATE TABLE IF NOT EXISTS exit (
     name TEXT NOT NULL,
     short_description TEXT NOT NULL,
     long_description TEXT NOT NULL,
-    owner_id TEXT,
+    owner_location_id TEXT,
     direction TEXT NOT NULL,
     destination_id TEXT NOT NULL,
-    FOREIGN KEY (owner_id) REFERENCES location(location_id) ON DELETE SET NULL,
+    FOREIGN KEY (owner_location_id) REFERENCES location(location_id) ON DELETE SET NULL,
     FOREIGN KEY (destination_id) REFERENCES location(location_id) ON DELETE CASCADE
 );
 
@@ -70,7 +70,7 @@ INSERT INTO location (location_id, name, short_description, long_description) VA
     ('loc_wizard_lab', 'Wizard''s Lab', 'A room filled with arcane equipment', 'Bubbling potions, glowing crystals, and ancient tomes fill this mystical workshop.');
 
 -- Insert Agents with Foreign Key to Location
-INSERT INTO agent (agent_id, name, short_description, long_description, owner_id, capacity, backstory, mood, current_intent, goal) VALUES
+INSERT INTO agent (agent_id, name, short_description, long_description, owner_location_id, capacity, backstory, mood, current_intent, goal) VALUES
     ('char_max', 'Max', 'A sly-looking rogue', 'Max has a mischievous glint in his eye and moves with cat-like grace.', 'loc_forest_clearing', 30, 'A skilled thief with a heart of gold, Max turned to adventuring to pay off old debts.', NULL, NULL, NULL),
     ('char_vincent', 'Vincent', 'A wizened old wizard', 'Vincent''s long white beard and star-speckled robes mark him as a powerful mage.', 'loc_wizard_lab', 20, 'Once a court wizard, Vincent now seeks ancient magical artifacts to restore his reputation.', NULL, NULL, NULL);
 
@@ -85,7 +85,7 @@ INSERT INTO item (item_id, name, short_description, long_description, owner_agen
     ('item_magic_wand', 'Magic Wand', 'A slender wooden wand', 'A finely crafted wand humming with magical energy.', NULL, 'loc_wizard_lab', NULL, 1, 0);
 
 -- Insert Exits with Foreign Keys to Location
-INSERT INTO exit (exit_id, name, short_description, long_description, owner_id, direction, destination_id) VALUES
+INSERT INTO exit (exit_id, name, short_description, long_description, owner_location_id, direction, destination_id) VALUES
     ('exit_to_clearing', 'Path to Clearing', 'A path leading to a clearing', 'A well-trodden path leading towards a brighter area of the forest.', 'loc_forest_path', 'north', 'loc_forest_clearing'),
     ('exit_to_forest', 'Path to Forest', 'A path leading deeper into the forest', 'A narrow trail disappearing into the shadowy forest.', 'loc_forest_clearing', 'south', 'loc_forest_path'),
     ('exit_to_winding', 'Winding Path', 'A twisting path', 'The path ahead becomes more convoluted, winding between ancient trees.', 'loc_forest_path', 'east', 'loc_winding_path'),

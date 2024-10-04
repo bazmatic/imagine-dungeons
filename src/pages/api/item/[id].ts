@@ -11,5 +11,6 @@ export default async function handler(
     const itemService = new ItemService();
     const id = req.query.id as string;
     const item = await itemService.getItemById(id);
-    res.status(200).json(item);
+    const itemDto = await item.toDto();
+    res.status(200).json(itemDto);
 }
