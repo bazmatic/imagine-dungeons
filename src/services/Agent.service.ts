@@ -17,7 +17,7 @@ export class AgentService {
     async getAgentById(id: string): Promise<Agent> {
         const result = await this.agentRepository.findOneOrFail({
             where: { agentId: id },
-            //relations: ["items"] // TODO: This causes an error
+            relations: ["items"] //TODO: This causes an error
         });
         return result;
     }

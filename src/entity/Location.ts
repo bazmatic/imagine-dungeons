@@ -3,7 +3,6 @@ import {
     OneToMany,
     PrimaryColumn,
     Column,
-    JoinColumn
 } from "typeorm";
 
 import { Exit, ExitDto } from "./Exit";
@@ -39,16 +38,15 @@ export class Location {
     ownerId: string;
 
     // Items whose owner is this location
-    @OneToMany(() => Item, item => item.ownerItem, { lazy: true })
-    @JoinColumn({ name: "location_id", referencedColumnName: "ownerId" })
+    @OneToMany(() => Item, item => item.ownerLocation, { lazy: true })
     items: Promise<Item[]>;
 
+    // Exits for this location
     @OneToMany(() => Exit, exit => exit.location, { lazy: true })
-    @JoinColumn({ name: "location_id", referencedColumnName: "ownerId" })
     exits: Promise<Exit[]>;
 
+    // Agents in this location
     @OneToMany(() => Agent, agent => agent.location, { lazy: true })
-    @JoinColumn({ name: "location_id", referencedColumnName: "ownerId" })
     agents: Promise<Agent[]>;
 
     public async toDto(): Promise<LocationDto> {

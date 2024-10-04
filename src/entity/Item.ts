@@ -5,39 +5,49 @@ import { Location } from "./Location";
 
 @Entity("item")
 export class Item implements IBaseProperties {
-    @PrimaryColumn({ name: "item_id"})
+    @PrimaryColumn({ name: "item_id" })
     itemId: string;
 
-    @Column({ name: "name"})
+    @Column({ name: "name" })
     name: string;
 
-    @Column({ name: "short_description"})
+    @Column({ name: "short_description" })
     shortDescription: string;
 
-    @Column({ name: "long_description"})
+    @Column({ name: "long_description" })
     longDescription: string;
 
-    @Column({ name: "owner_id"})
-    ownerId: string;
+    @Column({ name: "owner_agent_id", nullable: true })
+    ownerAgentId: string;
 
-    @Column({name: "capacity"})
+    @Column({ name: "owner_location_id", nullable: true })
+    ownerLocationId: string;
+
+    @Column({ name: "owner_item_id", nullable: true })
+    ownerItemId: string;
+
+    @Column({ name: "capacity" })
     capacity: number;
 
     @Column()
     weight: number;
 
-    @ManyToOne(() => Agent, agent => agent.items, { lazy: true, nullable: true }) // Owner can be an Agent
-    @JoinColumn({ name: "owner_id", referencedColumnName: "agentId" }) // Reference to Agent
-    ownerAgent: Promise<Agent>; // New property for Agent owner
+    // Relation to Agent
+    @ManyToOne(() => Agent, agent => agent.items, { lazy: true, nullable: true })
+    @JoinColumn({ name: "owner_agent_id", referencedColumnName: "agentId" })
+    ownerAgent: Promise<Agent>;
 
-    @ManyToOne(() => Item, item => item.items, { lazy: true, nullable: true }) // Owner can be another Item
-    @JoinColumn({ name: "owner_id", referencedColumnName: "itemId" }) // Reference to parent Item
-    ownerItem: Promise<Item>; // New property for Item owner
+    // Relation to Location
+    @ManyToOne(() => Location, location => location.items, { lazy: true, nullable: true })
+    @JoinColumn({ name: "owner_location_id", referencedColumnName: "locationId" })
+    ownerLocation: Promise<Location>;
 
-    @ManyToOne(() => Location, location => location.items, { nullable: true }) // Owner can be a Location
-    @JoinColumn({ name: "owner_id", referencedColumnName: "locationId" }) // Reference to Location
-    ownerLocation: Promise<Location>; // New property for Location owner
+    // Relation to another Item (for nested items)
+    @ManyToOne(() => Item, item => item.items, { lazy: true, nullable: true })
+    @JoinColumn({ name: "owner_item_id", referencedColumnName: "itemId" })
+    ownerItem: Promise<Item>;
 
+    // One-to-Many relation to Items (children)
     @OneToMany(() => Item, item => item.ownerItem, { lazy: true })
     items: Promise<Item[]>;
 
@@ -48,17 +58,15 @@ export class Item implements IBaseProperties {
             name: this.name,
             shortDescription: this.shortDescription,
             longDescription: this.longDescription,
-            ownerId: this.ownerId,
-            // ownerItemId: this.ownerItemId,
-            // ownerAgentId: this.ownerAgentId,
+            ownerId: this.ownerAgentId || this.ownerLocationId || this.ownerItemId,
             capacity: this.capacity,
             weight: this.weight,
             items: await Promise.all(items.map(item => item.toDto()))
-        }
+        };
     }
 }
 
-export class ItemDto { //} implements IBaseProperties {
+export class ItemDto {
     id: string;
     name: string;
     shortDescription: string;

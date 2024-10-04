@@ -1,16 +1,13 @@
 import {
-    ManyToOne,
-    PrimaryColumn,
-    ViewEntity,
-    ViewColumn,
-    JoinColumn,
-    OneToMany,
     Entity,
-    Column
+    PrimaryColumn,
+    Column,
+    ManyToOne,
+    OneToMany,
+    JoinColumn,
 } from "typeorm";
 import { GameObjectKind, IBaseProperties } from "./BaseItem";
-
-import { Location, LocationDto } from "./Location";
+import { Location } from "./Location";
 import { Item, ItemDto } from "./Item";
 
 @Entity("agent")
@@ -32,19 +29,20 @@ export class Agent implements IBaseProperties {
     @Column({ name: "long_description" })
     longDescription: string;
 
-    @OneToMany(() => Item, item => item.ownerAgent, { lazy: true })
-    @JoinColumn({ name: "agent_id", referencedColumnName: "ownerId" })
-    items: Promise<Item[]>;
-
-    @ManyToOne(() => Location, location => location.agents, { lazy: true, nullable: true }) // Owner can be a Location
-    @JoinColumn({ name: "agent_id", referencedColumnName: "ownerId" }) // Reference to Location
-    location: Promise<Location>;
-
     @Column()
     capacity: number;
 
     @Column()
     backstory: string;
+
+    // Relation to Items owned by the Agent
+    @OneToMany(() => Item, item => item.ownerAgent, { lazy: true })
+    items: Promise<Item[]>;
+
+    // Relation to Location (Owner)
+    @ManyToOne(() => Location, location => location.agents, { lazy: true, nullable: true })
+    @JoinColumn({ name: "owner_id", referencedColumnName: "locationId" })
+    location: Promise<Location>;
 
     public async toDto(): Promise<AgentDto> {
         const items: Item[] = await this.items;
