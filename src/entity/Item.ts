@@ -1,5 +1,5 @@
 import { Entity, Column, JoinColumn, ManyToOne, OneToMany, PrimaryColumn } from "typeorm";
-import { IBaseProperties } from "./BaseItem";
+import { GameObjectKind, IBaseProperties } from "./BaseItem";
 import { Agent } from "./Agent";
 import { Location } from "./Location";
 
@@ -18,13 +18,13 @@ export class Item implements IBaseProperties {
     longDescription: string;
 
     @Column({ name: "owner_agent_id", nullable: true })
-    ownerAgentId: string;
+    ownerAgentId?: string | null;
 
     @Column({ name: "owner_location_id", nullable: true })
-    ownerLocationId: string;
+    ownerLocationId?: string | null;
 
     @Column({ name: "owner_item_id", nullable: true })
-    ownerItemId: string;
+    ownerItemId?: string | null;
 
     @Column({ name: "capacity" })
     capacity: number;
@@ -58,7 +58,8 @@ export class Item implements IBaseProperties {
             name: this.name,
             shortDescription: this.shortDescription,
             longDescription: this.longDescription,
-            ownerId: this.ownerAgentId || this.ownerLocationId || this.ownerItemId,
+            ownerId: this.ownerAgentId || this.ownerLocationId || this.ownerItemId || undefined,
+            ownerKind: this.ownerAgentId ? GameObjectKind.AGENT : this.ownerLocationId ? GameObjectKind.LOCATION : this.ownerItemId ? GameObjectKind.ITEM : undefined,
             capacity: this.capacity,
             weight: this.weight,
             items: await Promise.all(items.map(item => item.toDto()))
@@ -71,7 +72,8 @@ export class ItemDto {
     name: string;
     shortDescription: string;
     longDescription: string;
-    ownerId: string;
+    ownerId?: string;
+    ownerKind?: GameObjectKind;
     capacity: number;
     weight: number;
     items: ItemDto[];

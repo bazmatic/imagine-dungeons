@@ -12,5 +12,5 @@ export default async function handler(
     const locationService  = new LocationService();
     const id = req.query.id as string;
     const location = await locationService.getLocationById(id);
-    res.status(200).json(location);
+    res.status(200).json(await location.toDto());
 }

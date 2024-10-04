@@ -29,12 +29,28 @@ export class ItemService {
         return this.itemRepository.save(item);
     }
 
-    async updateItem(
-        id: string,
-        itemData: Partial<Item>
-    ): Promise<Item | undefined> {
-        await this.itemRepository.update(id, itemData);
-        return this.getItemById(id);
+    async setOwnerToAgent(itemId: string, ownerId: string): Promise<void> {
+        await this.itemRepository.update(itemId, {
+             ownerAgentId: ownerId,
+             ownerItemId: null,
+             ownerLocationId: null
+        });
+    }
+
+    async setOwnerToLocation(itemId: string, ownerId: string): Promise<void> {
+        await this.itemRepository.update(itemId, {
+             ownerAgentId: null,
+             ownerItemId: null,
+             ownerLocationId: ownerId
+        });
+    }
+
+    async setOwnerToItem(itemId: string, ownerId: string): Promise<void> {
+        await this.itemRepository.update(itemId, {
+             ownerAgentId: null,
+             ownerItemId: ownerId,
+             ownerLocationId: null
+        });
     }
 
     async deleteItem(id: string): Promise<void> {

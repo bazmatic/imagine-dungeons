@@ -41,11 +41,7 @@ export class AgentActor {
             throw new Error("Exit not found");
         }
         const exitEntity: Exit = await this.exitService.getById(exitId);
-        agent.ownerId = exitEntity.destinationId;
-        await this.agentService.updateAgentLocation(
-            this.agentId,
-            exitEntity.destinationId
-        );
+
     }
 
     public async pickUp(itemId: string, fromTarget?: string): Promise<void> {
@@ -63,16 +59,14 @@ export class AgentActor {
             if (!item) {
                 throw new Error("Item not found");
             }
-            item.ownerId = agent.agentId;
-            await this.itemService.updateItem(fromTarget, item);
         }
-        const itemPresent = await this.itemIsAccessible(itemId);
-        if (!itemPresent) {
-            throw new Error("Item not found");
+        else {
+            const itemPresent = await this.itemIsAccessible(itemId);
+            if (!itemPresent) {
+                throw new Error("Item not found");
+            }
         }
-        const item = await this.itemService.getItemById(itemId);
-        item.ownerId = agent.agentId;
-        await this.itemService.updateItem(itemId, item);
+        await this.itemService.setOwnerToAgent(itemId, agent.agentId);
     }
 
     public async dropItem(itemId: string): Promise<void> {
@@ -83,10 +77,9 @@ export class AgentActor {
         if (!itemOwned) {
             throw new Error("Item not found");
         }
-        const item = await this.itemService.getItemById(itemId);
+        // Set owner to agent's location
         const location = await agent.location;
-        item.ownerId = location.locationId;
-        await this.itemService.updateItem(itemId, item);
+        await this.itemService.setOwnerToLocation(itemId, location.locationId);
     }
 
     public async lookAround(): Promise<string[]> {
