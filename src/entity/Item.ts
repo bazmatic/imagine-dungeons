@@ -1,5 +1,7 @@
 import { Entity, Column, JoinColumn, ManyToOne, OneToMany, PrimaryColumn } from "typeorm";
 import { IBaseProperties } from "./BaseItem";
+import { Agent } from "./Agent";
+import { Location } from "./Location";
 
 @Entity("item")
 export class Item implements IBaseProperties {
@@ -24,12 +26,19 @@ export class Item implements IBaseProperties {
     @Column()
     weight: number;
 
-    @ManyToOne(() => Item, owner => owner.items, { lazy: true })
-    @JoinColumn({ name: "owner_id", referencedColumnName: "itemId" })
-    owner: Promise<Item>;
+    @ManyToOne(() => Agent, agent => agent.items, { lazy: true, nullable: true }) // Owner can be an Agent
+    @JoinColumn({ name: "owner_id", referencedColumnName: "agentId" }) // Reference to Agent
+    ownerAgent: Promise<Agent>; // New property for Agent owner
 
-    @OneToMany(() => Item, item => item.owner, { lazy: true })
-    @JoinColumn({ name: "item_id", referencedColumnName: "ownerId" })
+    @ManyToOne(() => Item, item => item.items, { lazy: true, nullable: true }) // Owner can be another Item
+    @JoinColumn({ name: "owner_id", referencedColumnName: "itemId" }) // Reference to parent Item
+    ownerItem: Promise<Item>; // New property for Item owner
+
+    @ManyToOne(() => Location, location => location.items, { nullable: true }) // Owner can be a Location
+    @JoinColumn({ name: "owner_id", referencedColumnName: "locationId" }) // Reference to Location
+    ownerLocation: Promise<Location>; // New property for Location owner
+
+    @OneToMany(() => Item, item => item.ownerItem, { lazy: true })
     items: Promise<Item[]>;
 
     public async toDto(): Promise<ItemDto> {
@@ -40,6 +49,8 @@ export class Item implements IBaseProperties {
             shortDescription: this.shortDescription,
             longDescription: this.longDescription,
             ownerId: this.ownerId,
+            // ownerItemId: this.ownerItemId,
+            // ownerAgentId: this.ownerAgentId,
             capacity: this.capacity,
             weight: this.weight,
             items: await Promise.all(items.map(item => item.toDto()))
@@ -47,7 +58,7 @@ export class Item implements IBaseProperties {
     }
 }
 
-export class ItemDto implements IBaseProperties {
+export class ItemDto { //} implements IBaseProperties {
     id: string;
     name: string;
     shortDescription: string;

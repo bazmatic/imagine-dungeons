@@ -39,16 +39,16 @@ export class Location {
     ownerId: string;
 
     // Items whose owner is this location
-    @OneToMany(() => Item, item => item.owner, { lazy: true })
-    @JoinColumn({ name: "location_id", referencedColumnName: "owner_id" })
+    @OneToMany(() => Item, item => item.ownerItem, { lazy: true })
+    @JoinColumn({ name: "location_id", referencedColumnName: "ownerId" })
     items: Promise<Item[]>;
 
     @OneToMany(() => Exit, exit => exit.location, { lazy: true })
-    @JoinColumn({ name: "location_id", referencedColumnName: "owner_id" })
+    @JoinColumn({ name: "location_id", referencedColumnName: "ownerId" })
     exits: Promise<Exit[]>;
 
     @OneToMany(() => Agent, agent => agent.location, { lazy: true })
-    @JoinColumn({ name: "location_id", referencedColumnName: "owner_id" })
+    @JoinColumn({ name: "location_id", referencedColumnName: "ownerId" })
     agents: Promise<Agent[]>;
 
     public async toDto(): Promise<LocationDto> {
