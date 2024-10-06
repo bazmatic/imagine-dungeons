@@ -22,6 +22,12 @@ export class AgentService {
         return result;
     }
 
+    async getAgentsByLocation(locationId: string): Promise<Agent[]> {
+        return this.agentRepository.find({
+            where: { ownerLocationId: locationId }
+        });
+    }
+
     async createAgent(agentData: Partial<Agent>): Promise<Agent> {
         const agent = this.agentRepository.create(agentData);
         return this.agentRepository.save(agent);

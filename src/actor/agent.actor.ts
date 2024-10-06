@@ -5,18 +5,27 @@ import { ExitService } from "@/services/Exit.service";
 import { initialiseDatabase } from "..";
 import { ItemService } from "@/services/Item.service";
 import { LocationService } from "@/services/Location.service";
+import { OpenAI } from "openai";
+import dotenv from "dotenv";
+import { AgentMessageService } from "@/services/AgentMessage.service";
+import { ChatCompletionMessageParam } from "openai/resources";
+dotenv.config();
 
 export class AgentActor {
     private agentService: AgentService;
     private exitService: ExitService;
     private itemService: ItemService;
     private locationService: LocationService;
+    private agentMessageService: AgentMessageService;
+    private openai: OpenAI;
 
     constructor(public agentId: string) {
         this.agentService = new AgentService();
         this.exitService = new ExitService();
         this.itemService = new ItemService();
         this.locationService = new LocationService();
+        this.agentMessageService = new AgentMessageService();
+        this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     }
 
     public async agent(): Promise<Agent> {
@@ -100,10 +109,15 @@ export class AgentActor {
         result.push(location.longDescription);
         const items = await location.items;
         items.forEach(i => {
-            result.push(i.shortDescription);
+            result.push(`${i.name}: ${i.shortDescription}`);
         });
         exits.forEach(e => {
             result.push(`To the ${e.direction}: ${e.shortDescription}`);
+        });
+        // Other agents
+        const agents = await this.agentService.getAgentsByLocation(location.locationId);
+        agents.forEach(a => {
+            result.push(`You see ${a.name}, ${a.shortDescription}.`);
         });
         return result;
     }
@@ -156,5 +170,48 @@ export class AgentActor {
         result.push(`You look at the ${location.name}.`);
         result.push(location.longDescription);
         return result;
+    }
+
+    public async speakToAgent(agentId: string, message: string): Promise<string[]> {
+        await initialiseDatabase();
+        const agent = await this.agentService.getAgentById(agentId);
+        const result: string[] = [];
+        result.push(`You speak to the ${agent.name}.`);
+
+        await this.agentMessageService.createMessage(this.agentId, agentId, message);
+        const otherAgentActor = new AgentActor(agentId);
+        const response = await otherAgentActor.respondToAgent(this.agentId);
+        return response;
+    }
+
+    public async respondToAgent(otherAgentId: string): Promise<string[]> {
+        await initialiseDatabase();
+        const agent = await this.agent();
+        const otherAgent = await this.agentService.getAgentById(otherAgentId);
+        const result: string[] = [];
+        result.push(`You respond to the ${agent.name}.`);
+
+        const agentMessageService = new AgentMessageService();
+        // Get previous messages between agents
+        const agentMessages = await agentMessageService.getMessagesBetweenAgents(this.agentId, otherAgentId);
+        // Create a new message via openai
+        const messages: ChatCompletionMessageParam[] = agentMessages.map(m => {
+            return {
+                role: m.senderAgentId === this.agentId ? "user" : "assistant",
+                content: m.content
+            };
+        });
+        messages.unshift({
+            role: "system",
+            content: `You are ${agent.name}, ${agent.shortDescription}. Your backstory is ${agent.backstory}. Your mood is ${agent.mood}. Your current intent is ${agent.currentIntent}. Your goal is ${agent.goal}. You are talking to ${otherAgent.name}, ${otherAgent.shortDescription}.`
+        });
+        const response = await this.openai.chat.completions.create({
+            model: "gpt-4o",
+            messages
+        });
+        // Save the message to the database
+        const messageText = response.choices[0].message.content ?? "";
+        await agentMessageService.createMessage(this.agentId, otherAgentId, messageText);
+        return [messageText];
     }
 }

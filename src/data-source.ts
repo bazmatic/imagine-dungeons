@@ -4,6 +4,7 @@ import { Exit } from "./entity/Exit"
 import { Item } from "./entity/Item"
 import { Agent } from "./entity/Agent"
 import { Location } from "./entity/Location"
+import { AgentMessage } from "./entity/AgentMessage"
 
 export const AppDataSource = new DataSource({
     type: "postgres",
@@ -13,12 +14,13 @@ export const AppDataSource = new DataSource({
     password: "baz",
     database: "imagine_dungeons",
     synchronize: false,
-    logging: true,
+    logging: false,
     entities: [
         Location,
         Exit,
         Item,
         Agent,
+        AgentMessage
     ],
     migrations: [],
     subscribers: [],

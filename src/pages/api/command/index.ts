@@ -6,6 +6,6 @@ import { NextApiRequest, NextApiResponse } from "next";
 export default async function command(req: NextApiRequest, res: NextApiResponse) {
     const { agentId, command } = req.body;
     const commandService = new CommandService();
-    const response = await commandService.parse(agentId, command);
+    const response = await commandService.obey(agentId, command);
     res.status(200).json(response);
 }

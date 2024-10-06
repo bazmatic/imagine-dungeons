@@ -30,8 +30,4 @@ export class ExitService {
         await this.exitRepository.update(id, itemData);
         return this.getById(id);
     }
-
-    async deleteItem(id: string): Promise<void> {
-        await this.exitRepository.delete(id);
-    }
 }

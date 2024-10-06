@@ -26,7 +26,7 @@ export class CommandService {
         this.itemService = new ItemService();
     }
 
-    public async parse(agentId: string, input: string): Promise<string[]> {
+    public async obey(agentId: string, input: string): Promise<string[]> {
         await initialiseDatabase();
         const agentActor = new AgentActor(agentId);
 
@@ -37,7 +37,8 @@ export class CommandService {
             LOOK_AT_ITEM,
             LOOK_AT_AGENT,
             LOOK_AROUND,
-            LOOK_AT_EXIT
+            LOOK_AT_EXIT,
+            SPEAK_TO_AGENT,
         ];
 
         const agent = await this.agentService.getAgentById(agentId);
@@ -93,6 +94,9 @@ export class CommandService {
                 break;
             case LOOK_AT_EXIT.function.name:
                 responseMessage = responseMessage.concat(await agentActor.lookAtExit(toolCallArguments.exit_id));
+                break;
+            case SPEAK_TO_AGENT.function.name:
+                responseMessage = responseMessage.concat(await agentActor.speakToAgent(toolCallArguments.agent_id, toolCallArguments.message));
                 break;
             default:
                 throw new Error("Invalid tool name");
@@ -239,6 +243,29 @@ const LOOK_AT_EXIT: OpenAI.Chat.Completions.ChatCompletionTool = {
                 }
             },
             required: ["exit_id"],
+            additionalProperties: false
+        }
+    }
+};
+
+const SPEAK_TO_AGENT: OpenAI.Chat.Completions.ChatCompletionTool = {
+    type: "function",
+    function: {
+        name: "speak_to_agent",
+        description: "Speak to an agent",
+        parameters: {
+            type: "object",
+            properties: {
+                agent_id: {
+                    type: "string",
+                    description: "The id of the agent to speak to"
+                },
+                message: {
+                    type: "string",
+                    description: "The message to speak to the agent"
+                }
+            },
+            required: ["agent_id", "message"],
             additionalProperties: false
         }
     }

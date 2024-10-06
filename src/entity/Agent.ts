@@ -29,11 +29,20 @@ export class Agent implements IBaseProperties {
     @Column({ name: "long_description" })
     longDescription: string;
 
+    @Column({ name: "mood" })
+    mood: string;
+
+    @Column({ name: "backstory" })
+    backstory: string;
+
+    @Column({ name: "current_intent" })
+    currentIntent: string;
+    
     @Column()
     capacity: number;
 
-    @Column()
-    backstory: string;
+    @Column({ name: "goal" })
+    goal: string;
 
     // Relation to Items owned by the Agent
     @OneToMany(() => Item, item => item.ownerAgent, { lazy: true })
