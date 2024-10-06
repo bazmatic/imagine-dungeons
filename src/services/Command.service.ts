@@ -36,7 +36,6 @@ export class CommandService {
             DROP_ITEM,
             LOOK_AT_ITEM,
             LOOK_AT_AGENT,
-            LOOK_AT_LOCATION,
             LOOK_AROUND,
             LOOK_AT_EXIT
         ];
@@ -72,16 +71,13 @@ export class CommandService {
         console.log(`Calling ${toolName} with arguments ${toolCallArguments}`);
         switch (toolName) {
             case GO_EXIT.function.name:
-                await agentActor.goExit(toolCallArguments.exit_id);
-                responseMessage.push("OK");
+                responseMessage = responseMessage.concat(await agentActor.goExit(toolCallArguments.exit_id));
                 break;
             case PICK_UP_ITEM.function.name:
-                await agentActor.pickUp(toolCallArguments.item_id);
-                responseMessage.push("OK");
+                responseMessage = responseMessage.concat(await agentActor.pickUp(toolCallArguments.item_id));
                 break;
             case DROP_ITEM.function.name:
-                await agentActor.dropItem(toolCallArguments.item_id);
-                responseMessage.push("OK");
+                responseMessage = responseMessage.concat(await agentActor.dropItem(toolCallArguments.item_id));
                 break;
             case LOOK_AT_ITEM.function.name:
                 responseMessage = responseMessage.concat(await agentActor.lookAtItem(toolCallArguments.item_id));
@@ -101,7 +97,6 @@ export class CommandService {
             default:
                 throw new Error("Invalid tool name");
         }
-        console.log(responseMessage);
         return responseMessage;
     }
 }

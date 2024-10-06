@@ -31,7 +31,7 @@ export class AgentActor {
         return !!ownedItem;
     }
 
-    public async goExit(exitId: string): Promise<void> {
+    public async goExit(exitId: string): Promise<string[]> {
         await initialiseDatabase();
         const agent = await this.agent();
         const location = await agent.location;
@@ -41,10 +41,14 @@ export class AgentActor {
             throw new Error("Exit not found");
         }
         const exitEntity: Exit = await this.exitService.getById(exitId);
-
+        const desinationLocation = await this.locationService.getLocationById(exitEntity.destinationId);
+        await this.agentService.updateAgentLocation(agent.agentId, desinationLocation.locationId);
+        let result = [`You go to the ${desinationLocation.name}.`];
+        result = result.concat(await this.lookAround());
+        return result;
     }
 
-    public async pickUp(itemId: string, fromTarget?: string): Promise<void> {
+    public async pickUp(itemId: string, fromTarget?: string): Promise<string[]> {
         await initialiseDatabase();
         const agent = await this.agent();
 
@@ -67,9 +71,11 @@ export class AgentActor {
             }
         }
         await this.itemService.setOwnerToAgent(itemId, agent.agentId);
+        const item = await this.itemService.getItemById(itemId);
+        return [`You picked up the ${item.name}.`];
     }
 
-    public async dropItem(itemId: string): Promise<void> {
+    public async dropItem(itemId: string): Promise<string[]> {
         await initialiseDatabase();
         const agent = await this.agent();
         const ownedItems = await agent.items;
@@ -80,6 +86,8 @@ export class AgentActor {
         // Set owner to agent's location
         const location = await agent.location;
         await this.itemService.setOwnerToLocation(itemId, location.locationId);
+        const item = await this.itemService.getItemById(itemId);
+        return [`You dropped the ${item.name}.`];
     }
 
     public async lookAround(): Promise<string[]> {
@@ -88,6 +96,7 @@ export class AgentActor {
         const location = await agent.location;
         const exits = await location.exits;
         const result: string[] = [];
+        result.push(`You look around the ${location.name}.`);
         result.push(location.longDescription);
         const items = await location.items;
         items.forEach(i => {
@@ -118,6 +127,7 @@ export class AgentActor {
 
         const item = await this.itemService.getItemById(itemId);
         const result: string[] = [];
+        result.push(`You look at the ${item.name}.`);
         result.push(item.longDescription);
         return result;
     }
@@ -134,6 +144,7 @@ export class AgentActor {
         await initialiseDatabase();
         const exit = await this.exitService.getById(exitId);
         const result: string[] = [];
+        result.push(`You look at the ${exit.name}.`);
         result.push(exit.longDescription);
         return result;
     }
@@ -142,6 +153,7 @@ export class AgentActor {
         await initialiseDatabase();
         const location = await this.locationService.getLocationById(locationId);
         const result: string[] = [];
+        result.push(`You look at the ${location.name}.`);
         result.push(location.longDescription);
         return result;
     }
