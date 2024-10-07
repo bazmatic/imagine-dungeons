@@ -76,7 +76,7 @@ export class CommandService {
             }
         }
 
-        const recentCommands = await this.getRecentCommands(agentId, 2);
+        // const recentCommands = await this.getRecentCommands(agentId, 2);
         const openAiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
             { role: "system", content: parserPrompt },
         ];
@@ -140,11 +140,6 @@ export class CommandService {
 const parserPrompt = `
 You are an AI assistant designed to turn a user's natural language input into an action that can be taken in a game. 
 `;
-
-// const parserResponseSchema = z.object({
-//     action: z.string(),
-//     target: z.string(),
-// });
 
 const GO_EXIT: OpenAI.Chat.Completions.ChatCompletionTool = {
     type: "function",

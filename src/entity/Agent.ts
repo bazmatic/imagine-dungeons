@@ -53,6 +53,9 @@ export class Agent implements IBaseProperties {
     @JoinColumn({ name: "owner_location_id", referencedColumnName: "locationId" })
     location: Promise<Location>;
 
+    @Column({ name: "autonomous" })
+    autonomous: boolean;
+
     public async toDto(): Promise<AgentDto> {
         const items: Item[] = await this.items;
         return {

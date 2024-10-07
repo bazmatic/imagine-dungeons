@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS agent (
     mood TEXT NULL,
     current_intent TEXT NULL,
     goal TEXT NULL,
+    autonomous BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY (owner_location_id) REFERENCES location(location_id) ON DELETE SET NULL
 );
 
@@ -65,9 +66,10 @@ CREATE TABLE IF NOT EXISTS exit (
 
 CREATE TABLE IF NOT EXISTS command (
     command_id SERIAL PRIMARY KEY,
-    agent_id TEXT NOT NULL,
-    raw_text TEXT NOT NULL,
-    response TEXT NOT NULL,
+    agent_id TEXT NOT NULL, -- The ID of the agent that issued the command
+    raw_text TEXT NOT NULL, -- The raw text of the command
+    text_response TEXT NOT NULL, -- The natural language response presented to the player
+    response TEXT NOT NULL, -- The JSON response from the LLM
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (agent_id) REFERENCES agent(agent_id) ON DELETE CASCADE
 );
