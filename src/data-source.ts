@@ -5,6 +5,7 @@ import { Item } from "./entity/Item"
 import { Agent } from "./entity/Agent"
 import { Location } from "./entity/Location"
 import { AgentMessage } from "./entity/AgentMessage"
+import { Command } from "./entity/Command"
 
 export const AppDataSource = new DataSource({
     type: "postgres",
@@ -20,7 +21,8 @@ export const AppDataSource = new DataSource({
         Exit,
         Item,
         Agent,
-        AgentMessage
+        AgentMessage,
+        Command
     ],
     migrations: [],
     subscribers: [],

@@ -9,6 +9,9 @@ import { ItemService } from "./Item.service";
 import { ExitService } from "./Exit.service";
 import { AgentService } from "./Agent.service";
 import { initialiseDatabase } from "..";
+import { Repository } from "typeorm";
+import { AppDataSource } from "@/data-source";
+import { Command } from "@/entity/Command";
 dotenv.config();
 
 export class CommandService {
@@ -17,6 +20,7 @@ export class CommandService {
     private locationService: LocationService;
     private exitService: ExitService;
     private itemService: ItemService
+    private commandRepository: Repository<Command>;
 
     constructor() {
         this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -24,6 +28,23 @@ export class CommandService {
         this.locationService = new LocationService();
         this.exitService = new ExitService();
         this.itemService = new ItemService();
+        this.commandRepository = AppDataSource.getRepository(Command);
+    }
+
+    public async saveAgentCommand(agentId: string, commandText: string, response: OpenAI.Chat.Completions.ChatCompletion): Promise<void> {
+        const command = new Command();
+        command.agent_id = agentId;
+        command.raw_text = commandText;
+        command.response = JSON.stringify(response);
+        await this.commandRepository.save(command);
+    }
+
+    public async getRecentCommands(agentId: string, count: number): Promise<Command[]> {
+        return this.commandRepository.find({
+            where: { agent_id: agentId },
+            order: { created_at: "DESC" },
+            take: count
+        });
     }
 
     public async obey(agentId: string, input: string): Promise<string[]> {
@@ -54,17 +75,28 @@ export class CommandService {
                 inventory: inventoryDTO
             }
         }
+
+        const recentCommands = await this.getRecentCommands(agentId, 2);
+        const openAiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+            { role: "system", content: parserPrompt },
+        ];
+        // recentCommands.forEach(c => {
+        //     openAiMessages.push({ role: "user", content: c.raw_text });
+        //     openAiMessages.push({ role: "assistant", content: c.response });
+        // });
+
+        openAiMessages.push({ role: "user", content: JSON.stringify(content) });
+
         const response: OpenAI.Chat.Completions.ChatCompletion = await this.openai.chat.completions.create({
             model: "gpt-3.5-turbo",
-            messages: [
-                { role: "system", content: parserPrompt },
-                { role: "user", content: JSON.stringify(content) }
-            ],
+            messages: openAiMessages,
             tools: tools
         });
         if (!response.choices[0]?.message.tool_calls) {
             throw new Error("No tool calls found");
         }
+        await this.saveAgentCommand(agentId, input, response);
+       
         const toolCall = response.choices[0]?.message.tool_calls[0];
         const toolCallArguments = JSON.parse(toolCall.function.arguments);
         const toolName = toolCall.function.name;

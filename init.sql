@@ -63,6 +63,14 @@ CREATE TABLE IF NOT EXISTS exit (
     FOREIGN KEY (destination_id) REFERENCES location(location_id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS command (
+    command_id SERIAL PRIMARY KEY,
+    agent_id TEXT NOT NULL,
+    raw_text TEXT NOT NULL,
+    response TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (agent_id) REFERENCES agent(agent_id) ON DELETE CASCADE
+);
 
 INSERT INTO location (location_id, name, short_description, long_description) VALUES
     ('loc_flaming_goblet', 'The Flaming Goblet', 'A tavern on the edge of the Burning District', 'A tavern with one wall constantly aflame, mostly staffed by Tieflings. The heat inside is intense.'),
