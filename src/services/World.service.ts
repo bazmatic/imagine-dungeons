@@ -15,7 +15,7 @@ export class WorldService {
         for (const agent of agents) {
             const agentActor = new AgentActor(agent.agentId);
             const agentResult: string[] = await agentActor.act();
-            await this.agentService.activateAutonomy(agent.agentId, false);
+            //await this.agentService.activateAutonomy(agent.agentId, false);
             agentResults = agentResults.concat(agentResult);         
         }
         return agentResults;
