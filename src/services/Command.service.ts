@@ -92,9 +92,9 @@ export class CommandService {
 
         const response: OpenAI.Chat.Completions.ChatCompletion =
             await this.openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
+                model: "gpt-3.5-turbo-1106",
                 messages: openAiMessages,
-                tools: tools
+                tools: tools,
             });
         const toolCalls = response.choices[0]?.message.tool_calls;
         if (!toolCalls || toolCalls.length === 0) {
@@ -106,6 +106,7 @@ export class CommandService {
             throw new Error("No response content found");
         }
 
+        console.log(`Raw response: ${JSON.stringify(rawResponse, null, 4)}`);
         let responseMessage: string[] = [];
         for (const toolCall of toolCalls) {
             const toolCallArguments = JSON.parse(toolCall.function.arguments);
@@ -194,6 +195,7 @@ const parserPrompt = `You are an AI assistant designed to turn a user's natural 
 You can call multiple functions at the same time, if the user's input seems to require it.
 If the user's input does not clearly call for one of the functions below, then do not call any functions.
 In most cases, you should finish by calling the update_agent_intent function to update the agent's immediate intent.
+For example, if someone has just spoken to you, you should call speak_to_agent to respond, and then update your intent.
 `;
 
 const UPDATE_AGENT_INTENT: OpenAI.Chat.Completions.ChatCompletionTool = {
@@ -359,7 +361,7 @@ const SPEAK_TO_AGENT: OpenAI.Chat.Completions.ChatCompletionTool = {
     function: {
         name: "speak_to_agent",
         description:
-            "Speak to an agent. Only pass the spoken text, without any additional thoughts or comments. Exclude quotation marks.",
+            "Speak to an agent who is in the same location. Only pass the spoken text, without any additional thoughts or comments. Exclude quotation marks.",
         parameters: {
             type: "object",
             properties: {
