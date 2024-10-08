@@ -1,7 +1,7 @@
 // Import necessary libraries
 use reqwest::Client; // For making HTTP requests
 use std::io::{self, Write}; // For input/output operations
-use serde_json::Value; // For deserializing JSON responses
+
 // Main function, marked as async and using tokio runtime
 #[tokio::main]
 async fn main() {

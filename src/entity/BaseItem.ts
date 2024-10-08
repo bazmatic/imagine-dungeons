@@ -6,7 +6,7 @@ export enum GameObjectKind {
 }
 
 export interface IBaseProperties {
-    name: string;
+    label: string;
     shortDescription: string;
     longDescription: string;
 }

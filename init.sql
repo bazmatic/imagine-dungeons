@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS agent (
     mood TEXT NULL,
     current_intent TEXT NULL,
     goal TEXT NULL,
-    autonomous BOOLEAN NOT NULL DEFAULT FALSE,
+    autonomous BOOLEAN NOT NULL DEFAULT TRUE, -- if true, the agent can act autonomously
+    activated BOOLEAN DEFAULT FALSE, -- if true, and the autonomous flag is true, the agent will act autonomously
     FOREIGN KEY (owner_location_id) REFERENCES location(location_id) ON DELETE SET NULL
 );
 
@@ -67,9 +68,9 @@ CREATE TABLE IF NOT EXISTS exit (
 CREATE TABLE IF NOT EXISTS command (
     command_id SERIAL PRIMARY KEY,
     agent_id TEXT NOT NULL, -- The ID of the agent that issued the command
-    raw_text TEXT NOT NULL, -- The raw text of the command
-    text_response TEXT NOT NULL, -- The natural language response presented to the player
-    response TEXT NOT NULL, -- The JSON response from the LLM
+    input_text TEXT NULL, -- The raw text of the command
+    response_text TEXT NOT NULL, -- The natural language response presented to the player
+    raw_response TEXT NULL, -- The JSON response from the LLM
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (agent_id) REFERENCES agent(agent_id) ON DELETE CASCADE
 );
@@ -103,6 +104,8 @@ INSERT INTO agent (agent_id, name, short_description, long_description, owner_lo
     ('char_spark', 'Spark', 'An energetic messenger', 'A young halfling with hair that stands on end, crackling with static electricity.', 'loc_flaming_goblet', 15, 'A swift runner who delivers messages and small packages throughout the Burning District.', 'Energetic', 'Deliver messages quickly', 'Map out all the safe routes in the district'),
     ('char_cinder_golem', 'Cinder Golem', 'A lumbering ash construct', 'A large, humanoid figure made of compressed ash and burning embers.', 'loc_smoldering_square', 80, 'Created by Cinder to assist with heavy lifting and protection during salvage operations.', 'Stoic', 'Follow Cinder''s commands', 'Protect the fire salvagers'),
     ('char_flamebeak', 'Flamebeak', 'A fiery phoenix', 'A magnificent bird with feathers of dancing flames and eyes like glowing coals.', 'loc_phoenix_row', 20, 'A magical creature that has made its home in the Burning District, symbolizing hope and renewal.', 'Majestic', 'Soar above the burning streets', 'Inspire hope in the district''s inhabitants');
+
+UPDATE agent SET autonomous = FALSE WHERE agent_id = 'char_paff';
 
 INSERT INTO item (item_id, name, short_description, long_description, owner_agent_id, owner_location_id, owner_item_id, weight, capacity) VALUES
     ('item_phoenix_heart', 'The Phoenix Heart', 'A pulsating gemstone', 'A large gem that pulses with fiery energy, said to be the source of the district''s eternal flames.', NULL, 'loc_workshop', NULL, 5, 0),

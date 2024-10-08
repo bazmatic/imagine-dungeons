@@ -18,7 +18,7 @@ export class Agent implements IBaseProperties {
     kind: GameObjectKind = GameObjectKind.AGENT;
 
     @Column({ name: "name" })
-    name: string;
+    label: string;
 
     @Column({ name: "short_description" })
     shortDescription: string;
@@ -56,11 +56,14 @@ export class Agent implements IBaseProperties {
     @Column({ name: "autonomous" })
     autonomous: boolean;
 
+    @Column({ name: "activated" })
+    activated: boolean;
+
     public async toDto(): Promise<AgentDto> {
         const items: Item[] = await this.items;
         return {
             id: this.agentId,
-            name: this.name,
+            label: this.label,
             shortDescription: this.shortDescription,
             longDescription: this.longDescription,
             locationId: this.ownerLocationId,
@@ -73,7 +76,7 @@ export class Agent implements IBaseProperties {
 
 export class AgentDto implements IBaseProperties {
     id: string;
-    name: string;
+    label: string;
     shortDescription: string;
     longDescription: string;
     locationId: string;

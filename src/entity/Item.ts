@@ -9,7 +9,7 @@ export class Item implements IBaseProperties {
     itemId: string;
 
     @Column({ name: "name" })
-    name: string;
+    label: string;
 
     @Column({ name: "short_description" })
     shortDescription: string;
@@ -55,7 +55,7 @@ export class Item implements IBaseProperties {
         const items: Item[] = await this.items;
         return {
             id: this.itemId,
-            name: this.name,
+            label: this.label,
             shortDescription: this.shortDescription,
             longDescription: this.longDescription,
             ownerId: this.ownerAgentId || this.ownerLocationId || this.ownerItemId || undefined,
@@ -69,7 +69,7 @@ export class Item implements IBaseProperties {
 
 export class ItemDto {
     id: string;
-    name: string;
+    label: string;
     shortDescription: string;
     longDescription: string;
     ownerId?: string;

@@ -4,9 +4,6 @@
 import OpenAI from "openai";
 import dotenv from "dotenv";
 import { AgentActor } from "@/actor/agent.actor";
-import { LocationService } from "./Location.service";
-import { ItemService } from "./Item.service";
-import { ExitService } from "./Exit.service";
 import { AgentService } from "./Agent.service";
 import { initialiseDatabase } from "..";
 import { Repository } from "typeorm";
@@ -17,25 +14,20 @@ dotenv.config();
 export class CommandService {
     private openai: OpenAI;
     private agentService: AgentService;
-    private locationService: LocationService;
-    private exitService: ExitService;
-    private itemService: ItemService
     private commandRepository: Repository<Command>;
 
     constructor() {
         this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         this.agentService = new AgentService();
-        this.locationService = new LocationService();
-        this.exitService = new ExitService();
-        this.itemService = new ItemService();
         this.commandRepository = AppDataSource.getRepository(Command);
     }
 
-    public async saveAgentCommand(agentId: string, commandText: string, response: OpenAI.Chat.Completions.ChatCompletion): Promise<void> {
+    public async saveAgentCommand(agentId: string, inputText: string | undefined, responseText: string, rawResponse: OpenAI.Chat.Completions.ChatCompletionMessage | undefined): Promise<void> {
         const command = new Command();
         command.agent_id = agentId;
-        command.raw_text = commandText;
-        command.response = JSON.stringify(response);
+        command.input_text = inputText;
+        command.response_text = responseText;
+        command.raw_response = rawResponse ? JSON.stringify(rawResponse) : undefined;
         await this.commandRepository.save(command);
     }
 
@@ -47,7 +39,7 @@ export class CommandService {
         });
     }
 
-    public async obey(agentId: string, input: string): Promise<string[]> {
+    public async issueCommand(agentId: string, input: string): Promise<string[]> {
         await initialiseDatabase();
         const agentActor = new AgentActor(agentId);
 
@@ -56,10 +48,11 @@ export class CommandService {
             PICK_UP_ITEM,
             DROP_ITEM,
             LOOK_AT_ITEM,
-            LOOK_AT_AGENT,
+            //LOOK_AT_AGENT,
             LOOK_AROUND,
-            LOOK_AT_EXIT,
+            //LOOK_AT_EXIT,
             SPEAK_TO_AGENT,
+            UPDATE_AGENT_INTENT,
         ];
 
         const agent = await this.agentService.getAgentById(agentId);
@@ -76,14 +69,9 @@ export class CommandService {
             }
         }
 
-        // const recentCommands = await this.getRecentCommands(agentId, 2);
         const openAiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
             { role: "system", content: parserPrompt },
         ];
-        // recentCommands.forEach(c => {
-        //     openAiMessages.push({ role: "user", content: c.raw_text });
-        //     openAiMessages.push({ role: "assistant", content: c.response });
-        // });
 
         openAiMessages.push({ role: "user", content: JSON.stringify(content) });
 
@@ -95,13 +83,15 @@ export class CommandService {
         if (!response.choices[0]?.message.tool_calls) {
             throw new Error("No tool calls found");
         }
-        await this.saveAgentCommand(agentId, input, response);
-       
+        const rawResponse = response.choices[0]?.message;
+        if (!rawResponse) {
+            throw new Error("No response content found");
+        }    
         const toolCall = response.choices[0]?.message.tool_calls[0];
         const toolCallArguments = JSON.parse(toolCall.function.arguments);
         const toolName = toolCall.function.name;
         let responseMessage: string[] = [];
-        console.log(`Calling ${toolName} with arguments ${toolCallArguments}`);
+        console.log(`Calling ${toolName} with arguments ${JSON.stringify(toolCallArguments)}`);
         switch (toolName) {
             case GO_EXIT.function.name:
                 responseMessage = responseMessage.concat(await agentActor.goExit(toolCallArguments.exit_id));
@@ -130,16 +120,42 @@ export class CommandService {
             case SPEAK_TO_AGENT.function.name:
                 responseMessage = responseMessage.concat(await agentActor.speakToAgent(toolCallArguments.agent_id, toolCallArguments.message));
                 break;
+            case UPDATE_AGENT_INTENT.function.name:
+                responseMessage = responseMessage.concat(await agentActor.updateAgentIntent(toolCallArguments.agent_id, toolCallArguments.intent));
+                break;
             default:
                 throw new Error("Invalid tool name");
         }
+        await this.saveAgentCommand(agentId, input, responseMessage.map(msg => `${msg}\n`).join(""), rawResponse);
         return responseMessage;
     }
 }
 
-const parserPrompt = `
-You are an AI assistant designed to turn a user's natural language input into an action that can be taken in a game. 
-`;
+const parserPrompt = `You are an AI assistant designed to turn a user's natural language input into an action that can be taken in a game. You can call multiple functions at the same time, if the user's input seems to require it.`;
+
+const UPDATE_AGENT_INTENT: OpenAI.Chat.Completions.ChatCompletionTool = {
+    type: "function",
+    function: {
+        name: "update_agent_intent",
+        description: "Update the immediate intent of an agent, describing what the agent is doing or planning to do next. This overrides any previous intent.",
+        parameters: {
+            type: "object",
+            properties: {
+                agent_id: {
+                    type: "string",
+                    description: "The id of the agent to update"
+                },
+                intent: {
+                    type: "string",
+                    description: "The new intent of the agent"
+                }
+            },
+            required: ["agent_id", "intent"],
+            additionalProperties: false
+        }
+    }
+};
+
 
 const GO_EXIT: OpenAI.Chat.Completions.ChatCompletionTool = {
     type: "function",
@@ -163,7 +179,7 @@ const PICK_UP_ITEM: OpenAI.Chat.Completions.ChatCompletionTool = {
     type: "function",
     function: {
         name: "pick_up_item",
-        description: "Pick up an item",
+        description: "Pick up an item near you",
         parameters: {
             type: "object",
             properties: {
@@ -279,7 +295,7 @@ const SPEAK_TO_AGENT: OpenAI.Chat.Completions.ChatCompletionTool = {
     type: "function",
     function: {
         name: "speak_to_agent",
-        description: "Speak to an agent",
+        description: "Speak to an agent. Only pass the spoken text, without any additional thoughts or comments. Exclude quotation marks.",
         parameters: {
             type: "object",
             properties: {

@@ -37,4 +37,25 @@ export class AgentService {
         await this.agentRepository.update(id, { ownerLocationId: locationId });
         return this.getAgentById(id);
     }
+
+    async updateAgentGoal(id: string, goal: string): Promise<Agent> {
+        await this.agentRepository.update(id, { goal: goal });
+        return this.getAgentById(id);
+    }
+
+    async activateAutonomy(id: string, activate: boolean): Promise<Agent> {
+        await this.agentRepository.update(id, { activated: activate });
+        return this.getAgentById(id);
+    }
+
+    async getActiveAutonomousAgents(): Promise<Agent[]> {
+        return this.agentRepository.find({
+            where: { autonomous: true, activated: true }
+        });
+    }
+
+    async updateAgentIntent(id: string, intent: string): Promise<Agent> {
+        await this.agentRepository.update(id, { currentIntent: intent });
+        return this.getAgentById(id);
+    }
 }

@@ -25,7 +25,7 @@ export class Location {
     locationId: string;
 
     @Column({ name: "name" })
-    name: string;
+    label: string;
 
     @Column({ name: "short_description" })
     shortDescription: string;
@@ -55,7 +55,7 @@ export class Location {
 
         return {
             id: this.locationId,
-            name: this.name,
+            name: this.label,
             shortDescription: this.shortDescription,
             longDescription: this.longDescription,
             items: await Promise.all(items.map(item => item.toDto())),

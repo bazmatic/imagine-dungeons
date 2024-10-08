@@ -11,10 +11,13 @@ export class Command {
     agent_id: string;
 
     @Column()
-    raw_text: string;
+    input_text?: string;
 
     @Column()
-    response: string;
+    response_text: string;
+
+    @Column()
+    raw_response?: string;
 
     @CreateDateColumn()
     created_at: Date;
