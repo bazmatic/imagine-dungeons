@@ -61,9 +61,9 @@ export class CommandService {
             PICK_UP_ITEM,
             DROP_ITEM,
             LOOK_AT_ITEM,
-            //LOOK_AT_AGENT,
+            LOOK_AT_AGENT,
             LOOK_AROUND,
-            //LOOK_AT_EXIT,
+            LOOK_AT_EXIT,
             SPEAK_TO_AGENT,
             UPDATE_AGENT_INTENT
         ];
@@ -75,14 +75,21 @@ export class CommandService {
         const inventoryDTO = await Promise.all(
             inventory.map(item => item.toDto())
         );
+        const itemsPresentDTO = (await location.items).map(item => item.toDto());
+        const agentsPresentDTO = (await location.agents).map(agent => agent.toDto());
 
         const content = {
             user_command: input,
-            context: {
+            context: `Here is the current context.
+            It includes the calling agent, the location, the items present, the agents present, and the inventory of items owned by the calling agent.
+            ${JSON.stringify(
+            {
                 calling_agent_id: agentId,
-                location: locationDTO,
+                location: location,
+                items_present: itemsPresentDTO,
+                agents_present: agentsPresentDTO,
                 inventory: inventoryDTO
-            }
+            }, null, 4)}`
         };
 
         const openAiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
@@ -163,7 +170,7 @@ export class CommandService {
                 case SPEAK_TO_AGENT.function.name:
                     responseMessage = responseMessage.concat(
                         await agentActor.speakToAgent(
-                            toolCallArguments.agent_id,
+                            toolCallArguments.target_agent_id,
                             toolCallArguments.message
                         )
                     );
@@ -171,7 +178,7 @@ export class CommandService {
                 case UPDATE_AGENT_INTENT.function.name:
                     responseMessage = responseMessage.concat(
                         await agentActor.updateAgentIntent(
-                            toolCallArguments.agent_id,
+                            agentId,
                             toolCallArguments.intent
                         )
                     );
@@ -192,6 +199,7 @@ export class CommandService {
 }
 
 const parserPrompt = `You are an AI assistant designed to turn a user's natural language input into an action that can be taken in a game.
+You are calling the function in the context of a specific agent represented by calling_agent_id.
 You can call multiple functions at the same time, if the user's input seems to require it.
 If the user's input does not clearly call for one of the functions below, then do not call any functions.
 In most cases, you should finish by calling the update_agent_intent function to update the agent's immediate intent.
@@ -203,14 +211,10 @@ const UPDATE_AGENT_INTENT: OpenAI.Chat.Completions.ChatCompletionTool = {
     function: {
         name: "update_agent_intent",
         description:
-            "Update the immediate intent of an agent, describing what the agent is doing or planning to do next. This overrides any previous intent.",
+            "Update the immediate intent of the calling agent, briefly describing what the agent is doing or planning to do next. This overrides any previous intent.",
         parameters: {
             type: "object",
             properties: {
-                agent_id: {
-                    type: "string",
-                    description: "The id of the agent to update"
-                },
                 intent: {
                     type: "string",
                     description: "The new intent of the agent"
@@ -298,13 +302,13 @@ const LOOK_AT_AGENT: OpenAI.Chat.Completions.ChatCompletionTool = {
     type: "function",
     function: {
         name: "look_at_agent",
-        description: "Look at an agent",
+        description: "Look at a game character present in the same location, eg 'look at Bob'",
         parameters: {
             type: "object",
             properties: {
                 agent_id: {
                     type: "string",
-                    description: "The id of the agent to look at"
+                    description: "The id of the agent (character) to look at"
                 }
             },
             required: ["agent_id"],
@@ -361,11 +365,11 @@ const SPEAK_TO_AGENT: OpenAI.Chat.Completions.ChatCompletionTool = {
     function: {
         name: "speak_to_agent",
         description:
-            "Speak to an agent who is in the same location. Only pass the spoken text, without any additional thoughts or comments. Exclude quotation marks.",
+            "Speak to an agent who is in the same location. Only pass the spoken text, without any additional descriptive text. Exclude quotation marks.",
         parameters: {
             type: "object",
             properties: {
-                agent_id: {
+                target_agent_id: {
                     type: "string",
                     description: "The id of the other agent to speak to"
                 },

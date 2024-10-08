@@ -39,11 +39,14 @@ async fn main() {
         match res {
             Ok(response) => {
                 if response.status().is_success() {
-                    // If the request was successful, parse the JSON response using serde_json::from_str
-                    // Get the response text
+                    // If the request was successful, parse the JSON response
                     let response_text = response.text().await.unwrap();
-                    println!("{}", response_text);          
-        
+                    let response_array: Vec<String> = serde_json::from_str(&response_text).unwrap();
+                    
+                    // Output each string in the array as a separate line
+                    for line in response_array {
+                        println!("{}", line);
+                    }
                 } else {
                     // If the request was not successful, print the error status code
                     println!(

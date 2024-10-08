@@ -9,6 +9,12 @@ export default async function command(req: NextApiRequest, res: NextApiResponse)
     const commandService = new CommandService();
     const commandResponse = await commandService.issueCommand(agentId, command);
     const worldService = new WorldService();
-    const autonomousAgentResults = await worldService.autonomousAgentsAct();
-    res.status(200).json(commandResponse.concat(autonomousAgentResults));
+    try {
+        const autonomousAgentResults: string[] = await worldService.autonomousAgentsAct();
+        console.log(`Autonomous agent actions: ${JSON.stringify(autonomousAgentResults, null, 4)}`);
+         //.concat(autonomousAgentResults));
+    } catch (error) {
+        console.warn(`Error in autonomous agent actions: ${error}`);
+    }
+    res.status(200).json(commandResponse);
 }
