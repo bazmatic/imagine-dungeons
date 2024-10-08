@@ -108,11 +108,6 @@ export class AgentActor {
         return resultText;
     }
 
-    // Show some text to the agent
-    public async sense(text: string): Promise<void> {
-        // TODO
-    }
-
     public async setGoal(goal: string): Promise<void> {
         await initialiseDatabase();
         const agent = await this.agent();

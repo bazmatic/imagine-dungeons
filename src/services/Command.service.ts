@@ -22,16 +22,26 @@ export class CommandService {
         this.commandRepository = AppDataSource.getRepository(Command);
     }
 
-    public async saveAgentCommand(agentId: string, inputText: string | undefined, responseText: string, rawResponse: OpenAI.Chat.Completions.ChatCompletionMessage | undefined): Promise<void> {
+    public async saveAgentCommand(
+        agentId: string,
+        inputText: string | undefined,
+        responseText: string,
+        rawResponse: OpenAI.Chat.Completions.ChatCompletionMessage | undefined
+    ): Promise<void> {
         const command = new Command();
         command.agent_id = agentId;
         command.input_text = inputText;
         command.response_text = responseText;
-        command.raw_response = rawResponse ? JSON.stringify(rawResponse) : undefined;
+        command.raw_response = rawResponse
+            ? JSON.stringify(rawResponse)
+            : undefined;
         await this.commandRepository.save(command);
     }
 
-    public async getRecentCommands(agentId: string, count: number): Promise<Command[]> {
+    public async getRecentCommands(
+        agentId: string,
+        count: number
+    ): Promise<Command[]> {
         return this.commandRepository.find({
             where: { agent_id: agentId },
             order: { created_at: "DESC" },
@@ -39,7 +49,10 @@ export class CommandService {
         });
     }
 
-    public async issueCommand(agentId: string, input: string): Promise<string[]> {
+    public async issueCommand(
+        agentId: string,
+        input: string
+    ): Promise<string[]> {
         await initialiseDatabase();
         const agentActor = new AgentActor(agentId);
 
@@ -52,92 +65,143 @@ export class CommandService {
             LOOK_AROUND,
             //LOOK_AT_EXIT,
             SPEAK_TO_AGENT,
-            UPDATE_AGENT_INTENT,
+            UPDATE_AGENT_INTENT
         ];
 
         const agent = await this.agentService.getAgentById(agentId);
         const location = await agent.location;
         const locationDTO = await location.toDto();
         const inventory = await agent.items;
-        const inventoryDTO = await Promise.all(inventory.map(item => item.toDto()));
+        const inventoryDTO = await Promise.all(
+            inventory.map(item => item.toDto())
+        );
 
         const content = {
             user_command: input,
             context: {
+                calling_agent_id: agentId,
                 location: locationDTO,
                 inventory: inventoryDTO
             }
-        }
+        };
 
-        const openAiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-            { role: "system", content: parserPrompt },
-        ];
+        const openAiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
+            [{ role: "system", content: parserPrompt }];
 
         openAiMessages.push({ role: "user", content: JSON.stringify(content) });
 
-        const response: OpenAI.Chat.Completions.ChatCompletion = await this.openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
-            messages: openAiMessages,
-            tools: tools
-        });
-        if (!response.choices[0]?.message.tool_calls) {
+        const response: OpenAI.Chat.Completions.ChatCompletion =
+            await this.openai.chat.completions.create({
+                model: "gpt-3.5-turbo",
+                messages: openAiMessages,
+                tools: tools
+            });
+        const toolCalls = response.choices[0]?.message.tool_calls;
+        if (!toolCalls || toolCalls.length === 0) {
             throw new Error("No tool calls found");
         }
+
         const rawResponse = response.choices[0]?.message;
         if (!rawResponse) {
             throw new Error("No response content found");
-        }    
-        const toolCall = response.choices[0]?.message.tool_calls[0];
-        const toolCallArguments = JSON.parse(toolCall.function.arguments);
-        const toolName = toolCall.function.name;
-        let responseMessage: string[] = [];
-        console.log(`Calling ${toolName} with arguments ${JSON.stringify(toolCallArguments)}`);
-        switch (toolName) {
-            case GO_EXIT.function.name:
-                responseMessage = responseMessage.concat(await agentActor.goExit(toolCallArguments.exit_id));
-                break;
-            case PICK_UP_ITEM.function.name:
-                responseMessage = responseMessage.concat(await agentActor.pickUp(toolCallArguments.item_id));
-                break;
-            case DROP_ITEM.function.name:
-                responseMessage = responseMessage.concat(await agentActor.dropItem(toolCallArguments.item_id));
-                break;
-            case LOOK_AT_ITEM.function.name:
-                responseMessage = responseMessage.concat(await agentActor.lookAtItem(toolCallArguments.item_id));
-                break;
-            case LOOK_AT_AGENT.function.name:
-                responseMessage = responseMessage.concat(await agentActor.lookAtAgent(toolCallArguments.agent_id));
-                break;
-            case LOOK_AT_LOCATION.function.name:
-                responseMessage = responseMessage.concat(await agentActor.lookAtLocation(toolCallArguments.location_id));
-                break;
-            case LOOK_AROUND.function.name:
-                responseMessage = responseMessage.concat(await agentActor.lookAround());
-                break;
-            case LOOK_AT_EXIT.function.name:
-                responseMessage = responseMessage.concat(await agentActor.lookAtExit(toolCallArguments.exit_id));
-                break;
-            case SPEAK_TO_AGENT.function.name:
-                responseMessage = responseMessage.concat(await agentActor.speakToAgent(toolCallArguments.agent_id, toolCallArguments.message));
-                break;
-            case UPDATE_AGENT_INTENT.function.name:
-                responseMessage = responseMessage.concat(await agentActor.updateAgentIntent(toolCallArguments.agent_id, toolCallArguments.intent));
-                break;
-            default:
-                throw new Error("Invalid tool name");
         }
-        await this.saveAgentCommand(agentId, input, responseMessage.map(msg => `${msg}\n`).join(""), rawResponse);
+
+        let responseMessage: string[] = [];
+        for (const toolCall of toolCalls) {
+            const toolCallArguments = JSON.parse(toolCall.function.arguments);
+            const toolName = toolCall.function.name;
+            
+            console.log(
+                `Calling ${toolName} with arguments ${JSON.stringify(
+                    toolCallArguments
+                )}`
+            );
+            switch (toolName) {
+                case GO_EXIT.function.name:
+                    responseMessage = responseMessage.concat(
+                        await agentActor.goExit(toolCallArguments.exit_id)
+                    );
+                    break;
+                case PICK_UP_ITEM.function.name:
+                    responseMessage = responseMessage.concat(
+                        await agentActor.pickUp(toolCallArguments.item_id)
+                    );
+                    break;
+                case DROP_ITEM.function.name:
+                    responseMessage = responseMessage.concat(
+                        await agentActor.dropItem(toolCallArguments.item_id)
+                    );
+                    break;
+                case LOOK_AT_ITEM.function.name:
+                    responseMessage = responseMessage.concat(
+                        await agentActor.lookAtItem(toolCallArguments.item_id)
+                    );
+                    break;
+                case LOOK_AT_AGENT.function.name:
+                    responseMessage = responseMessage.concat(
+                        await agentActor.lookAtAgent(toolCallArguments.agent_id)
+                    );
+                    break;
+                case LOOK_AT_LOCATION.function.name:
+                    responseMessage = responseMessage.concat(
+                        await agentActor.lookAtLocation(
+                            toolCallArguments.location_id
+                        )
+                    );
+                    break;
+                case LOOK_AROUND.function.name:
+                    responseMessage = responseMessage.concat(
+                        await agentActor.lookAround()
+                    );
+                    break;
+                case LOOK_AT_EXIT.function.name:
+                    responseMessage = responseMessage.concat(
+                        await agentActor.lookAtExit(toolCallArguments.exit_id)
+                    );
+                    break;
+                case SPEAK_TO_AGENT.function.name:
+                    responseMessage = responseMessage.concat(
+                        await agentActor.speakToAgent(
+                            toolCallArguments.agent_id,
+                            toolCallArguments.message
+                        )
+                    );
+                    break;
+                case UPDATE_AGENT_INTENT.function.name:
+                    responseMessage = responseMessage.concat(
+                        await agentActor.updateAgentIntent(
+                            toolCallArguments.agent_id,
+                            toolCallArguments.intent
+                        )
+                    );
+                    break;
+                default:
+                    throw new Error("Invalid tool name");
+            }
+
+            await this.saveAgentCommand(
+                agentId,
+                input,
+                responseMessage.map(msg => `${msg}\n`).join(""),
+                rawResponse
+            );
+        }
         return responseMessage;
     }
 }
 
-const parserPrompt = `You are an AI assistant designed to turn a user's natural language input into an action that can be taken in a game. You can call multiple functions at the same time, if the user's input seems to require it.`;
+const parserPrompt = `You are an AI assistant designed to turn a user's natural language input into an action that can be taken in a game.
+You can call multiple functions at the same time, if the user's input seems to require it.
+If the user's input does not clearly call for one of the functions below, then do not call any functions.
+In most cases, you should finish by calling the update_agent_intent function to update the agent's immediate intent.
+`;
 
 const UPDATE_AGENT_INTENT: OpenAI.Chat.Completions.ChatCompletionTool = {
     type: "function",
     function: {
         name: "update_agent_intent",
-        description: "Update the immediate intent of an agent, describing what the agent is doing or planning to do next. This overrides any previous intent.",
+        description:
+            "Update the immediate intent of an agent, describing what the agent is doing or planning to do next. This overrides any previous intent.",
         parameters: {
             type: "object",
             properties: {
@@ -155,7 +219,6 @@ const UPDATE_AGENT_INTENT: OpenAI.Chat.Completions.ChatCompletionTool = {
         }
     }
 };
-
 
 const GO_EXIT: OpenAI.Chat.Completions.ChatCompletionTool = {
     type: "function",
@@ -295,17 +358,18 @@ const SPEAK_TO_AGENT: OpenAI.Chat.Completions.ChatCompletionTool = {
     type: "function",
     function: {
         name: "speak_to_agent",
-        description: "Speak to an agent. Only pass the spoken text, without any additional thoughts or comments. Exclude quotation marks.",
+        description:
+            "Speak to an agent. Only pass the spoken text, without any additional thoughts or comments. Exclude quotation marks.",
         parameters: {
             type: "object",
             properties: {
                 agent_id: {
                     type: "string",
-                    description: "The id of the agent to speak to"
+                    description: "The id of the other agent to speak to"
                 },
                 message: {
                     type: "string",
-                    description: "The message to speak to the agent"
+                    description: "The message to speak to the other agent"
                 }
             },
             required: ["agent_id", "message"],
