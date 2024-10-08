@@ -14,9 +14,6 @@ export class Command {
     raw_text: string;
 
     @Column()
-    text_response: string;
-
-    @Column()
     response: string;
 
     @CreateDateColumn()

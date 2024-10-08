@@ -39,16 +39,16 @@ export class AutonomousAgentService {
             Your backstory: ${agent.backstory}`
         };
 
-        for (const command of previousCommands) {
-            messages.push({
-                role: "assistant",
-                content: command.raw_text
-            });
-            messages.push({
-                role: "user",
-                content: command.text_response
-            });
-        }
+        // for (const command of previousCommands) {
+        //     messages.push({
+        //         role: "assistant",
+        //         content: command.raw_text
+        //     });
+        //     messages.push({
+        //         role: "user",
+        //         content: command.text_response
+        //     });
+        // }
         messages.push({
             role: "user",
             content: "What do you want to do?"
