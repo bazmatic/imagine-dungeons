@@ -14,7 +14,7 @@ export class Interpreter {
     private openai: OpenAI;
     private agentService: AgentService;
     private commandService: CommandService;
-    private locationService: LocationService;
+    //private locationService: LocationService;
     private exitService: ExitService;
     private itemService: ItemService;
 
@@ -22,7 +22,7 @@ export class Interpreter {
         this.openai = new OpenAI();
         this.agentService = new AgentService();
         this.commandService = new CommandService();
-        this.locationService = new LocationService();
+        //this.locationService = new LocationService();
         this.exitService = new ExitService();
         this.itemService = new ItemService();
     }
@@ -67,7 +67,7 @@ export class Interpreter {
                 return {
                     agent_id: agent.id,
                     name: agent.label,
-                    long_description: agent.longDescription
+                    description: agent.longDescription
                 }
             }),
             inventory: inventoryDTO.map((item) => {
@@ -207,21 +207,18 @@ export class Interpreter {
     }
 
     public async describeCommandResult(
-        observer: Agent,
+        observerAgentId: string,
         command: Command,
         hideDetails: boolean = false
         //firstPerson: boolean = true
     ): Promise<string[]> {
 
-        //const observerLocation = await observer.location;
-
-
-        const firstPerson = observer.agentId === command.agent_id;
+        const firstPerson = observerAgentId === command.agent_id;
         const result: string[] = [];
         const parameters = JSON.parse(command.command_arguments);
         const actor = await this.agentService.getAgentById(command.agent_id);
 
-        if (!command.agents_present?.includes(observer.agentId)) {
+        if (!command.agents_present?.includes(observerAgentId)) {
             return [];
         }
         const observerText = firstPerson ? "You" : actor.label;
