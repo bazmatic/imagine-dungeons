@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS command (
     command_arguments TEXT NOT NULL,
     associated_agent_id TEXT NULL, -- The ID of an agent that is also involved in the command
     output_text TEXT NULL, -- Text output by running the command
+    agents_present JSONB NULL, -- JSONB array of agents present in the same location as the command was issued
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (agent_id) REFERENCES agent(agent_id) ON DELETE CASCADE
 );

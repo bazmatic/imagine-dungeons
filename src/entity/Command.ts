@@ -26,6 +26,9 @@ export class Command {
     @Column()
     output_text?: string;
 
+    @Column({ type: "jsonb" })
+    agents_present?: string[];
+
     @CreateDateColumn()
     created_at: Date;
 }

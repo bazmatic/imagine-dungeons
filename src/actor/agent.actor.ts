@@ -47,13 +47,15 @@ export class AgentActor {
         const location: Location = await agent.location;
         const inventory: Item[] = await agent.items;
         const itemsPresent: Item[] = await location.items;
+        const agentsPresent: Agent[] = await location.agents;
 
         // OpenAI messages
         const systemMessage: OpenAI.Chat.Completions.ChatCompletionMessageParam = {
             role: "system",
-            content: `You are ${agent.label}, an autonomous agent in a game.
+            content: `You are acting as ${agent.label}, ${agent.longDescription}. You are actually an autonomous agent in a game but you won't reveal that.
             Your location: ${location.shortDescription}
             Items present: ${itemsPresent.map(item => item.label).join(", ")}
+            Characters present: ${agentsPresent.filter(a=>a.agentId !== agent.agentId).map((a)=>a.label).join(", ")}
             Your inventory: ${inventory.map(item => item.label).join(", ")}
             Your mood: ${agent.mood}
             Your current intent: ${agent.currentIntent}
@@ -63,10 +65,11 @@ export class AgentActor {
         const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [systemMessage];
         // Previous commands and response
         const previousCommands = await this.commandService.getRecentCommands(this.agentId, 6);
+        // Filter commands 
 
         // Now make historical messages using the input_text and response_text
         for (const c of previousCommands) {
-            if (c.input_text) {
+            if (c.agent_id === this.agentId && c.input_text) {
                 messages.push({
                     role: "assistant",
                     content: c.input_text
@@ -77,11 +80,16 @@ export class AgentActor {
                 content: (await this.interpreter.describeCommandResult(agent, c)).join("\n") // Describe the result of the command as if a DM was describing it to the player
             });
         };
+        console.log("=== PREVIOUS COMMANDS ===");
+        for (const pm of messages) {
+            console.log(`${pm.role}: ${pm.content}`);
+        }
+        console.log("=========================");
 
         // Ask the agent what to do
         messages.push({
             role: "user",
-            content: `What do you want to do?`
+            content: `What do you want to do? Type your instructions and I'll tell you what happens next.`
         });
 
 
@@ -89,8 +97,9 @@ export class AgentActor {
 
         // Get the response from the agent
         const response = await this.openai.chat.completions.create({
-            model: "gpt-4o",
-            messages
+            model: "gpt-3.5-turbo-1106",
+            messages,
+            seed: 100
         });
 
         const choices = response.choices;
@@ -180,6 +189,12 @@ export class AgentActor {
         await this.itemService.setOwnerToLocation(itemId, location.locationId);
         const item = await this.itemService.getItemById(itemId);
         return [`${agent.label} drops the ${item.label}.`];
+    }
+
+    public async emote(emote: string): Promise<string[]> {
+        await initialiseDatabase();
+        const agent = await this.agent();
+        return [`${agent.label}: ${emote}.`];
     }
 
     public async lookAround(): Promise<string[]> {

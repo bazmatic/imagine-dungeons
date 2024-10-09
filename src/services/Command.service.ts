@@ -1,8 +1,5 @@
-// Given a string, decide which action to take.
-// Call the appropriate service method
-
 import dotenv from "dotenv";
-import { Repository } from "typeorm";
+import { Repository, Raw } from "typeorm";
 import { AppDataSource } from "@/data-source";
 import { Command } from "@/entity/Command";
 import { COMMAND_TYPE } from "./Interpreter";
@@ -20,7 +17,8 @@ export class CommandService {
         inputText: string | undefined,
         commandType: COMMAND_TYPE,
         commandArguments: string,
-        outputText: string | undefined
+        outputText: string | undefined,
+        agentsPresent: string[]
         //rawResponse: OpenAI.Chat.Completions.ChatCompletionMessage | undefined
     ): Promise<Command> {
         const command = new Command();
@@ -29,6 +27,7 @@ export class CommandService {
         command.command_type = commandType;
         command.command_arguments = commandArguments;
         command.output_text = outputText;
+        command.agents_present = agentsPresent;
         return command;
         //await this.commandRepository.save(command);
     }
@@ -42,8 +41,12 @@ export class CommandService {
         count: number
     ): Promise<Command[]> {
         return this.commandRepository.find({
-            where: { agent_id: agentId },
-            order: { created_at: "DESC" },
+            where: {
+                agents_present: Raw(alias => `${alias} @> :agentId`, { agentId: JSON.stringify([agentId]) })
+            },
+            order: {
+                created_at: "ASC"
+            },
             take: count
         });
     }

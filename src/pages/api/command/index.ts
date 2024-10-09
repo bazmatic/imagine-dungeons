@@ -24,8 +24,22 @@ export default async function command(
             agentId,
             command
         );
-        const textOutput = [];
+        // Save all commands to the database
+        const commandService = new CommandService();
         for (const command of commandResponse) {
+            await commandService.saveAgentCommand(command);
+        }
+        const textOutput = [];
+
+        const autonomousAgentResults = await worldService.autonomousAgentsAct();
+        // Save all autonomous agent results to the database
+        for (const command of autonomousAgentResults) {
+            await commandService.saveAgentCommand(command);
+        }
+
+        const combinedResults = [...commandResponse, ...autonomousAgentResults];
+
+        for (const command of combinedResults) {
             const descriptions = await interpreter.describeCommandResult(
                 agent,
                 command,
@@ -37,24 +51,8 @@ export default async function command(
             }
         }
 
-        worldService
-            .autonomousAgentsAct()
-            .then(async autonomousAgentResults => {
-                if (autonomousAgentResults.length > 0) {
-                    console.log("Autonomous agent actions:");
-                    for (const command of autonomousAgentResults) {
-                        const description =
-                            await interpreter.describeCommandResult(
-                                agent,
-                                command,
-                                true
-                            );
-                        console.log(description);
-                    }
-                }
-            });
 
-        
+
         res.status(200).json(textOutput);
     } catch (error) {
         console.warn(`Error in autonomous agent actions: ${error}`);
