@@ -10,6 +10,35 @@ import { ItemService } from "./Item.service";
 import { Agent } from "@/entity/Agent";
 import { ChatCompletionTool, FunctionDefinition } from "openai/resources";
 
+export type PromptContext = {
+    calling_agent_id: string;
+    location: {
+        location_id: string;
+        name: string;
+        description: string;
+    };
+    exits: Array<{
+        exit_id: string;
+        description: string;
+        direction: string;
+    }>;
+    items_present: Array<{
+        item_id: string;
+        name: string;
+        description: string;
+    }>;
+    agents_present: Array<{
+        agent_id: string;
+        name: string;
+        description: string;
+    }>;
+    inventory: Array<{
+        item_id: string;
+        name: string;
+        description: string;
+    }>;
+}
+
 export class Interpreter {
     private openai: OpenAI;
     private agentService: AgentService;
@@ -27,57 +56,51 @@ export class Interpreter {
         this.itemService = new ItemService();
     }
 
+    private async getContext(agentId: string): Promise<PromptContext> {
+        const agent = await this.agentService.getAgentById(agentId);
+        const location = await agent.location;
+        const exits = await location.exits;
+        const inventory = await agent.items;
+        const itemsPresent = await location.items;
+        const agentsPresent = await location.agents;
+
+        return {
+            calling_agent_id: agentId,
+            location: {
+                location_id: location.locationId,
+                name: location.label,
+                description: location.shortDescription,
+            },
+            exits: exits.map((exit) => ({
+                exit_id: exit.exitId,
+                description: exit.shortDescription,
+                direction: exit.direction,
+            })),
+            items_present: itemsPresent.map((item) => ({
+                item_id: item.itemId,
+                name: item.label,
+                description: item.shortDescription
+            })),
+            agents_present: agentsPresent.map((agent) => ({
+                agent_id: agent.agentId,
+                name: agent.label,
+                description: agent.longDescription
+            })),
+            inventory: inventory.map((item) => ({
+                item_id: item.itemId,
+                name: item.label,
+                description: item.shortDescription
+            }))
+        };
+    }
+
     public async interpret(
         agentId: string,
         inputText: string
     ): Promise<Command[]> {
         await initialiseDatabase();
         const agentActor = new AgentActor(agentId);
-        const agent = await this.agentService.getAgentById(agentId);
-        const location = await agent.location;
-        const locationDTO = await location.toDto();
-        const inventory = await agent.items;
-        const inventoryDTO = await Promise.all(
-            inventory.map(item => item.toDto())
-        );
-        const itemsPresentDTO = await Promise.all((await location.items).map(item =>
-            item.toDto()
-        ));
-        const agentsPresent = await location.agents;
-        const agentsPresentDTO = await Promise.all(agentsPresent.map(agent =>
-            agent.toDto()
-        ));
-
-        const context = {
-            calling_agent_id: agentId,
-            location: {
-                location_id: locationDTO.id,
-                name: locationDTO.name,
-                description: locationDTO.shortDescription,
-            },
-            exits: locationDTO.exits.map((exit) => {
-                return {
-                    exit_id: exit.id,
-                    description: exit.shortDescription,
-                    direction: exit.direction,
-                }
-            }),
-            items_present: itemsPresentDTO,
-            agents_present: agentsPresentDTO.map((agent) => {
-                return {
-                    agent_id: agent.id,
-                    name: agent.label,
-                    description: agent.longDescription
-                }
-            }),
-            inventory: inventoryDTO.map((item) => {
-                return {
-                    item_id: item.id,
-                    name: item.label,
-                    description: item.shortDescription
-                }
-            })
-        };
+        const context: PromptContext = await this.getContext(agentId);
 
         console.log(`===========================================`);
         console.log(`Context: ${JSON.stringify(context, null, 4)}`);
@@ -199,7 +222,7 @@ export class Interpreter {
                 commandType,
                 JSON.stringify(toolCallArguments),
                 outputText.join("\n"),
-                agentsPresent.map(agent => agent.agentId)
+                context
             );
             commands.push(command);
         }
@@ -330,7 +353,7 @@ export class Interpreter {
                     } ${parameters.target_agent_id === command.agent_id ? "you" : targetAgent.label}.`
                 );
                 if (command.output_text && !hideDetails) {
-                    result.push(`${observerText} says to ${parameters.target_agent_id === command.agent_id ? "you" : targetAgent.label}: "${command.output_text}"`);
+                    result.push(`${observerText} ${firstPerson ? "say" : "says"}: "${command.output_text}"`);
                 }
                 break;
             }

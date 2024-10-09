@@ -12,14 +12,14 @@ export default async function command(
     req: NextApiRequest,
     res: NextApiResponse
 ) {
-    const { agentId, command } = req.body;
     await initialiseDatabase();
+
+    const { agentId, command } = req.body;
     const interpreter = new Interpreter();
     const worldService = new WorldService();
-    const agentService = new AgentService();
 
     try {
-        const agent = await agentService.getAgentById(agentId);
+        //const agent = await agentService.getAgentById(agentId);
         const commandResponse: Command[] = await interpreter.interpret(
             agentId,
             command
@@ -41,7 +41,7 @@ export default async function command(
 
         for (const command of combinedResults) {
             const descriptions = await interpreter.describeCommandResult(
-                agent,
+                agentId,
                 command,
                 false
             );
@@ -50,9 +50,6 @@ export default async function command(
                 textOutput.push(description);
             }
         }
-
-
-
         res.status(200).json(textOutput);
     } catch (error) {
         console.warn(`Error in autonomous agent actions: ${error}`);

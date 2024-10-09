@@ -77,7 +77,7 @@ export class AgentActor {
             }
             messages.push({
                 role: "user",
-                content: (await this.interpreter.describeCommandResult(agent, c)).join("\n") // Describe the result of the command as if a DM was describing it to the player
+                content: (await this.interpreter.describeCommandResult(agent.agentId, c)).join("\n") // Describe the result of the command as if a DM was describing it to the player
             });
         };
         console.log("=== PREVIOUS COMMANDS ===");
@@ -92,10 +92,9 @@ export class AgentActor {
             content: `What do you want to do? Type your instructions and I'll tell you what happens next.`
         });
 
-
         //console.log(`Messages: ${JSON.stringify(messages)}`);
 
-        // Get the response from the agent
+        // Get the instructions from the agent
         const response = await this.openai.chat.completions.create({
             model: "gpt-3.5-turbo-1106",
             messages,
@@ -112,7 +111,7 @@ export class AgentActor {
             throw new Error("No command found");
         }
 
-        // Issue the command
+        // Issue the command to the interpreter just as if it were a player
         const commands: Command[] = await this.interpreter.interpret(this.agentId, inputText);
         return commands;
    

@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { Repository, Raw } from "typeorm";
 import { AppDataSource } from "@/data-source";
 import { Command } from "@/entity/Command";
-import { COMMAND_TYPE } from "./Interpreter";
+import { COMMAND_TYPE, PromptContext } from "./Interpreter";
 dotenv.config();
 
 export class CommandService {
@@ -18,8 +18,7 @@ export class CommandService {
         commandType: COMMAND_TYPE,
         commandArguments: string,
         outputText: string | undefined,
-        agentsPresent: string[]
-        //rawResponse: OpenAI.Chat.Completions.ChatCompletionMessage | undefined
+        context: PromptContext
     ): Promise<Command> {
         const command = new Command();
         command.agent_id = agentId;
@@ -27,9 +26,8 @@ export class CommandService {
         command.command_type = commandType;
         command.command_arguments = commandArguments;
         command.output_text = outputText;
-        command.agents_present = agentsPresent;
+        command.agents_present = context.agents_present.map(agent => agent.agent_id);
         return command;
-        //await this.commandRepository.save(command);
     }
 
     public async saveAgentCommand(command: Command): Promise<void> {

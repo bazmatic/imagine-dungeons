@@ -17,7 +17,7 @@ export class Command {
     @Column({ type: "text" })
     command_type: COMMAND_TYPE;
 
-    @Column()
+    @Column({ type: "jsonb" })
     command_arguments: string;
 
     @Column()

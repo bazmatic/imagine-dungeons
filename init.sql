@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS command (
     agent_id TEXT NOT NULL, -- The ID of the agent that issued the command
     input_text TEXT NULL, -- The input text that the agent provided, if any
     command_type TEXT NOT NULL, -- The type of command that was issued
-    command_arguments TEXT NOT NULL,
+    command_arguments JSONB NOT NULL, -- The arguments for the command
     associated_agent_id TEXT NULL, -- The ID of an agent that is also involved in the command
     output_text TEXT NULL, -- Text output by running the command
     agents_present JSONB NULL, -- JSONB array of agents present in the same location as the command was issued
