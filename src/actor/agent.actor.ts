@@ -85,7 +85,7 @@ export class AgentActor {
         });
 
 
-        console.log(`Messages: ${JSON.stringify(messages)}`);
+        //console.log(`Messages: ${JSON.stringify(messages)}`);
 
         // Get the response from the agent
         const response = await this.openai.chat.completions.create({
