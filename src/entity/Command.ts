@@ -1,4 +1,5 @@
 // TypeORM
+import { COMMAND_TYPE } from '@/services/Interpreter';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
 
@@ -13,11 +14,17 @@ export class Command {
     @Column()
     input_text?: string;
 
-    @Column()
-    response_text: string;
+    @Column({ type: "text" })
+    command_type: COMMAND_TYPE;
 
     @Column()
-    raw_response?: string;
+    command_arguments: string;
+
+    @Column()
+    associated_agent_id?: string;
+
+    @Column()
+    output_text?: string;
 
     @CreateDateColumn()
     created_at: Date;

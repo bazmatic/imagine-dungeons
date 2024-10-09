@@ -1,3 +1,4 @@
+import dotenv from "dotenv";
 import { Agent } from "@/entity/Agent";
 import { AgentService } from "@/services/Agent.service";
 import { Exit } from "@/entity/Exit";
@@ -6,12 +7,12 @@ import { initialiseDatabase } from "..";
 import { ItemService } from "@/services/Item.service";
 import { LocationService } from "@/services/Location.service";
 import { OpenAI } from "openai";
-import dotenv from "dotenv";
-import { AgentMessageService } from "@/services/AgentMessage.service";
-import { ChatCompletionMessageParam } from "openai/resources";
 import { Location } from "@/entity/Location";
 import { Item } from "@/entity/Item";
 import { CommandService } from "@/services/Command.service";
+import {  Interpreter } from "@/services/Interpreter";
+import { Command } from "@/entity/Command";
+
 dotenv.config();
 
 export class AgentActor {
@@ -19,8 +20,8 @@ export class AgentActor {
     private exitService: ExitService;
     private itemService: ItemService;
     private locationService: LocationService;
-    private agentMessageService: AgentMessageService;
     private commandService: CommandService;
+    private interpreter: Interpreter;
     private openai: OpenAI;
 
     constructor(public agentId: string) {
@@ -28,8 +29,8 @@ export class AgentActor {
         this.exitService = new ExitService();
         this.itemService = new ItemService();
         this.locationService = new LocationService();
-        this.agentMessageService = new AgentMessageService();
         this.commandService = new CommandService();
+        this.interpreter = new Interpreter();
         this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     }
 
@@ -37,8 +38,8 @@ export class AgentActor {
         return this.agentService.getAgentById(this.agentId);
     }
 
-    // Decide what to do and do it
-    public async act(): Promise<string[]> {
+    // Decide what to do and do it. Return the commands that were issued.
+    public async act(): Promise<Command[]> {
         //=== Get the context
         const agent: Agent = await this.agent();
 
@@ -46,9 +47,6 @@ export class AgentActor {
         const location: Location = await agent.location;
         const inventory: Item[] = await agent.items;
         const itemsPresent: Item[] = await location.items;
-
-        // Previous commands and response
-        const previousCommands = await this.commandService.getRecentCommands(this.agentId, 6);
 
         // OpenAI messages
         const systemMessage: OpenAI.Chat.Completions.ChatCompletionMessageParam = {
@@ -63,9 +61,11 @@ export class AgentActor {
             Your backstory: ${agent.backstory}`
         };
         const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [systemMessage];
+        // Previous commands and response
+        const previousCommands = await this.commandService.getRecentCommands(this.agentId, 6);
 
         // Now make historical messages using the input_text and response_text
-        previousCommands.forEach(c => {
+        for (const c of previousCommands) {
             if (c.input_text) {
                 messages.push({
                     role: "assistant",
@@ -74,9 +74,9 @@ export class AgentActor {
             }
             messages.push({
                 role: "user",
-                content: c.response_text
+                content: (await this.interpreter.describeCommandResult(agent, c)).join("\n") // Describe the result of the command as if a DM was describing it to the player
             });
-        });
+        };
 
         // Ask the agent what to do
         messages.push({
@@ -98,14 +98,15 @@ export class AgentActor {
             throw new Error("No choices from OpenAI");
         }
 
-        const agentCommand = choices[0].message.content;
-        if (!agentCommand) {
+        const inputText = choices[0].message.content;
+        if (!inputText) {
             throw new Error("No command found");
         }
 
         // Issue the command
-        const resultText = await this.commandService.issueCommand(this.agentId, agentCommand);
-        return resultText;
+        const commands: Command[] = await this.interpreter.interpret(this.agentId, inputText);
+        return commands;
+   
     }
 
     public async setGoal(goal: string): Promise<void> {
@@ -188,21 +189,26 @@ export class AgentActor {
         const exits = await location.exits;
 
         const result: string[] = [];
-        result.push(`${agent.label} looks around the ${location.label}.`);
         result.push(location.longDescription);
-        const items = await location.items;
-        items.forEach(i => {
-            result.push(`${i.label}: ${i.shortDescription}`);
-        });
+        // Other agents
+
+        const agentsPresent = await this.agentService.getAgentsByLocation(location.locationId);
+        const itemsPresent = await location.items;
         exits.forEach(e => {
             result.push(`To the ${e.direction}: ${e.shortDescription}`);
         });
-        // Other agents
-        const agents = await this.agentService.getAgentsByLocation(location.locationId);
 
-        agents.filter(a => a.agentId !== agent.agentId).forEach(a => {
-            result.push(`${agent.label} sees ${a.label}, ${a.shortDescription}.`);
-        });
+        for (const agent of agentsPresent) {
+            result.push(`${agent.label} is here.`);
+        }
+        for (const item of itemsPresent) {
+            result.push(
+                `There is a${startsWithVowel(item.label) ? "n" : ""} ${
+                    item.label
+                } here.`
+            );
+        }
+
         return result;
     }
 
@@ -223,20 +229,16 @@ export class AgentActor {
             throw new Error("Item not found");
         }
 
-        const agent = await this.agent();
         const item = await this.itemService.getItemById(itemId);
         const result: string[] = [];
-        result.push(`${agent.label} looks at the ${item.label}.`);
         result.push(item.longDescription);
         return result;
     }
 
     public async lookAtAgent(agentId: string): Promise<string[]> {
         await initialiseDatabase();
-        const agent = await this.agent();
         const targetAgent = await this.agentService.getAgentById(agentId);
         const result: string[] = [];
-        result.push(`${agent.label} looks at ${targetAgent.label}.`);
         result.push(targetAgent.longDescription);
         return result;
     }
@@ -244,9 +246,7 @@ export class AgentActor {
     public async lookAtExit(exitId: string): Promise<string[]> {
         await initialiseDatabase();
         const exit = await this.exitService.getById(exitId);
-        const agent = await this.agent();
         const result: string[] = [];
-        result.push(`${agent.label} looks at the ${exit.name}.`);
         result.push(exit.longDescription);
         return result;
     }
@@ -255,30 +255,18 @@ export class AgentActor {
         await initialiseDatabase();
         const location = await this.locationService.getLocationById(locationId);
         const result: string[] = [];
-        const agent = await this.agent();
-        result.push(`${agent.label} looks at the ${location.label}.`);
         result.push(location.longDescription);
         return result;
     }
 
     public async speakToAgent(targetAgentId: string, message: string): Promise<string[]> {
         await initialiseDatabase();
-        const agent = await this.agent();
         const targetAgent = await this.agentService.getAgentById(targetAgentId);
         const result: string[] = [];
-        result.push(`${agent.label} speaks to ${targetAgent.label}.`);
         result.push(message);
         if (targetAgent.autonomous) {
             await this.agentService.activateAutonomy(targetAgentId, true);
         }
-        //await this.agentMessageService.createMessage(this.agentId, targetAgentId, message);
-        await this.commandService.saveAgentCommand(
-            targetAgentId,
-            undefined,
-            `${agent.label} speaks to ${targetAgent.label}, saying "${message}"`,
-            undefined
-        );
- //respondToAgent(this.agentId);
         return result;
     }
 
@@ -286,40 +274,11 @@ export class AgentActor {
         await initialiseDatabase();
         const agent = await this.agentService.getAgentById(agentId);
         await this.agentService.updateAgentIntent(agentId, intent);
-        return [`${agent.label} updates their intent to "${intent}".`];
+        return [intent];
     }
 
-  
+}
 
-
-    // public async speakToAgent(otherAgentId: string): Promise<string[]> {
-    //     await initialiseDatabase();
-    //     const agent = await this.agent();
-    //     const otherAgent = await this.agentService.getAgentById(otherAgentId);
-    //     const result: string[] = [];
-    //     result.push(`You respond to the ${agent.name}.`);
-
-    //     const agentMessageService = new AgentMessageService();
-    //     // Get previous messages between agents
-    //     const agentMessages = await agentMessageService.getMessagesBetweenAgents(this.agentId, otherAgentId);
-    //     // Create a new message via openai
-    //     const messages: ChatCompletionMessageParam[] = agentMessages.map(m => {
-    //         return {
-    //             role: m.senderAgentId === this.agentId ? "user" : "assistant",
-    //             content: m.content
-    //         };
-    //     });
-    //     messages.unshift({
-    //         role: "system",
-    //         content: `You are ${agent.name}, ${agent.shortDescription}. Your backstory is ${agent.backstory}. Your mood is ${agent.mood}. Your current intent is ${agent.currentIntent}. Your goal is ${agent.goal}. You are talking to ${otherAgent.name}, ${otherAgent.shortDescription}.`
-    //     });
-    //     const response = await this.openai.chat.completions.create({
-    //         model: "gpt-4o",
-    //         messages
-    //     });
-    //     // Save the message to the database
-    //     const messageText = response.choices[0].message.content ?? "";
-    //     await agentMessageService.createMessage(this.agentId, otherAgentId, messageText);
-    //     return [messageText];
-    // }
+function startsWithVowel(word: string): boolean {
+    return ["a", "e", "i", "o", "u"].includes(word[0].toLowerCase());
 }
