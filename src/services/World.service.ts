@@ -15,15 +15,15 @@ export class WorldService {
         // For each agent with autonomous = true and activated = true
         let combinedCommands: Command[] = [];
         const agents = await this.agentService.getActiveAutonomousAgents();
-        for (const agent of agents) {
+        const agentActions = agents.map(async (agent) => {
             const agentActor = new AgentActor(agent.agentId);
             const commands: Command[] = await agentActor.act();
-            combinedCommands = combinedCommands.concat(commands);
-            for (const command of commands) {
-                await this.commandService.saveAgentCommand(command);
-            }
-            //await this.agentService.activateAutonomy(agent.agentId, false);
-        }
+            await Promise.all(commands.map(command => this.commandService.saveAgentCommand(command)));
+            return commands;
+        });
+
+        const allCommands = await Promise.all(agentActions);
+        combinedCommands = allCommands.flat();
         return combinedCommands;
     }
 }

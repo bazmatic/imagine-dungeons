@@ -72,7 +72,7 @@ export class AgentActor {
             if (c.agent_id === this.agentId && c.input_text) {
                 messages.push({
                     role: "assistant",
-                    content: c.input_text
+                    content: (await this.interpreter.describeCommandResult(agent.agentId, c)).join("\n") // Describe the result of the command as if a DM was describing it to the player
                 });
             }
             messages.push({
@@ -89,7 +89,7 @@ export class AgentActor {
         // Ask the agent what to do
         messages.push({
             role: "user",
-            content: `What do you want to do? Type your instructions and I'll tell you what happens next.`
+            content: `What do you want to do? Type your instructions and I'll tell you what happens next. Avoid doing the same thing twice in a row. Try something different.`
         });
 
         //console.log(`Messages: ${JSON.stringify(messages)}`);
@@ -98,7 +98,7 @@ export class AgentActor {
         const response = await this.openai.chat.completions.create({
             model: "gpt-4o-2024-08-06",
             messages,
-            seed: 100
+            //seed: 100
         });
 
         const choices = response.choices;
@@ -118,19 +118,19 @@ export class AgentActor {
     }
 
     public async wait(): Promise<string[]> {
-        await initialiseDatabase();
+        //await initialiseDatabase();
         const agent = await this.agent();
         return [`${agent.label} waits.`];
     }
 
     public async setGoal(goal: string): Promise<void> {
-        await initialiseDatabase();
+        //await initialiseDatabase();
         const agent = await this.agent();
         await this.agentService.updateAgentGoal(agent.agentId, goal);
     }
 
     public async ownsItem(itemId: string): Promise<boolean> {
-        await initialiseDatabase();
+        //await initialiseDatabase();
         const agent = await this.agent();
         const ownedItems = await agent.items;
         const ownedItem = ownedItems.find(item => item.itemId === itemId);
@@ -138,7 +138,7 @@ export class AgentActor {
     }
 
     public async goExit(exitId: string): Promise<string[]> {
-        await initialiseDatabase();
+        //await initialiseDatabase();
         const agent = await this.agent();
         const location = await agent.location;
         const exits = await location.exits;
@@ -155,7 +155,7 @@ export class AgentActor {
     }
 
     public async pickUp(itemId: string, fromTarget?: string): Promise<string[]> {
-        await initialiseDatabase();
+        //await initialiseDatabase();
         const agent = await this.agent();
 
         if (fromTarget) {
@@ -182,7 +182,7 @@ export class AgentActor {
     }
 
     public async dropItem(itemId: string): Promise<string[]> {
-        await initialiseDatabase();
+        //await initialiseDatabase();
         const agent = await this.agent();
         const ownedItems = await agent.items;
         const itemOwned = ownedItems.find(i => i.itemId === itemId);
@@ -197,13 +197,13 @@ export class AgentActor {
     }
 
     public async emote(emote: string): Promise<string[]> {
-        await initialiseDatabase();
+        //await initialiseDatabase();
         const agent = await this.agent();
         return [`${agent.label}: ${emote}.`];
     }
 
     public async lookAround(): Promise<string[]> {
-        await initialiseDatabase();
+        //await initialiseDatabase();
         const agent = await this.agent();
         const location = await agent.location;
         const exits = await location.exits;
@@ -212,7 +212,7 @@ export class AgentActor {
         result.push(location.longDescription);
         // Other agents
 
-        const agentsPresent = await this.agentService.getAgentsByLocation(location.locationId);
+        const agentsPresent = (await this.agentService.getAgentsByLocation(location.locationId)).filter(a=>a.agentId !== agent.agentId);
         const itemsPresent = await location.items;
         exits.forEach(e => {
             result.push(`To the ${e.direction}: ${e.shortDescription}`);
@@ -328,6 +328,19 @@ export class AgentActor {
             return [`That didn't work.`];
 
         }
+    }
+
+    public async getInventory(): Promise<string[]> {
+        await initialiseDatabase();
+        const agent = await this.agent();
+        const inventory = await agent.items;
+        
+        if (inventory.length === 0) {
+            return ["Your inventory is empty."];
+        }
+
+        const itemLabels = inventory.map(item => item.label).join(", ");
+        return [`Your inventory contains: ${itemLabels}`];
     }
 
 }

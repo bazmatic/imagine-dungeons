@@ -38,14 +38,15 @@ export class CommandService {
         agentId: string,
         count: number
     ): Promise<Command[]> {
-        return this.commandRepository.find({
+       const records = await  this.commandRepository.find({
             where: {
                 agents_present: Raw(alias => `${alias} @> :agentId`, { agentId: JSON.stringify([agentId]) })
             },
             order: {
-                created_at: "ASC"
+                created_at: "DESC"
             },
             take: count
         });
+        return records.reverse();
     }
 }

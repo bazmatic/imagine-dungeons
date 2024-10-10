@@ -126,7 +126,9 @@ export class Interpreter {
                 model: "gpt-4o-2024-08-06",
                 messages: openAiMessages,
                 tools: getOpenAiTools(agent, context),
-                seed: 100
+                tool_choice: "required",
+                //seed: 101,  
+
             });
         const toolCalls = response.choices[0]?.message.tool_calls;
         if (!toolCalls || toolCalls.length === 0) {
@@ -227,6 +229,9 @@ export class Interpreter {
                         toolCallArguments.item_id,
                         toolCallArguments.target_agent_id
                     );
+                    break;
+                case COMMAND_TYPE.GET_INVENTORY:
+                    outputText = await agentActor.getInventory();
                     break;
                 default:
                     throw new Error(`Invalid command type: ${commandType}`);
@@ -339,6 +344,7 @@ export class Interpreter {
                 if (command.output_text && !hideDetails) {
                     result.push(command.output_text);
                 }
+                break;
             }
 
             case COMMAND_TYPE.LOOK_AT_EXIT: {
@@ -349,9 +355,8 @@ export class Interpreter {
                     } the ${exit.direction}.`
                 );
                 if (command.output_text && !hideDetails) {
-                    result.push(`${observerText} sees ${exit.direction}.`);
+                    result.push(`${command.output_text}`);
                 }
-                //result.push(exit.longDescription);
                 break;
             }
 
@@ -384,6 +389,9 @@ export class Interpreter {
                         firstPerson ? "resolve" : "resolves"
                     } to do something.`
                 );
+                if (command.output_text && firstPerson) {
+                    result.push(command.output_text);
+                }
                 break;
 
             case COMMAND_TYPE.WAIT:
@@ -416,6 +424,15 @@ export class Interpreter {
                 break;
             }
 
+            case COMMAND_TYPE.GET_INVENTORY: {
+                if (firstPerson && command.output_text) {
+                    result.push(command.output_text);
+                } else {
+                    result.push(`${observerText} checks their inventory.`);
+                }
+                break;
+            }
+
             default:
                 throw new Error(
                     `Invalid command type: ${command.command_type}`
@@ -441,7 +458,7 @@ Your agent can wait.
 Your agent can give items to other agents, represented by target_agent_id.
 You are calling the function in the context of a specific agent represented by calling_agent_id.
 You should call multiple functions, especially if the user's input seems to require it.
-If the user's input does not clearly call for one of the functions below, then do not call any functions.
+If the user's input does not clearly call for one of the functions below, then call emote or wait.
 Updating intent does not change the game state, it just informs the agent's short term goals.
 For example, if someone has just spoken to you, you should call speak_to_agent to respond, and then update your intent.
 If the agent's input starts with quotation marks, or doesn't seem to match any of the available tools, send the text verbatim to speak_to_agent to speak to an agent that is present in the same location.
@@ -464,7 +481,8 @@ export enum COMMAND_TYPE {
     UPDATE_AGENT_INTENT = "update_agent_intent",
     EMOTE = "emote",
     WAIT = "wait",
-    GIVE_ITEM_TO_AGENT = "give_item_to_agent"
+    GIVE_ITEM_TO_AGENT = "give_item_to_agent",
+    GET_INVENTORY = "get_inventory"
 }
 
 export function getAgentCommands(
@@ -578,35 +596,10 @@ export function getAgentCommands(
             }
         },
         {
-            id: COMMAND_TYPE.UPDATE_AGENT_INTENT,
-            openaiTool: {
-                name: "update_agent_intent",
-                description:
-                    "Update your short-term goals so you can remember what you are doing. Briefly describing what you are doing or planning to do next. This overrides any previous intent. This does not change your location. The game state does not change when you update your intent. Your intent should begin with 'I intend to...'",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        intent: {
-                            type: "string",
-                            description:
-                                "Your new short-term goals. Briefly describing what you are doing or planning to do next."
-                        }
-                    },
-                    required: ["intent"],
-                    additionalProperties: false
-                }
-            }
-        },
-        {
             id: COMMAND_TYPE.WAIT,
             openaiTool: {
                 name: "wait",
                 description: "Do nothing for this turn",
-                parameters: {
-                    type: "object",
-                    properties: {},
-                    additionalProperties: false
-                }
             }
         },
         {
@@ -635,6 +628,31 @@ export function getAgentCommands(
             }
         }
     ];
+
+    const autonomousCommands = [
+        {
+            id: COMMAND_TYPE.UPDATE_AGENT_INTENT,
+            openaiTool: {
+                name: "update_agent_intent",
+                description:
+                    "Update your short-term goals so you can remember what you are doing. Briefly describing what you are doing or planning to do next. This overrides any previous intent. This does not change your location. The game state does not change when you update your intent. Your intent should begin with 'I intend to...'",
+                parameters: { 
+                    type: "object",
+                    properties: {
+                        intent: {
+                            type: "string",
+                            description:
+                                "Your new short-term goals. Briefly describing what you are doing or planning to do next."
+                        }
+                    },
+                    required: ["intent"],
+                    additionalProperties: false
+                }
+            }
+        }
+    ];
+
+    
 
     if (!agent.autonomous) {
         // Add additional commands for non-autonomous agents
@@ -705,11 +723,27 @@ export function getAgentCommands(
                         additionalProperties: false
                     }
                 }
+            },
+            {
+                id: COMMAND_TYPE.GET_INVENTORY,
+                openaiTool: {
+                    name: "get_inventory",
+                    description: "Get a list of items in your inventory",
+                    parameters: {
+                        type: "object",
+                        properties: {},
+                        additionalProperties: false
+                    }
+                }
             }
         ];
     }
-
-    return commonCommands;
+    else {
+        return [
+            ...commonCommands,
+            ...autonomousCommands
+        ];
+    }
 }
 
 export function getOpenAiTools(

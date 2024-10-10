@@ -2,7 +2,6 @@
 
 import { Command } from "@/entity/Command";
 import { initialiseDatabase } from "@/index";
-import { AgentService } from "@/services/Agent.service";
 import { CommandService } from "@/services/Command.service";
 import { Interpreter } from "@/services/Interpreter";
 import { WorldService } from "@/services/World.service";
