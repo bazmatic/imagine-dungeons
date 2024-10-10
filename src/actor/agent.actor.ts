@@ -10,7 +10,7 @@ import { OpenAI } from "openai";
 import { Location } from "@/entity/Location";
 import { Item } from "@/entity/Item";
 import { CommandService } from "@/services/Command.service";
-import {  Interpreter } from "@/services/Interpreter";
+import { Interpreter } from "@/services/Interpreter";
 import { Command } from "@/entity/Command";
 
 dotenv.config();
@@ -115,6 +115,12 @@ export class AgentActor {
         const commands: Command[] = await this.interpreter.interpret(this.agentId, inputText);
         return commands;
    
+    }
+
+    public async wait(): Promise<string[]> {
+        await initialiseDatabase();
+        const agent = await this.agent();
+        return [`${agent.label} waits.`];
     }
 
     public async setGoal(goal: string): Promise<void> {
@@ -286,9 +292,41 @@ export class AgentActor {
 
     public async updateAgentIntent(agentId: string, intent: string): Promise<string[]> {
         await initialiseDatabase();
-        const agent = await this.agentService.getAgentById(agentId);
         await this.agentService.updateAgentIntent(agentId, intent);
         return [intent];
+    }
+
+    public async giveItemToAgent(itemId: string, targetAgentId: string): Promise<string[]> {
+        await initialiseDatabase();
+        const agent = await this.agent();
+
+        try {
+            const targetAgent = await this.agentService.getAgentById(targetAgentId);
+            
+            // Check if the item is in the agent's inventory
+            const ownedItems = await agent.items;
+            const itemOwned = ownedItems.find(i => i.itemId === itemId);
+            if (!itemOwned) {
+                throw new Error("Item not found in inventory");
+            }
+
+            // Check if the target agent is in the same location
+            const agentLocation = await agent.location;
+            const targetAgentLocation = await targetAgent.location;
+            if (agentLocation.locationId !== targetAgentLocation.locationId) {
+                throw new Error("Target agent is not in the same location");
+            }
+
+            // Transfer the item
+            await this.itemService.setOwnerToAgent(itemId, targetAgentId);
+            const item = await this.itemService.getItemById(itemId);
+
+            return [`${agent.label} gives the ${item.label} to ${targetAgent.label}.`]
+        }
+        catch (error) {
+            return [`That didn't work.`];
+
+        }
     }
 
 }

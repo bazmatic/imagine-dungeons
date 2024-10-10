@@ -100,6 +100,7 @@ export class Interpreter {
     ): Promise<Command[]> {
         await initialiseDatabase();
         const agentActor = new AgentActor(agentId);
+        const agent: Agent = await agentActor.agent();
         const context: PromptContext = await this.getContext(agentId);
 
         console.log(`===========================================`);
@@ -124,7 +125,7 @@ export class Interpreter {
             await this.openai.chat.completions.create({
                 model: "gpt-3.5-turbo-1106",
                 messages: openAiMessages,
-                tools: getOpenAiTools(context),
+                tools: getOpenAiTools(agent, context),
                 seed: 100
             });
         const toolCalls = response.choices[0]?.message.tool_calls;
@@ -144,8 +145,13 @@ export class Interpreter {
 
         const commands: Command[] = [];
         for (const toolCall of toolCalls) {
+            if (toolCall.function.name === "multi_tool_use.parallel") {
+                console.warn("multi_tool_use.parallel is not supported");
+                continue;
+            }
             const toolCallArguments = JSON.parse(toolCall.function.arguments);
-            const commandType: COMMAND_TYPE = toolCall.function.name as COMMAND_TYPE;
+            const commandType: COMMAND_TYPE = toolCall.function
+                .name as COMMAND_TYPE;
 
             console.log(
                 `Calling ${commandType} with arguments ${JSON.stringify(
@@ -212,6 +218,15 @@ export class Interpreter {
                         toolCallArguments.intent
                     );
 
+                    break;
+                case COMMAND_TYPE.WAIT:
+                    outputText = await agentActor.wait();
+                    break;
+                case COMMAND_TYPE.GIVE_ITEM_TO_AGENT:
+                    outputText = await agentActor.giveItemToAgent(
+                        toolCallArguments.item_id,
+                        toolCallArguments.target_agent_id
+                    );
                     break;
                 default:
                     throw new Error(`Invalid command type: ${commandType}`);
@@ -371,8 +386,40 @@ export class Interpreter {
                 );
                 break;
 
+            case COMMAND_TYPE.WAIT:
+                result.push(
+                    `${observerText} ${firstPerson ? "wait" : "waits"}.`
+                );
+                break;
+
+            case COMMAND_TYPE.GIVE_ITEM_TO_AGENT: {
+                try {
+                    const item = await this.itemService.getItemById(
+                        parameters.item_id
+                    );
+                    const targetAgent = await this.agentService.getAgentById(
+                        parameters.target_agent_id
+                    );
+                    result.push(
+                        `${observerText} ${
+                            firstPerson ? "give" : "gives"
+                        } the ${item.label} to ${targetAgent.label}.`
+                    );
+                } catch (error) {
+                    console.error(error);
+                    result.push(
+                        `${observerText} ${
+                            firstPerson ? "try to give" : "tries to give"
+                        } something to someone, but it doesn't seem to work.`
+                    );
+                }
+                break;
+            }
+
             default:
-                throw new Error("Invalid command type");
+                throw new Error(
+                    `Invalid command type: ${command.command_type}`
+                );
         }
 
         return result;
@@ -381,7 +428,7 @@ export class Interpreter {
 
 const parserPrompt = `You are an AI assistant designed to turn an agent's natural language instructions into a series of actions that can be taken in a game.
 You are calling the function in the context of a specific agent represented by calling_agent_id.
-You can call multiple functions at the same time, if the user's input seems to require it.
+You should call multiple functions, especially if the user's input seems to require it.
 If the user's input does not clearly call for one of the functions below, then do not call any functions.
 In most cases, you should include a call to the update_agent_intent function to update the agent's immediate intent.
 For example, if someone has just spoken to you, you should call speak_to_agent to respond, and then update your intent.
@@ -403,26 +450,29 @@ export enum COMMAND_TYPE {
     LOOK_AT_EXIT = "look_at_exit",
     SPEAK_TO_AGENT = "speak_to_agent",
     UPDATE_AGENT_INTENT = "update_agent_intent",
-    EMOTE = "emote"
+    EMOTE = "emote",
+    WAIT = "wait",
+    GIVE_ITEM_TO_AGENT = "give_item_to_agent"
 }
 
 export function getAgentCommands(
+    agent: Agent,
     context: PromptContext
 ): AgentCommand[] {
-    return [
+    const commonCommands = [
         {
             id: COMMAND_TYPE.EMOTE,
             openaiTool: {
                 name: "emote",
                 description:
-                    "Perform an emote or express a visible action or emotion",
+                    "Perform an action that has no direct effect, or express a visible action or emotion. Do not include any speech. Do not do anything that is covered by other commands. Describe the action from a third-person perspective.",
                 parameters: {
                     type: "object",
                     properties: {
                         emote_text: {
                             type: "string",
                             description:
-                                "A description of the character's action, expression, or emotional state that others can observe."
+                                "A description of the character's expression, or emotional state that others can observe."
                         }
                     },
                     required: ["emote_text"],
@@ -488,72 +538,6 @@ export function getAgentCommands(
             }
         },
         {
-            id: COMMAND_TYPE.LOOK_AT_ITEM,
-            openaiTool: {
-                name: "look_at_item",
-                description: "Look at an item",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        item_id: {
-                            type: "string",
-                            description:
-                                "The id of the item to look at. This must match item_id values listed in the items_present array or inventory array of the context."
-                        }
-                    },
-                    required: ["item_id"],
-                    additionalProperties: false
-                }
-            }
-        },
-        {
-            id: COMMAND_TYPE.LOOK_AT_AGENT,
-            openaiTool: {
-                name: "look_at_agent",
-                description:
-                    "Look at a game character present in the same location, eg 'look at Bob'.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        agent_id: {
-                            type: "string",
-                            description:
-                                "The id of the agent (character) to look at. This must match agent_id values listed in the agents_present array of the context."
-                        }
-                    },
-                    required: ["agent_id"],
-                    additionalProperties: false
-                }
-            }
-        },
-        {
-            id: COMMAND_TYPE.LOOK_AROUND,
-            openaiTool: {
-                name: "look_around",
-                description:
-                    "Take a very detailed look around the current location."
-            }
-        },
-        {
-            id: COMMAND_TYPE.LOOK_AT_EXIT,
-            openaiTool: {
-                name: "look_at_exit",
-                description: "Look at an exit",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        exit_id: {
-                            type: "string",
-                            description:
-                                "The id of the exit to look at. This must match exit_id values listed in the exits array of the context."
-                        }
-                    },
-                    required: ["exit_id"],
-                    additionalProperties: false
-                }
-            }
-        },
-        {
             id: COMMAND_TYPE.SPEAK_TO_AGENT,
             openaiTool: {
                 name: "speak_to_agent",
@@ -586,7 +570,7 @@ export function getAgentCommands(
             openaiTool: {
                 name: "update_agent_intent",
                 description:
-                    "Update your short-term goals so you can remember what you are doing. Briefly describing what you are doing or planning to do next. This overrides any previous intent.",
+                    "Update your short-term goals so you can remember what you are doing. Briefly describing what you are doing or planning to do next. This overrides any previous intent. Your intent should begin with 'I intend to...'",
                 parameters: {
                     type: "object",
                     properties: {
@@ -600,12 +584,127 @@ export function getAgentCommands(
                     additionalProperties: false
                 }
             }
+        },
+        {
+            id: COMMAND_TYPE.WAIT,
+            openaiTool: {
+                name: "wait",
+                description: "Do nothing for this turn",
+                parameters: {
+                    type: "object",
+                    properties: {},
+                    additionalProperties: false
+                }
+            }
+        },
+        {
+            id: COMMAND_TYPE.GIVE_ITEM_TO_AGENT,
+            openaiTool: {
+                name: "give_item_to_agent",
+                description:
+                    "Give an item from your inventory to another agent in the same location",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        item_id: {
+                            type: "string",
+                            description:
+                                "The id of the item to give. This must match item_id values listed in the inventory array of the context."
+                        },
+                        target_agent_id: {
+                            type: "string",
+                            description:
+                                "The id of the agent to give the item to. This must match agent_id values listed in the agents_present array of the context."
+                        }
+                    },
+                    required: ["item_id", "target_agent_id"],
+                    additionalProperties: false
+                }
+            }
         }
     ];
+
+    if (!agent.autonomous) {
+        // Add additional commands for non-autonomous agents
+        return [
+            ...commonCommands,
+            {
+                id: COMMAND_TYPE.LOOK_AT_ITEM,
+                openaiTool: {
+                    name: "look_at_item",
+                    description: "Look at an item",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            item_id: {
+                                type: "string",
+                                description:
+                                    "The id of the item to look at. This must match item_id values listed in the items_present array or inventory array of the context."
+                            }
+                        },
+                        required: ["item_id"],
+                        additionalProperties: false
+                    }
+                }
+            },
+            {
+                id: COMMAND_TYPE.LOOK_AT_AGENT,
+                openaiTool: {
+                    name: "look_at_agent",
+                    description:
+                        "Look at a game character present in the same location, eg 'look at Bob'.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            agent_id: {
+                                type: "string",
+                                description:
+                                    "The id of the agent (character) to look at. This must match agent_id values listed in the agents_present array of the context."
+                            }
+                        },
+                        required: ["agent_id"],
+                        additionalProperties: false
+                    }
+                }
+            },
+            {
+                id: COMMAND_TYPE.LOOK_AROUND,
+                openaiTool: {
+                    name: "look_around",
+                    description:
+                        "Take a very detailed look around the current location."
+                }
+            },
+            {
+                id: COMMAND_TYPE.LOOK_AT_EXIT,
+                openaiTool: {
+                    name: "look_at_exit",
+                    description: "Look at an exit",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            exit_id: {
+                                type: "string",
+                                description:
+                                    "The id of the exit to look at. This must match exit_id values listed in the exits array of the context."
+                            }
+                        },
+                        required: ["exit_id"],
+                        additionalProperties: false
+                    }
+                }
+            }
+        ];
+    }
+
+    return commonCommands;
 }
 
-export function getOpenAiTools(context: PromptContext): ChatCompletionTool[] {
-    const agentCommands = getAgentCommands(context);
+export function getOpenAiTools(
+    agent: Agent,
+    context: PromptContext
+): ChatCompletionTool[] {
+    const agentCommands = getAgentCommands(agent, context);
     return agentCommands.map(c => {
         return {
             type: "function",

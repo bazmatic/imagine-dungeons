@@ -53,5 +53,6 @@ export default async function command(
         res.status(200).json(textOutput);
     } catch (error) {
         console.warn(`Error in autonomous agent actions: ${error}`);
+        res.status(500).json({ error });
     }
 }
