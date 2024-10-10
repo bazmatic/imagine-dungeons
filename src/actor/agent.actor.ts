@@ -96,7 +96,7 @@ export class AgentActor {
 
         // Get the instructions from the agent
         const response = await this.openai.chat.completions.create({
-            model: "gpt-3.5-turbo-1106",
+            model: "gpt-4o-2024-08-06",
             messages,
             seed: 100
         });
@@ -309,6 +309,7 @@ export class AgentActor {
             if (!itemOwned) {
                 throw new Error("Item not found in inventory");
             }
+            console.log(`Item owned: ${itemOwned}`);
 
             // Check if the target agent is in the same location
             const agentLocation = await agent.location;
@@ -319,9 +320,9 @@ export class AgentActor {
 
             // Transfer the item
             await this.itemService.setOwnerToAgent(itemId, targetAgentId);
-            const item = await this.itemService.getItemById(itemId);
+            //const item = await this.itemService.getItemById(itemId);
 
-            return [`${agent.label} gives the ${item.label} to ${targetAgent.label}.`]
+            return []//`${agent.label} gives the ${item.label} to ${targetAgent.label}.`]
         }
         catch (error) {
             return [`That didn't work.`];

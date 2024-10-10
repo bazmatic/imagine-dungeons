@@ -123,7 +123,7 @@ export class Interpreter {
 
         const response: OpenAI.Chat.Completions.ChatCompletion =
             await this.openai.chat.completions.create({
-                model: "gpt-3.5-turbo-1106",
+                model: "gpt-4o-2024-08-06",
                 messages: openAiMessages,
                 tools: getOpenAiTools(agent, context),
                 seed: 100
@@ -261,7 +261,7 @@ export class Interpreter {
         const observerText = firstPerson ? "You" : actor.label;
         switch (command.command_type) {
             case COMMAND_TYPE.EMOTE: {
-                result.push(`${observerText}: ${command.output_text}`);
+                result.push(`${command.output_text}`);
                 break;
             }
             case COMMAND_TYPE.GO_EXIT: {
@@ -426,11 +426,23 @@ export class Interpreter {
     }
 }
 
-const parserPrompt = `You are an AI assistant designed to turn an agent's natural language instructions into a series of actions that can be taken in a game.
+const parserPrompt = `You are an AI assistant designed to turn an agent's natural language instructions into a series of actions that can be taken in a classic text adventure game.
+The agent is embedded in a game world with locations connected by exits.
+Locations contain items and other agents.
+Your agent is represented by calling_agent_id.
+Your agent can move through exits, represented by exit_id.
+Your agent can pick up items, represented by item_id.
+Your agent can drop items, represented by item_id.
+Your agent can look at items, represented by item_id.
+Your agent can look at other agents, represented by agent_id.
+Your agent can speak to other agents, represented by agent_id.
+Your agent can update their intent, represented by intent.
+Your agent can wait.
+Your agent can give items to other agents, represented by target_agent_id.
 You are calling the function in the context of a specific agent represented by calling_agent_id.
 You should call multiple functions, especially if the user's input seems to require it.
 If the user's input does not clearly call for one of the functions below, then do not call any functions.
-In most cases, you should include a call to the update_agent_intent function to update the agent's immediate intent.
+Updating intent does not change the game state, it just informs the agent's short term goals.
 For example, if someone has just spoken to you, you should call speak_to_agent to respond, and then update your intent.
 If the agent's input starts with quotation marks, or doesn't seem to match any of the available tools, send the text verbatim to speak_to_agent to speak to an agent that is present in the same location.
 `;
@@ -484,7 +496,7 @@ export function getAgentCommands(
             id: COMMAND_TYPE.GO_EXIT,
             openaiTool: {
                 name: "go_exit",
-                description: "Move the agent through the specified exit",
+                description: "Move the agent through the specified exit. This will change the agent's location.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -570,7 +582,7 @@ export function getAgentCommands(
             openaiTool: {
                 name: "update_agent_intent",
                 description:
-                    "Update your short-term goals so you can remember what you are doing. Briefly describing what you are doing or planning to do next. This overrides any previous intent. Your intent should begin with 'I intend to...'",
+                    "Update your short-term goals so you can remember what you are doing. Briefly describing what you are doing or planning to do next. This overrides any previous intent. This does not change your location. The game state does not change when you update your intent. Your intent should begin with 'I intend to...'",
                 parameters: {
                     type: "object",
                     properties: {
@@ -602,7 +614,7 @@ export function getAgentCommands(
             openaiTool: {
                 name: "give_item_to_agent",
                 description:
-                    "Give an item from your inventory to another agent in the same location",
+                    "Give an item from your inventory to another agent in the same location. If your agent wants an item from another agent, do not call this tool. Instead, call the 'speak_to_agent' tool to ask the other agent if they have the item and want to give it.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -632,7 +644,7 @@ export function getAgentCommands(
                 id: COMMAND_TYPE.LOOK_AT_ITEM,
                 openaiTool: {
                     name: "look_at_item",
-                    description: "Look at an item",
+                    description: "Look at an item. If (and only if) the text suggests that the primary action is to look at an item, then call this tool. Otherwise, do not call this tool.",
                     parameters: {
                         type: "object",
                         properties: {
@@ -652,7 +664,7 @@ export function getAgentCommands(
                 openaiTool: {
                     name: "look_at_agent",
                     description:
-                        "Look at a game character present in the same location, eg 'look at Bob'.",
+                        "Look at a game character present in the same location, eg 'look at Bob'. If (and only if) the text suggests that the primary action is to look at a character, then call this tool. Otherwise, do not call this tool.",
                     parameters: {
                         type: "object",
                         properties: {

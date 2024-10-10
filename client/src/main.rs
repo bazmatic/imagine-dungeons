@@ -31,7 +31,7 @@ async fn main() {
         // Send the command to the NextJS API
         let res = client
             .post(api_url) // POST request to the API URL
-            .json(&serde_json::json!({ "agentId": "char_paff", "command": command })) // JSON payload
+            .json(&serde_json::json!({ "agentId": "char_39322", "command": command })) // JSON payload
             .send() // Send the request
             .await; // Wait for the response (async)
 
