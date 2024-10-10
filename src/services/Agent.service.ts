@@ -43,6 +43,12 @@ export class AgentService {
         return this.getAgentById(id);
     }
 
+    async updateAgentHealth(id: string, delta: number): Promise<Agent> {
+        const agent = await this.getAgentById(id);
+        await this.agentRepository.update(id, { health: agent.health + delta });
+        return this.getAgentById(id);
+    }
+
     async activateAutonomy(id: string, activate: boolean): Promise<Agent> {
         await this.agentRepository.update(id, { activated: activate });
         return this.getAgentById(id);

@@ -233,6 +233,11 @@ export class Interpreter {
                 case COMMAND_TYPE.GET_INVENTORY:
                     outputText = await agentActor.getInventory();
                     break;
+                case COMMAND_TYPE.ATTACK_AGENT:
+                    outputText = await agentActor.attackAgent(
+                        toolCallArguments.target_agent_id
+                    );
+                    break;
                 default:
                     throw new Error(`Invalid command type: ${commandType}`);
             }
@@ -433,6 +438,19 @@ export class Interpreter {
                 break;
             }
 
+            case COMMAND_TYPE.ATTACK_AGENT: {
+                const targetAgent = await this.agentService.getAgentById(
+                    parameters.target_agent_id
+                );
+                result.push(
+                    `${observerText} ${firstPerson ? "attack" : "attacks"} ${targetAgent.label}.`
+                );
+                if (command.output_text && !hideDetails) {
+                    result.push(command.output_text);
+                }
+                break;
+            }
+
             default:
                 throw new Error(
                     `Invalid command type: ${command.command_type}`
@@ -482,7 +500,8 @@ export enum COMMAND_TYPE {
     EMOTE = "emote",
     WAIT = "wait",
     GIVE_ITEM_TO_AGENT = "give_item_to_agent",
-    GET_INVENTORY = "get_inventory"
+    GET_INVENTORY = "get_inventory",
+    ATTACK_AGENT = "attack_agent"
 }
 
 export function getAgentCommands(
@@ -623,6 +642,25 @@ export function getAgentCommands(
                         }
                     },
                     required: ["item_id", "target_agent_id"],
+                    additionalProperties: false
+                }
+            }
+        },
+        {
+            id: COMMAND_TYPE.ATTACK_AGENT,
+            openaiTool: {
+                name: "attack_agent",
+                description: "Attack an agent in the same location, in an attempt to defeat them or cause them harm. If the text suggests that the primary action is to attack an agent, then call this tool. Otherwise, do not call this tool.",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        target_agent_id: {
+                            type: "string",
+                            description:
+                                "The id of the agent to attack. This must match agent_id values listed in the agents_present array of the context."
+                        }
+                    },
+                    required: ["target_agent_id"],
                     additionalProperties: false
                 }
             }
