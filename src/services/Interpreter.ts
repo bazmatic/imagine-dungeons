@@ -1,12 +1,12 @@
 import { AgentActor } from "@/actor/agent.actor";
 import OpenAI from "openai";
 import { AgentService } from "./Agent.service";
-import { CommandService } from "./Command.service";
-import { Command } from "@/entity/Command";
+import { GameEventService } from "./GameEventService";
 import { ExitService } from "./Exit.service";
 import { ItemService } from "./Item.service";
 import { Agent } from "@/entity/Agent";
 import { ChatCompletionTool, FunctionDefinition } from "openai/resources";
+import { GameEvent } from "@/entity/GameEvent";
 
 export type PromptContext = {
     calling_agent_id: string;
@@ -40,7 +40,7 @@ export type PromptContext = {
 export class Interpreter {
     private openai: OpenAI;
     private agentService: AgentService;
-    private commandService: CommandService;
+    private gameEventService: GameEventService;
     //private locationService: LocationService;
     private exitService: ExitService;
     private itemService: ItemService;
@@ -48,7 +48,7 @@ export class Interpreter {
     constructor() {
         this.openai = new OpenAI();
         this.agentService = new AgentService();
-        this.commandService = new CommandService();
+        this.gameEventService = new GameEventService();
         //this.locationService = new LocationService();
         this.exitService = new ExitService();
         this.itemService = new ItemService();
@@ -95,7 +95,7 @@ export class Interpreter {
     public async interpret(
         agentId: string,
         inputText: string
-    ): Promise<Command[]> {
+    ): Promise<GameEvent[]> {
         const agentActor = new AgentActor(agentId);
         const agent: Agent = await agentActor.agent();
         if (agent.health <= 0) {
@@ -147,7 +147,7 @@ export class Interpreter {
 
         //console.log(`Raw response: ${JSON.stringify(rawResponse, null, 4)}`);
 
-        const commands: Command[] = [];
+        const gameEvents: GameEvent[] = [];
         for (const toolCall of toolCalls) {
             if (toolCall.function.name === "multi_tool_use.parallel") {
                 console.warn("multi_tool_use.parallel is not supported");
@@ -249,7 +249,7 @@ export class Interpreter {
                 default:
                     console.warn(`Unknown command type: ${commandType}`);
             }
-            const command: Command = await this.commandService.makeAgentCommand(
+            const gameEvent: GameEvent = await this.gameEventService.makeGameEvent(
                 agentId,
                 inputText,
                 commandType,
@@ -257,28 +257,28 @@ export class Interpreter {
                 outputText.join("\n"),
                 context
             );
-            commands.push(command);
+            gameEvents.push(gameEvent);
         }
-        return commands;
+        return gameEvents;
     }
 
     public async describeCommandResult(
         observerAgentId: string,
-        command: Command,
+        gameEvent: GameEvent,
         hideDetails: boolean = false
     ): Promise<string[]> {
-        const firstPerson = observerAgentId === command.agent_id;
+        const firstPerson = observerAgentId === gameEvent.agent_id;
         const result: string[] = [];
-        const parameters = JSON.parse(command.command_arguments);
-        const actor = await this.agentService.getAgentById(command.agent_id);
+        const parameters = JSON.parse(gameEvent.command_arguments);
+        const actor = await this.agentService.getAgentById(gameEvent.agent_id);
 
-        if (!command.agents_present?.includes(observerAgentId)) {
+        if (!gameEvent.agents_present?.includes(observerAgentId)) {
             return [];
         }
         const observerText = firstPerson ? "You" : actor.label;
-        switch (command.command_type) {
+        switch (gameEvent.command_type) {
             case COMMAND_TYPE.EMOTE: {
-                result.push(`${command.output_text}`);
+                result.push(`${gameEvent.output_text}`);
                 break;
             }
             case COMMAND_TYPE.GO_EXIT: {
@@ -288,8 +288,8 @@ export class Interpreter {
                         exit.direction
                     }.`
                 );
-                if (command.output_text && firstPerson && !hideDetails) {
-                    result.push(command.output_text);
+                if (gameEvent.output_text && firstPerson && !hideDetails) {
+                    result.push(gameEvent.output_text);
                 }
                 break;
             }
@@ -326,8 +326,8 @@ export class Interpreter {
                         firstPerson ? "look at" : "looks at"
                     } the ${item.label}.`
                 );
-                if (command.output_text && !hideDetails) {
-                    result.push(command.output_text);
+                if (gameEvent.output_text && !hideDetails) {
+                    result.push(gameEvent.output_text);
                 }
                 break;
             }
@@ -341,8 +341,8 @@ export class Interpreter {
                         agent.label
                     }.`
                 );
-                if (command.output_text && !hideDetails) {
-                    result.push(command.output_text);
+                if (gameEvent.output_text && !hideDetails) {
+                    result.push(gameEvent.output_text);
                 }
                 break;
             }
@@ -353,8 +353,8 @@ export class Interpreter {
                         firstPerson ? "look around" : "looks around"
                     }.`
                 );
-                if (command.output_text && !hideDetails) {
-                    result.push(command.output_text);
+                if (gameEvent.output_text && !hideDetails) {
+                    result.push(gameEvent.output_text);
                 }
                 break;
             }
@@ -366,8 +366,8 @@ export class Interpreter {
                         firstPerson ? "look at" : "looks at"
                     } the ${exit.direction}.`
                 );
-                if (command.output_text && !hideDetails) {
-                    result.push(`${command.output_text}`);
+                if (gameEvent.output_text && !hideDetails) {
+                    result.push(`${gameEvent.output_text}`);
                 }
                 break;
             }
@@ -381,15 +381,15 @@ export class Interpreter {
                     `${observerText} ${
                         firstPerson ? "speak to" : "speaks to"
                     } ${
-                        parameters.target_agent_id === command.agent_id
+                        parameters.target_agent_id === gameEvent.agent_id
                             ? "you"
                             : targetAgent.label
                     }.`
                 );
-                if (command.output_text && !hideDetails) {
+                if (gameEvent.output_text && !hideDetails) {
                     result.push(
                         `${observerText} ${firstPerson ? "say" : "says"}: "${
-                            command.output_text
+                            gameEvent.output_text
                         }"`
                     );
                 }
@@ -401,8 +401,8 @@ export class Interpreter {
                         firstPerson ? "resolve" : "resolves"
                     } to do something.`
                 );
-                if (command.output_text && firstPerson) {
-                    result.push(command.output_text);
+                if (gameEvent.output_text && firstPerson) {
+                    result.push(gameEvent.output_text);
                 }
                 break;
 
@@ -445,8 +445,8 @@ export class Interpreter {
             }
 
             case COMMAND_TYPE.GET_INVENTORY: {
-                if (firstPerson && command.output_text) {
-                    result.push(command.output_text);
+                if (firstPerson && gameEvent.output_text) {
+                    result.push(gameEvent.output_text);
                 } else {
                     result.push(`${observerText} checks their inventory.`);
                 }
@@ -460,14 +460,14 @@ export class Interpreter {
                 result.push(
                     `${observerText} ${firstPerson ? "attack" : "attacks"} ${targetAgent.label}.`
                 );
-                if (command.output_text && !hideDetails) {
-                    result.push(command.output_text);
+                if (gameEvent.output_text && !hideDetails) {
+                    result.push(gameEvent.output_text);
                 }
                 break;
             }
 
             default:
-                console.warn(`Unknown command type: ${command.command_type}`);
+                console.warn(`Unknown command type: ${gameEvent.command_type}`);
 
         }
 

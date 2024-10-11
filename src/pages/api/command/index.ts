@@ -1,8 +1,8 @@
 // Accept a text input from the user and return a response
 
-import { Command } from "@/entity/Command";
+import { GameEvent } from "@/entity/GameEvent";
 import { initialiseDatabase } from "@/index";
-import { CommandService } from "@/services/Command.service";
+import { GameEventService } from "@/services/GameEventService";
 import { Interpreter } from "@/services/Interpreter";
 import { WorldService } from "@/services/World.service";
 import { NextApiRequest, NextApiResponse } from "next";
@@ -19,21 +19,21 @@ export default async function command(
 
     try {
         //const agent = await agentService.getAgentById(agentId);
-        const commandResponse: Command[] = await interpreter.interpret(
+        const commandResponse: GameEvent[] = await interpreter.interpret(
             agentId,
             command
         );
         // Save all commands to the database
-        const commandService = new CommandService();
+        const gameEventService = new GameEventService();
         for (const command of commandResponse) {
-            await commandService.saveAgentCommand(command);
+            await gameEventService.saveAgentCommand(command);
         }
         const textOutput = [];
 
         const autonomousAgentResults = await worldService.autonomousAgentsAct();
         // Save all autonomous agent results to the database
         for (const command of autonomousAgentResults) {
-            await commandService.saveAgentCommand(command);
+            await gameEventService.saveAgentCommand(command);
         }
 
         const combinedResults = [...commandResponse, ...autonomousAgentResults];

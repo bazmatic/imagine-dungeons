@@ -4,9 +4,9 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeor
 
 
 @Entity()
-export class Command {
+export class GameEvent {
     @PrimaryGeneratedColumn()
-    command_id: number;
+    game_event_id: number;
 
     @Column()
     agent_id: string;

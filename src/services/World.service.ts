@@ -1,29 +1,29 @@
 import { AgentActor } from "@/actor/agent.actor";
 import { AgentService } from "./Agent.service";
-import { Command } from "@/entity/Command";
-import { CommandService } from "./Command.service";
+import { GameEvent } from "@/entity/GameEvent";
+import { GameEventService } from "./GameEventService";
 
 export class WorldService {
     private agentService: AgentService;
-    private commandService: CommandService;
+    private gameEventService: GameEventService;
 
     constructor() {
         this.agentService = new AgentService();
-        this.commandService = new CommandService();
+        this.gameEventService = new GameEventService();
     }
-    public async autonomousAgentsAct(): Promise<Command[]> {
+    public async autonomousAgentsAct(): Promise<GameEvent[]> {
         // For each agent with autonomous = true and activated = true
-        let combinedCommands: Command[] = [];
+        let combinedGameEvents: GameEvent[] = [];
         const agents = await this.agentService.getActiveAutonomousAgents();
         const agentActions = agents.map(async (agent) => {
             const agentActor = new AgentActor(agent.agentId);
-            const commands: Command[] = await agentActor.act();
-            await Promise.all(commands.map(command => this.commandService.saveAgentCommand(command)));
-            return commands;
+            const gameEvents: GameEvent[] = await agentActor.act();
+            await Promise.all(gameEvents.map(gameEvent => this.gameEventService.saveAgentCommand(gameEvent)));
+            return gameEvents;
         });
 
-        const allCommands = await Promise.all(agentActions);
-        combinedCommands = allCommands.flat();
-        return combinedCommands;
+        const allGameEvents = await Promise.all(agentActions);
+        combinedGameEvents = allGameEvents.flat();
+        return combinedGameEvents;
     }
 }

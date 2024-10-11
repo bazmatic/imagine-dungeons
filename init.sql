@@ -68,8 +68,8 @@ CREATE TABLE IF NOT EXISTS exit (
     FOREIGN KEY (destination_id) REFERENCES location(location_id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS command (
-    command_id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS game_event (
+    game_event_id SERIAL PRIMARY KEY,
     agent_id TEXT NOT NULL, -- The ID of the agent that issued the command
     input_text TEXT NULL, -- The input text that the agent provided, if any
     command_type TEXT NOT NULL, -- The type of command that was issued

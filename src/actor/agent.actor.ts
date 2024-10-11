@@ -9,9 +9,9 @@ import { LocationService } from "@/services/Location.service";
 import { OpenAI } from "openai";
 import { Location } from "@/entity/Location";
 import { Item } from "@/entity/Item";
-import { CommandService } from "@/services/Command.service";
+import { GameEventService } from "@/services/GameEventService";
 import { Interpreter } from "@/services/Interpreter";
-import { Command } from "@/entity/Command";
+import { GameEvent } from "@/entity/GameEvent";
 
 dotenv.config();
 
@@ -20,7 +20,7 @@ export class AgentActor {
     private exitService: ExitService;
     private itemService: ItemService;
     private locationService: LocationService;
-    private commandService: CommandService;
+    private gameEventService: GameEventService;
     private interpreter: Interpreter;
     private openai: OpenAI;
 
@@ -29,7 +29,7 @@ export class AgentActor {
         this.exitService = new ExitService();
         this.itemService = new ItemService();
         this.locationService = new LocationService();
-        this.commandService = new CommandService();
+        this.gameEventService = new GameEventService();
         this.interpreter = new Interpreter();
         this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     }
@@ -39,7 +39,7 @@ export class AgentActor {
     }
 
     // Decide what to do and do it. Return the commands that were issued.
-    public async act(): Promise<Command[]> {
+    public async act(): Promise<GameEvent[]> {
         //=== Get the context
         const agent: Agent = await this.agent();
         if (agent.health <= 0) {
@@ -75,21 +75,21 @@ export class AgentActor {
             systemMessage
         ];
         // Previous commands and response
-        const previousCommands = await this.commandService.getRecentCommands(
+        const previousGameEvents = await this.gameEventService.getRecentGameEvents(
             this.agentId,
             6
         );
         // Filter commands
 
         // Now make historical messages using the input_text and response_text
-        for (const c of previousCommands) {
-            if (c.agent_id === this.agentId && c.input_text) {
+        for (const ge of previousGameEvents) {
+            if (ge.agent_id === this.agentId && ge.input_text) {
                 messages.push({
                     role: "assistant",
                     content: (
                         await this.interpreter.describeCommandResult(
                             agent.agentId,
-                            c
+                            ge
                         )
                     ).join("\n") // Describe the result of the command as if a DM was describing it to the player
                 });
@@ -99,7 +99,7 @@ export class AgentActor {
                 content: (
                     await this.interpreter.describeCommandResult(
                         agent.agentId,
-                        c
+                        ge
                     )
                 ).join("\n") // Describe the result of the command as if a DM was describing it to the player
             });
@@ -136,11 +136,11 @@ export class AgentActor {
         }
 
         // Issue the command to the interpreter just as if it were a player
-        const commands: Command[] = await this.interpreter.interpret(
+        const gameEvents: GameEvent[] = await this.interpreter.interpret(
             this.agentId,
             inputText
         );
-        return commands;
+        return gameEvents;
     }
 
     public async wait(): Promise<string[]> {
