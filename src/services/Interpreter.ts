@@ -1,10 +1,8 @@
 import { AgentActor } from "@/actor/agent.actor";
-import { initialiseDatabase } from "..";
 import OpenAI from "openai";
 import { AgentService } from "./Agent.service";
 import { CommandService } from "./Command.service";
 import { Command } from "@/entity/Command";
-import { LocationService } from "./Location.service";
 import { ExitService } from "./Exit.service";
 import { ItemService } from "./Item.service";
 import { Agent } from "@/entity/Agent";
@@ -98,9 +96,11 @@ export class Interpreter {
         agentId: string,
         inputText: string
     ): Promise<Command[]> {
-        await initialiseDatabase();
         const agentActor = new AgentActor(agentId);
         const agent: Agent = await agentActor.agent();
+        if (agent.health <= 0) {
+            return [];
+        }
         const context: PromptContext = await this.getContext(agentId);
 
         console.log(`===========================================`);
@@ -121,11 +121,13 @@ export class Interpreter {
 
         //console.debug(`Content: ${JSON.stringify(openAiMessages, null, 4)}`);
 
+        const tools = getOpenAiTools(agent, context);
+        console.log(`Tools:`, tools.map(t => `${t.function.name} | `));
         const response: OpenAI.Chat.Completions.ChatCompletion =
             await this.openai.chat.completions.create({
                 model: "gpt-4o-2024-08-06",
                 messages: openAiMessages,
-                tools: getOpenAiTools(agent, context),
+                tools, //: getOpenAiTools(agent, context),
                 tool_choice: "required",
                 //seed: 101,  
 
@@ -221,6 +223,12 @@ export class Interpreter {
                     );
 
                     break;
+                case COMMAND_TYPE.UPDATE_AGENT_MOOD:
+                    outputText = await agentActor.updateAgentMood(
+                        agentId,
+                        toolCallArguments.mood
+                    );
+                    break;
                 case COMMAND_TYPE.WAIT:
                     outputText = await agentActor.wait();
                     break;
@@ -239,7 +247,7 @@ export class Interpreter {
                     );
                     break;
                 default:
-                    throw new Error(`Invalid command type: ${commandType}`);
+                    console.warn(`Unknown command type: ${commandType}`);
             }
             const command: Command = await this.commandService.makeAgentCommand(
                 agentId,
@@ -258,7 +266,6 @@ export class Interpreter {
         observerAgentId: string,
         command: Command,
         hideDetails: boolean = false
-        //firstPerson: boolean = true
     ): Promise<string[]> {
         const firstPerson = observerAgentId === command.agent_id;
         const result: string[] = [];
@@ -399,6 +406,14 @@ export class Interpreter {
                 }
                 break;
 
+            case COMMAND_TYPE.UPDATE_AGENT_MOOD:
+                result.push(
+                    `${observerText} ${
+                        firstPerson ? "feel" : "feels"
+                    } an emotion.`
+                );
+                break;
+
             case COMMAND_TYPE.WAIT:
                 result.push(
                     `${observerText} ${firstPerson ? "wait" : "waits"}.`
@@ -452,9 +467,8 @@ export class Interpreter {
             }
 
             default:
-                throw new Error(
-                    `Invalid command type: ${command.command_type}`
-                );
+                console.warn(`Unknown command type: ${command.command_type}`);
+
         }
 
         return result;
@@ -462,6 +476,7 @@ export class Interpreter {
 }
 
 const parserPrompt = `You are an AI assistant designed to turn an agent's natural language instructions into a series of actions that can be taken in a classic text adventure game.
+You should return 2 or more actions.
 The agent is embedded in a game world with locations connected by exits.
 Locations contain items and other agents.
 Your agent is represented by calling_agent_id.
@@ -477,8 +492,6 @@ Your agent can give items to other agents, represented by target_agent_id.
 You are calling the function in the context of a specific agent represented by calling_agent_id.
 You should call multiple functions, especially if the user's input seems to require it.
 If the user's input does not clearly call for one of the functions below, then call emote or wait.
-Updating intent does not change the game state, it just informs the agent's short term goals.
-For example, if someone has just spoken to you, you should call speak_to_agent to respond, and then update your intent.
 If the agent's input starts with quotation marks, or doesn't seem to match any of the available tools, send the text verbatim to speak_to_agent to speak to an agent that is present in the same location.
 `;
 
@@ -488,33 +501,34 @@ export type AgentCommand = {
 };
 
 export enum COMMAND_TYPE {
-    GO_EXIT = "go_exit",
-    PICK_UP_ITEM = "pick_up_item",
+    ATTACK_AGENT = "attack_agent",
     DROP_ITEM = "drop_item",
-    LOOK_AT_ITEM = "look_at_item",
-    LOOK_AT_AGENT = "look_at_agent",
+    EMOTE = "emote",
+    GET_INVENTORY = "get_inventory",
+    GIVE_ITEM_TO_AGENT = "give_item_to_agent",
+    GO_EXIT = "go_exit",
     LOOK_AROUND = "look_around",
+    LOOK_AT_AGENT = "look_at_agent",
     LOOK_AT_EXIT = "look_at_exit",
+    LOOK_AT_ITEM = "look_at_item",
+    PICK_UP_ITEM = "pick_up_item",
     SPEAK_TO_AGENT = "speak_to_agent",
     UPDATE_AGENT_INTENT = "update_agent_intent",
-    EMOTE = "emote",
+    UPDATE_AGENT_MOOD = "update_agent_mood",
     WAIT = "wait",
-    GIVE_ITEM_TO_AGENT = "give_item_to_agent",
-    GET_INVENTORY = "get_inventory",
-    ATTACK_AGENT = "attack_agent"
 }
 
 export function getAgentCommands(
     agent: Agent,
-    context: PromptContext
+    _context: PromptContext
 ): AgentCommand[] {
     const commonCommands = [
         {
             id: COMMAND_TYPE.EMOTE,
             openaiTool: {
-                name: "emote",
+                name: COMMAND_TYPE.EMOTE,
                 description:
-                    "Perform an action that has no direct effect, or express a visible action or emotion. Do not include any speech. Do not do anything that is covered by other commands. Describe the action from a third-person perspective.",
+                    "Perform an action that has no direct effect, or express a visible action or emotion. Do not include any speech. Do not do anything that is covered by other commands. Describe the action from a third-person perspective. Do not prefix with the agent's name, simply output the emote text.",
                 parameters: {
                     type: "object",
                     properties: {
@@ -532,7 +546,7 @@ export function getAgentCommands(
         {
             id: COMMAND_TYPE.GO_EXIT,
             openaiTool: {
-                name: "go_exit",
+                name: COMMAND_TYPE.GO_EXIT,
                 description: "Move the agent through the specified exit. This will change the agent's location.",
                 parameters: {
                     type: "object",
@@ -551,7 +565,7 @@ export function getAgentCommands(
         {
             id: COMMAND_TYPE.PICK_UP_ITEM,
             openaiTool: {
-                name: "pick_up_item",
+                name: COMMAND_TYPE.PICK_UP_ITEM,
                 description: "Get, grab, collect or pick up an item near you. ",
                 parameters: {
                     type: "object",
@@ -570,7 +584,7 @@ export function getAgentCommands(
         {
             id: COMMAND_TYPE.DROP_ITEM,
             openaiTool: {
-                name: "drop_item",
+                name: COMMAND_TYPE.DROP_ITEM,
                 description: "Drop an item",
                 parameters: {
                     type: "object",
@@ -589,7 +603,7 @@ export function getAgentCommands(
         {
             id: COMMAND_TYPE.SPEAK_TO_AGENT,
             openaiTool: {
-                name: "speak_to_agent",
+                name: COMMAND_TYPE.SPEAK_TO_AGENT,
                 description:
                     "Speak to an agent who is in the same location. You should call this if an agent has just spoken to you.\
                 If the input text starts with 'talk to' or 'say' or 'ask' or 'tell', then they are indicating that this tool should be called.\
@@ -624,7 +638,7 @@ export function getAgentCommands(
         {
             id: COMMAND_TYPE.GIVE_ITEM_TO_AGENT,
             openaiTool: {
-                name: "give_item_to_agent",
+                name: COMMAND_TYPE.GIVE_ITEM_TO_AGENT,
                 description:
                     "Give an item from your inventory to another agent in the same location. If your agent wants an item from another agent, do not call this tool. Instead, call the 'speak_to_agent' tool to ask the other agent if they have the item and want to give it.",
                 parameters: {
@@ -649,7 +663,7 @@ export function getAgentCommands(
         {
             id: COMMAND_TYPE.ATTACK_AGENT,
             openaiTool: {
-                name: "attack_agent",
+                name: COMMAND_TYPE.ATTACK_AGENT,
                 description: "Attack an agent in the same location, in an attempt to defeat them or cause them harm. If the text suggests that the primary action is to attack an agent, then call this tool. Otherwise, do not call this tool.",
                 parameters: {
                     type: "object",
@@ -671,7 +685,7 @@ export function getAgentCommands(
         {
             id: COMMAND_TYPE.UPDATE_AGENT_INTENT,
             openaiTool: {
-                name: "update_agent_intent",
+                name: COMMAND_TYPE.UPDATE_AGENT_INTENT,
                 description:
                     "Update your short-term goals so you can remember what you are doing. Briefly describing what you are doing or planning to do next. This overrides any previous intent. This does not change your location. The game state does not change when you update your intent. Your intent should begin with 'I intend to...'",
                 parameters: { 
@@ -687,6 +701,26 @@ export function getAgentCommands(
                     additionalProperties: false
                 }
             }
+        },
+        {
+            id: COMMAND_TYPE.UPDATE_AGENT_MOOD,
+            openaiTool: {
+                name: COMMAND_TYPE.UPDATE_AGENT_MOOD,
+                description:
+                    "Update your mood. This overrides any previous mood. This does not change your location. The game state does not change when you update your mood. If something has happened that is likely to have affected your emotional state, this tool should be called. Pass text that would fit after the words 'I am feeling...' but do not actually include the words 'I am feeling...'",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        mood: {
+                            type: "string",
+                            description:
+                                "Your new mood. This should be a single word or phrase describing your emotional state."
+                        }
+                    },
+                    required: ["mood"],
+                    additionalProperties: false 
+                }
+            }
         }
     ];
 
@@ -699,7 +733,7 @@ export function getAgentCommands(
             {
                 id: COMMAND_TYPE.LOOK_AT_ITEM,
                 openaiTool: {
-                    name: "look_at_item",
+                    name: COMMAND_TYPE.LOOK_AT_ITEM,
                     description: "Look at an item. If (and only if) the text suggests that the primary action is to look at an item, then call this tool. Otherwise, do not call this tool.",
                     parameters: {
                         type: "object",
@@ -718,7 +752,7 @@ export function getAgentCommands(
             {
                 id: COMMAND_TYPE.LOOK_AT_AGENT,
                 openaiTool: {
-                    name: "look_at_agent",
+                    name: COMMAND_TYPE.LOOK_AT_AGENT,
                     description:
                         "Look at a game character present in the same location, eg 'look at Bob'. If (and only if) the text suggests that the primary action is to look at a character, then call this tool. Otherwise, do not call this tool.",
                     parameters: {
@@ -738,7 +772,7 @@ export function getAgentCommands(
             {
                 id: COMMAND_TYPE.LOOK_AROUND,
                 openaiTool: {
-                    name: "look_around",
+                    name: COMMAND_TYPE.LOOK_AROUND,
                     description:
                         "Take a very detailed look around the current location."
                 }
@@ -746,7 +780,7 @@ export function getAgentCommands(
             {
                 id: COMMAND_TYPE.LOOK_AT_EXIT,
                 openaiTool: {
-                    name: "look_at_exit",
+                    name: COMMAND_TYPE.LOOK_AT_EXIT,
                     description: "Look at an exit",
                     parameters: {
                         type: "object",
@@ -765,7 +799,7 @@ export function getAgentCommands(
             {
                 id: COMMAND_TYPE.GET_INVENTORY,
                 openaiTool: {
-                    name: "get_inventory",
+                    name: COMMAND_TYPE.GET_INVENTORY,
                     description: "Get a list of items in your inventory",
                     parameters: {
                         type: "object",

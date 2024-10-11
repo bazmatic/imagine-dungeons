@@ -42,6 +42,9 @@ export class AgentActor {
     public async act(): Promise<Command[]> {
         //=== Get the context
         const agent: Agent = await this.agent();
+        if (agent.health <= 0) {
+            return [];
+        }
 
         // Location and inventory
         const location: Location = await agent.location;
@@ -63,7 +66,7 @@ export class AgentActor {
                 .map(a => a.label)
                 .join(", ")}
             Your inventory: ${inventory.map(item => item.label).join(", ")}
-            Your mood: ${agent.mood}
+            Your emotional state: You are feeling ${agent.mood}
             Your current intent: ${agent.currentIntent}
             Your long-term goal: ${agent.goal}
             Your backstory: ${agent.backstory}`
@@ -177,10 +180,12 @@ export class AgentActor {
             agent.agentId,
             desinationLocation.locationId
         );
-        let result = [
-            `${agent.label} goes to the ${desinationLocation.label}.`
-        ];
-        result = result.concat(await this.lookAround());
+        // Get agents present in the destination location
+        //const agentsPresent = await this.agentService.getAgentsByLocation(desinationLocation.locationId);
+        // let result = [
+        //     `${agent.label} goes to the ${desinationLocation.label}.`
+        // ];
+        const result = await this.lookAround();
         return result;
     }
 
@@ -301,6 +306,9 @@ export class AgentActor {
             result.push(`You can't see ${targetAgent.label}.`);
         } else {
             result.push(targetAgent.longDescription);
+            if (targetAgent.health <= 0) {
+                result.push(`${targetAgent.label} is dead.`);
+            }
         }
         return result;
     }
@@ -358,7 +366,7 @@ export class AgentActor {
         }
         // Roll a d20 to see if the attack hits
         const hitRoll = Math.floor(Math.random() * 20) + 1;
-        if (hitRoll >= 10) {
+        if (hitRoll >= targetAgent.defence) {
             result.push(`${agent.label} hits ${targetAgent.label}.`);
             // Roll a 6 sided die for each point of damage
             let totalDamage = 0;
@@ -381,9 +389,13 @@ export class AgentActor {
         agentId: string,
         intent: string
     ): Promise<string[]> {
-        await initialiseDatabase();
         await this.agentService.updateAgentIntent(agentId, intent);
         return [intent];
+    }
+
+    public async updateAgentMood(agentId: string, mood: string): Promise<string[]> {
+        await this.agentService.updateAgentMood(agentId, mood);
+        return [mood];
     }
 
     public async sustainDamage(agentId: string, health: number): Promise<void> {

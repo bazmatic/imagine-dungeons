@@ -50,6 +50,9 @@ export class Agent implements IBaseProperties {
     @Column()
     damage: number;
 
+    @Column()
+    defence: number;
+
     // Relation to Items owned by the Agent
     @OneToMany(() => Item, item => item.ownerAgent, { lazy: true })
     items: Promise<Item[]>;
@@ -75,7 +78,8 @@ export class Agent implements IBaseProperties {
             locationId: this.ownerLocationId,
             capacity: this.capacity,
             backstory: this.backstory,
-            items: await Promise.all(items.map(item => item.toDto()))
+            items: await Promise.all(items.map(item => item.toDto())),
+            defence: this.defence
         };
     }
 }
@@ -89,4 +93,5 @@ export class AgentDto implements IBaseProperties {
     capacity: number;
     backstory: string;
     items: ItemDto[];
+    defence: number;
 }

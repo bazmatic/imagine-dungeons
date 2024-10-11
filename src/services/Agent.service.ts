@@ -49,6 +49,11 @@ export class AgentService {
         return this.getAgentById(id);
     }
 
+    async updateAgentMood(id: string, mood: string): Promise<Agent> {
+        await this.agentRepository.update(id, { mood: mood });
+        return this.getAgentById(id);
+    }
+
     async activateAutonomy(id: string, activate: boolean): Promise<Agent> {
         await this.agentRepository.update(id, { activated: activate });
         return this.getAgentById(id);
@@ -62,6 +67,11 @@ export class AgentService {
 
     async updateAgentIntent(id: string, intent: string): Promise<Agent> {
         await this.agentRepository.update(id, { currentIntent: intent });
+        return this.getAgentById(id);
+    }
+
+    async updateAgentDefence(id: string, defence: number): Promise<Agent> {
+        await this.agentRepository.update(id, { defence: defence });
         return this.getAgentById(id);
     }
 }
