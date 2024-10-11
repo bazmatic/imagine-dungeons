@@ -30,7 +30,7 @@ export class GameEventService {
         return gameEvent;
     }
 
-    public async saveAgentCommand(gameEvent: GameEvent): Promise<void> {
+    public async saveGameEvent(gameEvent: GameEvent): Promise<void> {
         await this.gameEventRepository.save(gameEvent);
     }
 

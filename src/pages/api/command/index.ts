@@ -25,23 +25,23 @@ export default async function command(
         );
         // Save all commands to the database
         const gameEventService = new GameEventService();
-        for (const command of commandResponse) {
-            await gameEventService.saveAgentCommand(command);
+        for (const gameEvent of commandResponse) {
+            await gameEventService.saveGameEvent(gameEvent);
         }
         const textOutput = [];
 
         const autonomousAgentResults = await worldService.autonomousAgentsAct();
         // Save all autonomous agent results to the database
-        for (const command of autonomousAgentResults) {
-            await gameEventService.saveAgentCommand(command);
+        for (const gameEvent of autonomousAgentResults) {
+            await gameEventService.saveGameEvent(gameEvent);
         }
 
         const combinedResults = [...commandResponse, ...autonomousAgentResults];
 
-        for (const command of combinedResults) {
+        for (const gameEvent of combinedResults) {
             const descriptions = await interpreter.describeCommandResult(
                 agentId,
-                command,
+                gameEvent,
                 false
             );
             for (const description of descriptions) {

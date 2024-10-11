@@ -18,7 +18,7 @@ export class WorldService {
         const agentActions = agents.map(async (agent) => {
             const agentActor = new AgentActor(agent.agentId);
             const gameEvents: GameEvent[] = await agentActor.act();
-            await Promise.all(gameEvents.map(gameEvent => this.gameEventService.saveAgentCommand(gameEvent)));
+            await Promise.all(gameEvents.map(gameEvent => this.gameEventService.saveGameEvent(gameEvent)));
             return gameEvents;
         });
 
