@@ -8,6 +8,11 @@ import { Agent } from "@/entity/Agent";
 import { ChatCompletionTool, FunctionDefinition } from "openai/resources";
 import { GameEvent } from "@/entity/GameEvent";
 
+export type EventDescription = {
+    primary_text: string;
+    extra_text?: string[];
+}
+
 export type PromptContext = {
     calling_agent_id: string;
     location: {
@@ -248,6 +253,7 @@ export class Interpreter {
                     break;
                 default:
                     console.warn(`Unknown command type: ${commandType}`);
+                    continue;
             }
             const gameEvent: GameEvent = await this.gameEventService.makeGameEvent(
                 agentId,
@@ -266,30 +272,30 @@ export class Interpreter {
         observerAgentId: string,
         gameEvent: GameEvent,
         hideDetails: boolean = false
-    ): Promise<string[]> {
+    ): Promise<EventDescription | null> {
         const firstPerson = observerAgentId === gameEvent.agent_id;
-        const result: string[] = [];
         const parameters = JSON.parse(gameEvent.command_arguments);
         const actor = await this.agentService.getAgentById(gameEvent.agent_id);
 
         if (!gameEvent.agents_present?.includes(observerAgentId)) {
-            return [];
+            return null ;
         }
+        let primary_text: string = "";
+        const extra_text: string[] = [];
         const observerText = firstPerson ? "You" : actor.label;
         switch (gameEvent.command_type) {
             case COMMAND_TYPE.EMOTE: {
-                result.push(`${gameEvent.output_text}`);
+                primary_text = `${gameEvent.output_text}`;
                 break;
             }
             case COMMAND_TYPE.GO_EXIT: {
                 const exit = await this.exitService.getById(parameters.exit_id);
-                result.push(
-                    `${observerText} ${firstPerson ? "go" : "goes"} ${
+                primary_text = `${observerText} ${firstPerson ? "go" : "goes"} ${
+
                         exit.direction
-                    }.`
-                );
+                    }.`;
                 if (gameEvent.output_text && firstPerson && !hideDetails) {
-                    result.push(gameEvent.output_text);
+                    extra_text.push(gameEvent.output_text);
                 }
                 break;
             }
@@ -297,11 +303,9 @@ export class Interpreter {
                 const item = await this.itemService.getItemById(
                     parameters.item_id
                 );
-                result.push(
-                    `${observerText} ${
+                primary_text = `${observerText} ${
                         firstPerson ? "pick up" : "picks up"
-                    } the ${item.label}.`
-                );
+                    } the ${item.label}.`;
                 break;
             }
 
@@ -309,11 +313,9 @@ export class Interpreter {
                 const item = await this.itemService.getItemById(
                     parameters.item_id
                 );
-                result.push(
-                    `${observerText} ${firstPerson ? "drop" : "drops"} the ${
-                        item.label
-                    }.`
-                );
+                primary_text = `${observerText} ${
+                    firstPerson ? "drop" : "drops"
+                } the ${item.label}.`;
                 break;
             }
 
@@ -321,13 +323,11 @@ export class Interpreter {
                 const item = await this.itemService.getItemById(
                     parameters.item_id
                 );
-                result.push(
-                    `${observerText} ${
-                        firstPerson ? "look at" : "looks at"
-                    } the ${item.label}.`
-                );
+                primary_text = `${observerText} ${
+                    firstPerson ? "look at" : "looks at"
+                } the ${item.label}.`;
                 if (gameEvent.output_text && !hideDetails) {
-                    result.push(gameEvent.output_text);
+                    extra_text.push(gameEvent.output_text);
                 }
                 break;
             }
@@ -336,38 +336,32 @@ export class Interpreter {
                 const agent = await this.agentService.getAgentById(
                     parameters.agent_id
                 );
-                result.push(
-                    `${observerText} ${firstPerson ? "look at" : "looks at"} ${
-                        agent.label
-                    }.`
-                );
+                primary_text = `${observerText} ${
+                    firstPerson ? "look at" : "looks at"
+                } ${agent.label}.`;
                 if (gameEvent.output_text && !hideDetails) {
-                    result.push(gameEvent.output_text);
+                    extra_text.push(gameEvent.output_text);
                 }
                 break;
             }
 
             case COMMAND_TYPE.LOOK_AROUND: {
-                result.push(
-                    `${observerText} ${
-                        firstPerson ? "look around" : "looks around"
-                    }.`
-                );
+                primary_text = `${observerText} ${
+                    firstPerson ? "look around" : "looks around"
+                }.`;
                 if (gameEvent.output_text && !hideDetails) {
-                    result.push(gameEvent.output_text);
+                    extra_text.push(gameEvent.output_text);
                 }
                 break;
             }
 
             case COMMAND_TYPE.LOOK_AT_EXIT: {
                 const exit = await this.exitService.getById(parameters.exit_id);
-                result.push(
-                    `${observerText} ${
-                        firstPerson ? "look at" : "looks at"
-                    } the ${exit.direction}.`
-                );
+                primary_text = `${observerText} ${
+                    firstPerson ? "look at" : "looks at"
+                } the ${exit.direction}.`;
                 if (gameEvent.output_text && !hideDetails) {
-                    result.push(`${gameEvent.output_text}`);
+                    extra_text.push(gameEvent.output_text);
                 }
                 break;
             }
@@ -377,17 +371,15 @@ export class Interpreter {
                     parameters.target_agent_id
                 );
 
-                result.push(
-                    `${observerText} ${
-                        firstPerson ? "speak to" : "speaks to"
+                primary_text = `${observerText} ${
+                    firstPerson ? "speak to" : "speaks to"
                     } ${
                         parameters.target_agent_id === gameEvent.agent_id
                             ? "you"
                             : targetAgent.label
-                    }.`
-                );
+                }.`;
                 if (gameEvent.output_text && !hideDetails) {
-                    result.push(
+                    extra_text.push(
                         `${observerText} ${firstPerson ? "say" : "says"}: "${
                             gameEvent.output_text
                         }"`
@@ -396,28 +388,24 @@ export class Interpreter {
                 break;
             }
             case COMMAND_TYPE.UPDATE_AGENT_INTENT:
-                result.push(
-                    `${observerText} ${
-                        firstPerson ? "resolve" : "resolves"
-                    } to do something.`
-                );
+                primary_text = `${observerText} ${
+                    firstPerson ? "resolve" : "resolves"
+                } to do something.`;
                 if (gameEvent.output_text && firstPerson) {
-                    result.push(gameEvent.output_text);
+                    extra_text.push(gameEvent.output_text);
                 }
                 break;
 
             case COMMAND_TYPE.UPDATE_AGENT_MOOD:
-                result.push(
-                    `${observerText} ${
-                        firstPerson ? "feel" : "feels"
-                    } an emotion.`
-                );
+                primary_text = `${observerText} ${
+                    firstPerson ? "feel" : "feels"
+                }.`;
                 break;
 
             case COMMAND_TYPE.WAIT:
-                result.push(
-                    `${observerText} ${firstPerson ? "wait" : "waits"}.`
-                );
+                primary_text = `${observerText} ${
+                    firstPerson ? "wait" : "waits"
+                }.`;
                 break;
 
             case COMMAND_TYPE.GIVE_ITEM_TO_AGENT: {
@@ -428,27 +416,23 @@ export class Interpreter {
                     const targetAgent = await this.agentService.getAgentById(
                         parameters.target_agent_id
                     );
-                    result.push(
-                        `${observerText} ${
-                            firstPerson ? "give" : "gives"
-                        } the ${item.label} to ${targetAgent.label}.`
-                    );
+                    primary_text = `${observerText} ${
+                        firstPerson ? "give" : "gives"
+                    } the ${item.label} to ${targetAgent.label}.`;
                 } catch (error) {
                     console.error(error);
-                    result.push(
-                        `${observerText} ${
-                            firstPerson ? "try to give" : "tries to give"
-                        } something to someone, but it doesn't seem to work.`
-                    );
+                    primary_text = `${observerText} ${
+                        firstPerson ? "try to give" : "tries to give"
+                    } something to someone, but it doesn't seem to work.`;
                 }
                 break;
             }
 
             case COMMAND_TYPE.GET_INVENTORY: {
                 if (firstPerson && gameEvent.output_text) {
-                    result.push(gameEvent.output_text);
+                    extra_text.push(gameEvent.output_text);
                 } else {
-                    result.push(`${observerText} checks their inventory.`);
+                    primary_text = `${observerText} checks their inventory.`;
                 }
                 break;
             }
@@ -457,11 +441,11 @@ export class Interpreter {
                 const targetAgent = await this.agentService.getAgentById(
                     parameters.target_agent_id
                 );
-                result.push(
-                    `${observerText} ${firstPerson ? "attack" : "attacks"} ${targetAgent.label}.`
-                );
+                primary_text = `${observerText} ${
+                    firstPerson ? "attack" : "attacks"
+                } ${targetAgent.label}.`;
                 if (gameEvent.output_text && !hideDetails) {
-                    result.push(gameEvent.output_text);
+                    extra_text.push(gameEvent.output_text);
                 }
                 break;
             }
@@ -471,7 +455,10 @@ export class Interpreter {
 
         }
 
-        return result;
+        return {
+            primary_text,
+            extra_text
+        };
     }
 }
 
@@ -516,6 +503,11 @@ export enum COMMAND_TYPE {
     UPDATE_AGENT_INTENT = "update_agent_intent",
     UPDATE_AGENT_MOOD = "update_agent_mood",
     WAIT = "wait",
+    SEARCH_ITEM = "search_item",
+    SEARCH_LOCATION = "search_location",
+    SEARCH_EXIT = "search_exit",
+    REVEAL_ITEM = "reveal_item",
+    REVEAL_EXIT = "reveal_exit",
 }
 
 export function getAgentCommands(

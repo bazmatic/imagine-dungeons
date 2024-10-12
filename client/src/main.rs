@@ -2,11 +2,11 @@
 use reqwest::Client; // For making HTTP requests
 use std::io::{self, Write}; // For input/output operations
 // Import the GameEventDTO and CommandType from lib.rs
-use imagind::{GameEventDTO, CommandType};
+use imagind::{GameEventDTO};
 use colored::*;
+use reqwest::Response;
 
-
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 // Main function, marked as async and using tokio runtime
 #[tokio::main]
@@ -14,7 +14,24 @@ async fn main() {
     // Create a new HTTP client
     let client = Client::new();
     // Define the API endpoint URL
-    let api_url = "http://localhost:3000/api/command";
+    let api_url = if DEBUG {
+        "http://localhost:3000/api/command"
+    } else {
+        "https://9b41-220-253-88-74.ngrok-free.app/api/command"
+    };
+    // Start the game by sending "look around"
+    let res = client
+        .post(api_url)
+        .json(&serde_json::json!({ "agentId": "char_39322", "command": "look around" }))
+        .send()
+        .await;
+
+    match res {
+        Ok(response) => handle_api_response(response).await,
+        Err(e) => {
+            println!("Error sending command: {}", e);
+        }
+    }
 
     // Start an infinite loop for the game
     loop {
@@ -43,34 +60,34 @@ async fn main() {
 
         // Handle the API response
         match res {
-            Ok(response) => {
-                if response.status().is_success() {
-                    match response.json::<Vec<GameEventDTO>>().await {
-                        Ok(game_events) => {
-                            for game_event in game_events {
-                                if DEBUG {
-                                    print_debug_info(&game_event);
-                                }
-                                print_colored_event(&game_event);
-                            }
-                        },
-                        Err(e) => {
-                            println!("Error parsing JSON: {}", e);
-                        }
-                    }
-                } else {
-                    // If the request was not successful, print the error status code
-                    println!(
-                        "Error: Received status code {}",
-                        response.status().as_u16()
-                    );
-                }
-            }
+            Ok(response) => handle_api_response(response).await,
             Err(e) => {
-                // If there was an error sending the request, print the error
                 println!("Error sending command: {}", e);
             }
         }
+    }
+}
+
+async fn handle_api_response(response: Response) {
+    if response.status().is_success() {
+        match response.json::<Vec<GameEventDTO>>().await {
+            Ok(game_events) => {
+                for game_event in game_events {
+                    // if DEBUG {
+                    //     print_debug_info(&game_event);
+                    // }
+                    print_colored_event(&game_event);
+                }
+            },
+            Err(e) => {
+                println!("Error parsing JSON: {}", e);
+            }
+        }
+    } else {
+        println!(
+            "Error: Received status code {}",
+            response.status().as_u16()
+        );
     }
 }
 
@@ -84,19 +101,13 @@ fn print_debug_info(game_event: &GameEventDTO) {
 }
 
 fn print_colored_event(game_event: &GameEventDTO) {
-    let color = match game_event.command_type {
-        CommandType::LookAround | CommandType::LookAtAgent | CommandType::LookAtExit | CommandType::LookAtItem => "cyan",
-        CommandType::AttackAgent => "red",
-        CommandType::DropItem | CommandType::PickUpItem | CommandType::GiveItemToAgent => "yellow",
-        CommandType::Emote | CommandType::SpeakToAgent => "green",
-        CommandType::GetInventory => "magenta",
-        CommandType::GoExit => "blue",
-        CommandType::UpdateAgentIntent | CommandType::UpdateAgentMood => "bright black",
-        CommandType::Wait => "white",
-        _ => "white",
-    };
+    // Display the primary text as gray
+    println!("{}", game_event.primary_text.color("bright black"));
 
-    for line in &game_event.description {
-        println!("  {}", line.color(color));
+    // Display the extra text as yellow
+    if let Some(extra_text) = &game_event.extra_text {
+        for line in extra_text {
+            println!("{}", line.color("yellow"));
+        }
     }
 }

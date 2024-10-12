@@ -84,24 +84,18 @@ export class AgentActor {
         // Now make historical messages using the input_text and response_text
         for (const ge of previousGameEvents) {
             if (ge.agent_id === this.agentId && ge.input_text) {
+                const eventDescription = await this.interpreter.describeCommandResult(
+                    agent.agentId,
+                    ge
+                );
                 messages.push({
                     role: "assistant",
-                    content: (
-                        await this.interpreter.describeCommandResult(
-                            agent.agentId,
-                            ge
-                        )
-                    ).join("\n") // Describe the result of the command as if a DM was describing it to the player
+                    content: eventDescription?.primary_text ?? "No primary text"
                 });
             }
             messages.push({
                 role: "user",
-                content: (
-                    await this.interpreter.describeCommandResult(
-                        agent.agentId,
-                        ge
-                    )
-                ).join("\n") // Describe the result of the command as if a DM was describing it to the player
+                content: ge.input_text ?? "No input text"
             });
         }
         console.log("=== PREVIOUS COMMANDS ===");
