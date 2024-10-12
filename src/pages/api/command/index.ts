@@ -3,7 +3,7 @@
 import { GameEvent } from "@/entity/GameEvent";
 import { initialiseDatabase } from "@/index";
 import { GameEventService } from "@/services/GameEventService";
-import { Interpreter } from "@/services/Interpreter";
+import { COMMAND_TYPE, Interpreter } from "@/services/Interpreter";
 import { WorldService } from "@/services/World.service";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -28,7 +28,7 @@ export default async function command(
         for (const gameEvent of commandResponse) {
             await gameEventService.saveGameEvent(gameEvent);
         }
-        const textOutput = [];
+        //const textOutput = [];
 
         const autonomousAgentResults = await worldService.autonomousAgentsAct();
         // Save all autonomous agent results to the database
@@ -37,21 +37,37 @@ export default async function command(
         }
 
         const combinedResults = [...commandResponse, ...autonomousAgentResults];
-
-        for (const gameEvent of combinedResults) {
-            const descriptions = await interpreter.describeCommandResult(
+        const dtoResults: GameEventDTO[] = await Promise.all(combinedResults.map(async (gameEvent) => {
+            const descriptions: string[] = await interpreter.describeCommandResult(
                 agentId,
                 gameEvent,
                 false
             );
-            for (const description of descriptions) {
-                console.log(description);
-                textOutput.push(description);
-            }
-        }
-        res.status(200).json(textOutput);
+            return GameEventDTO.fromGameEvent(gameEvent, descriptions);
+        }));
+
+        res.status(200).json(dtoResults);
     } catch (error) {
         console.warn(`Error in autonomous agent actions: ${error}`);
         res.status(500).json({ error });
+    }
+}
+
+export class GameEventDTO {
+    public agent_id: string;
+    public input_text?: string;
+    public command_type: COMMAND_TYPE;
+    public command_arguments: Record<string, unknown>;
+    public description: string[];
+    static fromGameEvent(gameEvent: GameEvent, description: string[]): GameEventDTO {
+        const { agent_id, input_text, command_type } = gameEvent;
+        const command_arguments = gameEvent.arguments;
+        return {
+            agent_id,
+            input_text,
+            command_type,
+            command_arguments,
+            description
+        }
     }
 }

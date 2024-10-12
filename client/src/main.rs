@@ -1,6 +1,10 @@
 // Import necessary libraries
 use reqwest::Client; // For making HTTP requests
 use std::io::{self, Write}; // For input/output operations
+// Import the GameEventDTO and CommandType from lib.rs
+use imagind::{GameEventDTO, CommandType};
+
+const DEBUG: bool = false;
 
 // Main function, marked as async and using tokio runtime
 #[tokio::main]
@@ -39,13 +43,29 @@ async fn main() {
         match res {
             Ok(response) => {
                 if response.status().is_success() {
-                    // If the request was successful, parse the JSON response
-                    let response_text = response.text().await.unwrap();
-                    let response_array: Vec<String> = serde_json::from_str(&response_text).unwrap();
-                    
-                    // Output each string in the array as a separate line
-                    for line in response_array {
-                        println!("{}", line);
+                    // Parse the JSON response as GameEventDTO
+                    //let game_event: GameEventDTO = response.json().await.unwrap();
+                    match response.json::<Vec<GameEventDTO>>().await {
+                        Ok(game_events) => {
+                            // Output the list of parsed GameEventDTO
+                            for game_event in game_events {
+                                if DEBUG {
+                                    println!("Agent ID: {}", game_event.agent_id);
+                                    if let Some(input_text) = game_event.input_text {
+                                        println!("Input Text: {}", input_text);
+                                    }
+                                    
+                                    println!("Command Type: {:?}", game_event.command_type);
+                                    println!("Command Arguments: {:?}", game_event.command_arguments);
+                                }
+                                for line in game_event.description {
+                                    println!("  {}", line);
+                                }
+                            }
+                        },
+                        Err(e) => {
+                            println!("Error parsing JSON: {}", e);
+                        }
                     }
                 } else {
                     // If the request was not successful, print the error status code

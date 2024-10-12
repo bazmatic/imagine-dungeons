@@ -20,6 +20,10 @@ export class GameEvent {
     @Column({ type: "jsonb" })
     command_arguments: string;
 
+    get arguments(): Record<string, unknown> {
+        return JSON.parse(this.command_arguments);
+    }
+
     @Column()
     associated_agent_id?: string;
 
