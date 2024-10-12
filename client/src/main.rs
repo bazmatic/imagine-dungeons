@@ -3,6 +3,8 @@ use reqwest::Client; // For making HTTP requests
 use std::io::{self, Write}; // For input/output operations
 // Import the GameEventDTO and CommandType from lib.rs
 use imagind::{GameEventDTO, CommandType};
+use colored::*;
+
 
 const DEBUG: bool = false;
 
@@ -43,24 +45,13 @@ async fn main() {
         match res {
             Ok(response) => {
                 if response.status().is_success() {
-                    // Parse the JSON response as GameEventDTO
-                    //let game_event: GameEventDTO = response.json().await.unwrap();
                     match response.json::<Vec<GameEventDTO>>().await {
                         Ok(game_events) => {
-                            // Output the list of parsed GameEventDTO
                             for game_event in game_events {
                                 if DEBUG {
-                                    println!("Agent ID: {}", game_event.agent_id);
-                                    if let Some(input_text) = game_event.input_text {
-                                        println!("Input Text: {}", input_text);
-                                    }
-                                    
-                                    println!("Command Type: {:?}", game_event.command_type);
-                                    println!("Command Arguments: {:?}", game_event.command_arguments);
+                                    print_debug_info(&game_event);
                                 }
-                                for line in game_event.description {
-                                    println!("  {}", line);
-                                }
+                                print_colored_event(&game_event);
                             }
                         },
                         Err(e) => {
@@ -80,5 +71,32 @@ async fn main() {
                 println!("Error sending command: {}", e);
             }
         }
+    }
+}
+
+fn print_debug_info(game_event: &GameEventDTO) {
+    println!("Agent ID: {}", game_event.agent_id);
+    if let Some(input_text) = &game_event.input_text {
+        println!("Input Text: {}", input_text);
+    }
+    println!("Command Type: {:?}", game_event.command_type);
+    println!("Command Arguments: {:?}", game_event.command_arguments);
+}
+
+fn print_colored_event(game_event: &GameEventDTO) {
+    let color = match game_event.command_type {
+        CommandType::LookAround | CommandType::LookAtAgent | CommandType::LookAtExit | CommandType::LookAtItem => "cyan",
+        CommandType::AttackAgent => "red",
+        CommandType::DropItem | CommandType::PickUpItem | CommandType::GiveItemToAgent => "yellow",
+        CommandType::Emote | CommandType::SpeakToAgent => "green",
+        CommandType::GetInventory => "magenta",
+        CommandType::GoExit => "blue",
+        CommandType::UpdateAgentIntent | CommandType::UpdateAgentMood => "bright black",
+        CommandType::Wait => "white",
+        _ => "white",
+    };
+
+    for line in &game_event.description {
+        println!("  {}", line.color(color));
     }
 }
