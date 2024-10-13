@@ -33,6 +33,9 @@ export class Location {
     @Column({ name: "long_description" })
     longDescription: string;
 
+    @Column({ name: "notes" })
+    notes: string;
+
     @Column({ name: "owner_id" })
     ownerId: string;
 

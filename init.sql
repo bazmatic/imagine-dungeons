@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS location (
     name TEXT NOT NULL,
     short_description TEXT NOT NULL,
     long_description TEXT NOT NULL,
+    notes TEXT,
     owner_id TEXT
 );
 
@@ -66,7 +67,9 @@ CREATE TABLE IF NOT EXISTS exit (
     owner_location_id TEXT,
     direction TEXT NOT NULL,
     destination_id TEXT NOT NULL,
-    hidden BOOLEAN NOT NULL DEFAULT TRUE,
+    hidden BOOLEAN NOT NULL DEFAULT FALSE,
+    locked BOOLEAN NOT NULL DEFAULT FALSE,
+    notes TEXT,
     FOREIGN KEY (owner_location_id) REFERENCES location(location_id) ON DELETE SET NULL,
     FOREIGN KEY (destination_id) REFERENCES location(location_id) ON DELETE CASCADE
 );
@@ -106,6 +109,7 @@ UPDATE agent SET owner_location_id = 'loc_serenas_ship' WHERE agent_id = 'char_8
 
 
 INSERT INTO agent (agent_id, name, short_description, long_description, owner_location_id, capacity, backstory, mood, current_intent, goal, health, damage, defence, autonomous) VALUES
+    ('system', 'System', 'The system', 'The system is the referee for the game.', NULL, 0, '', NULL, NULL, NULL, 0, 0, 0, FALSE), 
     ('char_39322', 'Paff Pinkerton', 'A determined young adventurer', 'Paff is a youth with a fierce determination in his eyes, seeking to uncover the truth about the Burning District.', 'loc_flaming_goblet', 30, 'Nephew of the wizard Bob, Paff believes his uncle was involved in creating the Burning District and seeks to stop the eternal fire.', 'Determined', 'Find adventurers to help explore the district', 'Discover the truth about the Phoenix Heart', 20, 2, 12, TRUE),
     ('char_84751', 'Captain Serena', 'A seasoned sea captain', 'Captain Serena is a tall tiefling with red skin and sharp horns, wearing a coat of fish scales.', 'loc_flaming_goblet', 40, 'A veteran sailor whose ship is undergoing repairs. She has valuable information about Zezran and the elemental plane of water.', 'Cautious', 'Oversee ship repairs', 'Return to the sea', 25, 3, 14, TRUE),
     ('char_62103', 'Uncle Bob', 'A cranky old wizard', 'Bob is a cantankerous old man in a singed wizard''s robe, hiding a guilty secret.', 'loc_burning_street', 20, 'Former colleague of Zezran, Bob was involved in the creation of the Phoenix Heart and the subsequent burning of the district.', 'Anxious', 'Prevent others from discovering his secret', 'Obtain the Phoenix Heart for himself', 18, 4, 13, TRUE),
@@ -146,31 +150,31 @@ INSERT INTO item (item_id, name, short_description, long_description, owner_agen
 INSERT INTO item (item_id, name, short_description, long_description, owner_location_id, weight, capacity, hidden, notes) VALUES
     ('item_rusty_key', 'Rusty Key', 'A small, rusty key', 'A small, rusty key with the word "Entrance" inscribed on it.', 'loc_flaming_goblet', 1, 0, TRUE, 'Opens a hidden compartment in Zezran''s Workshop containing valuable research notes. Also unlocks the Phoenix Heart.');
 
-INSERT INTO exit (exit_id, name, short_description, long_description, owner_location_id, direction, destination_id) VALUES
-    ('exit_to_street', 'Tavern Exit', 'The door to the burning street', 'A heavy iron door leading out to the perpetually burning street.', 'loc_flaming_goblet', 'north', 'loc_burning_street'),
-    ('exit_to_tavern', 'Tavern Entrance', 'The entrance to the Flaming Goblet', 'A sturdy door marked with a sign of a goblet wreathed in flames.', 'loc_burning_street', 'south', 'loc_flaming_goblet'),
-    ('exit_to_camp', 'Path to Salvagers'' Camp', 'A winding path through the flames', 'A treacherous path that leads to the makeshift camp of the Fire Salvagers.', 'loc_burning_street', 'east', 'loc_fire_salvagers'),
-    ('exit_to_house', 'Zezran''s House', 'The remains of a grand house', 'The charred remnants of what was once a magnificent wizard''s dwelling.', 'loc_burning_street', 'west', 'loc_zezrans_house'),
-    ('exit_to_workshop', 'Hidden Passage', 'A concealed door in the floor', 'A trapdoor hidden beneath a scorched rug, leading to a secret workshop.', 'loc_zezrans_house', 'down', 'loc_workshop'),
-    ('exit_to_alley', 'Narrow Alleyway', 'A tight passage between burning buildings', 'A claustrophobic alley where the flames seem to close in from all sides.', 'loc_burning_street', 'north', 'loc_inferno_alley'),
-    ('exit_to_plaza', 'Wide Street', 'A broad avenue leading to a plaza', 'A once-grand street opening up to a large square, now dominated by intense fires.', 'loc_inferno_alley', 'east', 'loc_elemental_plaza'),
-    ('exit_to_ember', 'Glowing Archway', 'An arch of floating embers', 'An archway formed by swirling embers, marking the entrance to Ember Avenue.', 'loc_burning_street', 'northeast', 'loc_ember_avenue'),
-    ('exit_to_ash', 'Ashen Path', 'A path disappearing into deep ash', 'A narrow path leading into Ash Lane, where the ground is obscured by deep, shifting ash.', 'loc_ember_avenue', 'east', 'loc_ash_lane'),
-    ('exit_to_phoenix', 'Colorful Flames', 'A street of rainbow fire', 'An entrance marked by flames of every color, beckoning visitors to Phoenix Row.', 'loc_ash_lane', 'south', 'loc_phoenix_row'),
-    ('exit_to_square', 'Crumbling Archway', 'A damaged arch leading to a square', 'A partially collapsed stone arch that opens onto the vast expanse of Smoldering Square.', 'loc_phoenix_row', 'west', 'loc_smoldering_square'),
-    ('exit_to_burning', 'Flame-Licked Street', 'A street back to the main burning area', 'A street that leads back to the central Burning Street, flames licking at your heels.', 'loc_smoldering_square', 'north', 'loc_burning_street'),
-    ('exit_to_markets', 'Tavern Back Door', 'A door leading to the dockside markets', 'A sturdy door at the back of the tavern, leading out to the bustling dockside markets.', 'loc_flaming_goblet', 'south', 'loc_dockside_markets'),
-    ('exit_to_tavern_from_markets', 'Tavern Entrance', 'The back entrance to the Flaming Goblet', 'A door leading back into the Flaming Goblet tavern.', 'loc_dockside_markets', 'north', 'loc_flaming_goblet'),
-    ('exit_to_docks', 'Path to Docks', 'A path leading to the docks', 'A well-worn path leading from the markets down to the docks.', 'loc_dockside_markets', 'east', 'loc_docks'),
-    ('exit_to_markets_from_docks', 'Path to Markets', 'A path leading back to the markets', 'A path leading up from the docks to the bustling dockside markets.', 'loc_docks', 'west', 'loc_dockside_markets'),
-    ('exit_to_serenas_ship', 'Gangplank to The Serpent', 'A gangplank leading to Captain Serena''s ship', 'A sturdy gangplank connecting the dock to the deck of The Serpent.', 'loc_docks', 'south', 'loc_serenas_ship'),
-    ('exit_to_docks_from_ship', 'Gangplank to Docks', 'A gangplank leading back to the docks', 'A gangplank connecting the ship''s deck to the wooden docks.', 'loc_serenas_ship', 'north', 'loc_docks'),
-    ('exit_to_burning_from_camp', 'Camp Exit', 'Path leading back to Burning Street', 'A safe path winding back to the main burning street from the Fire Salvagers'' Camp.', 'loc_fire_salvagers', 'west', 'loc_burning_street'),
-    ('exit_to_burning_from_house', 'House Entrance', 'Path leading back to Burning Street', 'An entrance that leads back to the main burning street from Zezran''s House.', 'loc_zezrans_house', 'east', 'loc_burning_street'),
-    ('exit_to_house_from_workshop', 'Workshop Up', 'Staircase leading back to Zezran''s House', 'A staircase that leads back up to Zezran''s House from the Workshop.', 'loc_workshop', 'up', 'loc_zezrans_house'),
-    ('exit_to_burning_from_alley', 'Alley Exit', 'Path leading back to Burning Street', 'A route that takes you back to the main burning street from Inferno Alley.', 'loc_inferno_alley', 'south', 'loc_burning_street'),
-    ('exit_to_alley_from_plaza', 'Plaza Exit', 'Path leading back to Inferno Alley', 'A return path from Elemental Plaza back to Inferno Alley.', 'loc_elemental_plaza', 'west', 'loc_inferno_alley'),
-    ('exit_to_burning_from_ember', 'Ember Avenue Exit', 'Path leading back to Burning Street', 'A southwest path that leads back to the main burning street from Ember Avenue.', 'loc_ember_avenue', 'southwest', 'loc_burning_street'),
-    ('exit_to_ember_from_ash', 'Ash Lane Exit', 'Path leading back to Ember Avenue', 'A west path that takes you back to Ember Avenue from Ash Lane.', 'loc_ash_lane', 'west', 'loc_ember_avenue'),
-    ('exit_to_ash_from_phoenix', 'Phoenix Row Exit', 'Path leading back to Ash Lane', 'A north path that leads back to Ash Lane from Phoenix Row.', 'loc_phoenix_row', 'north', 'loc_ash_lane'),
-    ('exit_to_phoenix_from_square', 'Smoldering Square Exit', 'Path leading back to Phoenix Row', 'An east path that takes you back to Phoenix Row from Smoldering Square.', 'loc_smoldering_square', 'east', 'loc_phoenix_row');
+INSERT INTO exit (exit_id, name, short_description, long_description, owner_location_id, direction, destination_id, locked, notes) VALUES
+    ('exit_to_street', 'Tavern Exit', 'The door to the burning street', 'A heavy iron door leading out to the perpetually burning street.', 'loc_flaming_goblet', 'north', 'loc_burning_street', FALSE, NULL),
+    ('exit_to_tavern', 'Tavern Entrance', 'The entrance to the Flaming Goblet', 'A sturdy door marked with a sign of a goblet wreathed in flames.', 'loc_burning_street', 'south', 'loc_flaming_goblet', FALSE, NULL),
+    ('exit_to_camp', 'Path to Salvagers'' Camp', 'A winding path through the flames', 'A treacherous path that leads to the makeshift camp of the Fire Salvagers.', 'loc_burning_street', 'east', 'loc_fire_salvagers', FALSE, NULL),
+    ('exit_to_house', 'Zezran''s House', 'The remains of a grand house', 'The charred remnants of what was once a magnificent wizard''s dwelling.', 'loc_burning_street', 'west', 'loc_zezrans_house', TRUE, 'Requires the Rusty Key (item_rusty_key) to unlock.'),
+    ('exit_to_workshop', 'Hidden Passage', 'A concealed door in the floor', 'A trapdoor hidden beneath a scorched rug, leading to a secret workshop.', 'loc_zezrans_house', 'down', 'loc_workshop', TRUE, 'Can only be opened by solving the flame puzzle on the floor.'),
+    ('exit_to_alley', 'Narrow Alleyway', 'A tight passage between burning buildings', 'A claustrophobic alley where the flames seem to close in from all sides.', 'loc_burning_street', 'north', 'loc_inferno_alley', FALSE, NULL),
+    ('exit_to_plaza', 'Wide Street', 'A broad avenue leading to a plaza', 'A once-grand street opening up to a large square, now dominated by intense fires.', 'loc_inferno_alley', 'east', 'loc_elemental_plaza', TRUE, 'Blocked by a wall of fire. Requires the Magical Fire Extinguisher (item_fire_extinguisher) to temporarily clear the path.'),
+    ('exit_to_ember', 'Glowing Archway', 'An arch of floating embers', 'An archway formed by swirling embers, marking the entrance to Ember Avenue.', 'loc_burning_street', 'northeast', 'loc_ember_avenue', FALSE, NULL),
+    ('exit_to_ash', 'Ashen Path', 'A path disappearing into deep ash', 'A narrow path leading into Ash Lane, where the ground is obscured by deep, shifting ash.', 'loc_ember_avenue', 'east', 'loc_ash_lane', FALSE, NULL),
+    ('exit_to_phoenix', 'Colorful Flames', 'A street of rainbow fire', 'An entrance marked by flames of every color, beckoning visitors to Phoenix Row.', 'loc_ash_lane', 'south', 'loc_phoenix_row', FALSE, NULL),
+    ('exit_to_square', 'Crumbling Archway', 'A damaged arch leading to a square', 'A partially collapsed stone arch that opens onto the vast expanse of Smoldering Square.', 'loc_phoenix_row', 'west', 'loc_smoldering_square', FALSE, NULL),
+    ('exit_to_burning', 'Flame-Licked Street', 'A street back to the main burning area', 'A street that leads back to the central Burning Street, flames licking at your heels.', 'loc_smoldering_square', 'north', 'loc_burning_street', FALSE, NULL),
+    ('exit_to_markets', 'Tavern Back Door', 'A door leading to the dockside markets', 'A sturdy door at the back of the tavern, leading out to the bustling dockside markets.', 'loc_flaming_goblet', 'south', 'loc_dockside_markets', TRUE, 'Locked from the inside. Requires the password "Ember''s Whisper" to unlock.'),
+    ('exit_to_tavern_from_markets', 'Tavern Entrance', 'The back entrance to the Flaming Goblet', 'A door leading back into the Flaming Goblet tavern.', 'loc_dockside_markets', 'north', 'loc_flaming_goblet', FALSE, NULL),
+    ('exit_to_docks', 'Path to Docks', 'A path leading to the docks', 'A well-worn path leading from the markets down to the docks.', 'loc_dockside_markets', 'east', 'loc_docks', FALSE, NULL),
+    ('exit_to_markets_from_docks', 'Path to Markets', 'A path leading back to the markets', 'A path leading up from the docks to the bustling dockside markets.', 'loc_docks', 'west', 'loc_dockside_markets', FALSE, NULL),
+    ('exit_to_serenas_ship', 'Gangplank to The Serpent', 'A gangplank leading to Captain Serena''s ship', 'A sturdy gangplank connecting the dock to the deck of The Serpent.', 'loc_docks', 'south', 'loc_serenas_ship', TRUE, 'Guarded by Captain Serena''s crew. Requires her permission or a successful persuasion check to board.'),
+    ('exit_to_docks_from_ship', 'Gangplank to Docks', 'A gangplank leading back to the docks', 'A gangplank connecting the ship''s deck to the wooden docks.', 'loc_serenas_ship', 'north', 'loc_docks', FALSE, NULL),
+    ('exit_to_burning_from_camp', 'Camp Exit', 'Path leading back to Burning Street', 'A safe path winding back to the main burning street from the Fire Salvagers'' Camp.', 'loc_fire_salvagers', 'west', 'loc_burning_street', FALSE, NULL),
+    ('exit_to_burning_from_house', 'House Entrance', 'Path leading back to Burning Street', 'An entrance that leads back to the main burning street from Zezran''s House.', 'loc_zezrans_house', 'east', 'loc_burning_street', FALSE, NULL),
+    ('exit_to_house_from_workshop', 'Workshop Up', 'Staircase leading back to Zezran''s House', 'A staircase that leads back up to Zezran''s House from the Workshop.', 'loc_workshop', 'up', 'loc_zezrans_house', FALSE, NULL),
+    ('exit_to_burning_from_alley', 'Alley Exit', 'Path leading back to Burning Street', 'A route that takes you back to the main burning street from Inferno Alley.', 'loc_inferno_alley', 'south', 'loc_burning_street', FALSE, NULL),
+    ('exit_to_alley_from_plaza', 'Plaza Exit', 'Path leading back to Inferno Alley', 'A return path from Elemental Plaza back to Inferno Alley.', 'loc_elemental_plaza', 'west', 'loc_inferno_alley', FALSE, NULL),
+    ('exit_to_burning_from_ember', 'Ember Avenue Exit', 'Path leading back to Burning Street', 'A southwest path that leads back to the main burning street from Ember Avenue.', 'loc_ember_avenue', 'southwest', 'loc_burning_street', FALSE, NULL),
+    ('exit_to_ember_from_ash', 'Ash Lane Exit', 'Path leading back to Ember Avenue', 'A west path that takes you back to Ember Avenue from Ash Lane.', 'loc_ash_lane', 'west', 'loc_ember_avenue', FALSE, NULL),
+    ('exit_to_ash_from_phoenix', 'Phoenix Row Exit', 'Path leading back to Ash Lane', 'A north path that leads back to Ash Lane from Phoenix Row.', 'loc_phoenix_row', 'north', 'loc_ash_lane', FALSE, NULL),
+    ('exit_to_phoenix_from_square', 'Smoldering Square Exit', 'Path leading back to Phoenix Row', 'An east path that takes you back to Phoenix Row from Smoldering Square.', 'loc_smoldering_square', 'east', 'loc_phoenix_row', FALSE, NULL);

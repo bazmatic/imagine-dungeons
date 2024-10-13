@@ -27,9 +27,13 @@ pub enum CommandType {
     LookAtExit,
     LookAtItem,
     PickUpItem,
+    RevealExit,
+    RevealItem,
     SearchLocation,
     SpeakToAgent,
+    UnlockExit,
     UpdateAgentIntent,
     UpdateAgentMood,
+    UpdateItemDescription,
     Wait,
 }

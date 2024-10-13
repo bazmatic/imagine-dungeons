@@ -34,4 +34,8 @@ export class ExitService {
     async revealExit(exitId: string): Promise<void> {
         await this.exitRepository.update(exitId, { hidden: false });
     }
+
+    async unlockExit(exitId: string): Promise<void> {
+        await this.exitRepository.update(exitId, { locked: false });
+    }
 }

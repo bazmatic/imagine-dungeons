@@ -43,6 +43,12 @@ export class Exit {
     @Column({ name: "hidden" })
     hidden: boolean;
 
+    @Column({ name: "locked" })
+    locked: boolean;
+
+    @Column({ name: "notes" })
+    notes: string;
+
     @ManyToOne(() => Location, location => location.exits, { lazy: true })
     @JoinColumn({ name: "owner_location_id", referencedColumnName: "locationId" })
     location: Promise<Location>;

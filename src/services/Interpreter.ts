@@ -22,17 +22,22 @@ export type AgentPromptContext = {
     location: {
         location_id: string;
         name: string;
+        notes: string;
         description: string;
     };
     exits: Array<{
         exit_id: string;
         description: string;
+        locked: boolean;
+        notes: string;
         direction: string;
     }>;
     items_present: Array<{
         item_id: string;
         name: string;
         description: string;
+        hidden: boolean;
+        notes: string;
     }>;
     agents_present: Array<{
         agent_id: string;
@@ -43,6 +48,8 @@ export type AgentPromptContext = {
         item_id: string;
         name: string;
         description: string;
+        hidden: boolean;
+        notes: string;
     }>;
 };
 
@@ -64,6 +71,7 @@ type ToolCallArguments = {
     [COMMAND_TYPE.SEARCH_ITEM]: { item_id: string };
     [COMMAND_TYPE.SEARCH_LOCATION]: { location_id: string };
     [COMMAND_TYPE.SPEAK_TO_AGENT]: { target_agent_id: string; message: string };
+    [COMMAND_TYPE.UNLOCK_EXIT]: { exit_id: string };
     [COMMAND_TYPE.UPDATE_AGENT_INTENT]: { intent: string };
     [COMMAND_TYPE.UPDATE_AGENT_MOOD]: { mood: string };
     [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: { item_id: string; description: string };
@@ -88,28 +96,32 @@ export class Interpreter {
     }
 
     private async getRefereeContext(locationId: string): Promise<AgentPromptContext> {
-        const location = await this.locationService.getLocationById(locationId);
-        const exits = await location.exits;
-        const itemsPresentAtLocation = await location.items;
-        const agentsPresent = await location.agents;
+        const loc = await this.locationService.getLocationById(locationId);
+        const exits = await loc.exits;
+        const itemsPresentAtLocation = await loc.items;
+        const agentsPresent = await loc.agents;
         const itemsOwnedByAgentsPresent = (await Promise.all(agentsPresent.map(agent => agent.items))).flat();
         const itemsPresent: Item[] = [...itemsPresentAtLocation, ...itemsOwnedByAgentsPresent];
 
         return {
             calling_agent_id: "system",
             location: {
-                location_id: location.locationId,
-                name: location.label,
-                description: location.shortDescription
+                location_id: loc.locationId,
+                name: loc.label,
+                notes: loc.notes,
+                description: loc.shortDescription
             },
             exits: exits.map(exit => ({
                 exit_id: exit.exitId,
                 description: exit.shortDescription,
+                locked: exit.locked,
+                notes: exit.notes,
                 direction: exit.direction
             })),
             items_present: itemsPresent.map(item => ({
                 item_id: item.itemId,
                 name: item.label,
+                notes: item.notes,
                 hidden: item.hidden,
                 description: item.shortDescription
             })),
@@ -135,27 +147,33 @@ export class Interpreter {
             location: {
                 location_id: location.locationId,
                 name: location.label,
+                notes: location.notes,
                 description: location.shortDescription
             },
             exits: exits.map(exit => ({
                 exit_id: exit.exitId,
                 description: exit.shortDescription,
-                direction: exit.direction
+                direction: exit.direction,
+                locked: exit.locked,
+                notes: exit.notes
             })),
             items_present: itemsPresent.map(item => ({
                 item_id: item.itemId,
                 name: item.label,
                 hidden: item.hidden,
+                notes: item.notes,
                 description: item.shortDescription
             })),
             agents_present: agentsPresent.map(agent => ({
                 agent_id: agent.agentId,
                 name: agent.label,
-                description: agent.longDescription
+                description: agent.longDescription,
             })),
             inventory: inventory.map(item => ({
                 item_id: item.itemId,
                 name: item.label,
+                hidden: item.hidden,
+                notes: item.notes,
                 description: item.shortDescription
             }))
         };
@@ -253,7 +271,7 @@ export class Interpreter {
         return [...agentGameEvents, ...consequentGameEvents];
     }
 
-    private async executeRefereeToolCall(commandType: COMMAND_TYPE, toolCallArguments: ToolCallArguments[COMMAND_TYPE]): Promise<GameEvent[]> {
+    private async executeRefereeToolCall(commandType: COMMAND_TYPE, toolCallArguments: ToolCallArguments[COMMAND_TYPE], locationId: string): Promise<GameEvent[]> {
         switch (commandType) {
             case COMMAND_TYPE.REVEAL_ITEM:
                 await this.itemService.revealItem(
@@ -263,6 +281,11 @@ export class Interpreter {
             case COMMAND_TYPE.REVEAL_EXIT:
                 await this.exitService.revealExit(
                     (toolCallArguments as ToolCallArguments[COMMAND_TYPE.REVEAL_EXIT]).exit_id
+                );
+                break;
+            case COMMAND_TYPE.UNLOCK_EXIT:
+                await this.exitService.unlockExit(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.UNLOCK_EXIT]).exit_id
                 );
                 break;
             case COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION:
@@ -276,8 +299,19 @@ export class Interpreter {
                 return [];
             
         }
+        const context = await this.getRefereeContext(locationId);
+        const gameEvent: GameEvent =
+            await this.gameEventService.makeGameEvent(
+                "system",
+                locationId,
+                "",  //No input text available here
+                commandType,
+                JSON.stringify(toolCallArguments),
+                undefined,
+                context.agents_present.map(agent => agent.agent_id)
+            );
+        return [gameEvent];
 
-        return [];
     }
 
     private async executeAgentToolCall(
@@ -452,7 +486,7 @@ export class Interpreter {
 
             for (const toolCall of toolCalls) {
                 const toolCallArguments = JSON.parse(toolCall.function.arguments);
-                const gameEvents: GameEvent[] = await this.executeRefereeToolCall(toolCall.function.name as COMMAND_TYPE, toolCallArguments);
+                const gameEvents: GameEvent[] = await this.executeRefereeToolCall(toolCall.function.name as COMMAND_TYPE, toolCallArguments, locationId);
                 //const agentIds: string[] = eventsByLocation[locationId].map(e => e.agent_id).filter(id => id !== null) as string[];
                 // const agentGameEvent: GameEvent = await this.gameEventService.makeGameEvent(
                 //     null,
@@ -694,6 +728,11 @@ export class Interpreter {
                 primary_text = `An exit to the ${exit.direction} is revealed.`;
                 break;
             }
+            case COMMAND_TYPE.UNLOCK_EXIT: {
+                const exit = await this.exitService.getById(parameters.exit_id);
+                primary_text = `The ${exit.direction} is unlocked.`;
+                break;
+            }
             case COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION: {
                 const item = await this.itemService.getItemById(parameters.item_id);
                 primary_text = `The ${item.label} has been changed.`;
@@ -758,6 +797,7 @@ export enum COMMAND_TYPE {
     SEARCH_EXIT = "search_exit",
     REVEAL_ITEM = "reveal_item",
     REVEAL_EXIT = "reveal_exit",
+    UNLOCK_EXIT = "unlock_exit",
     UPDATE_ITEM_DESCRIPTION = "update_item_description"
 }
 

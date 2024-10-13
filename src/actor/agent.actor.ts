@@ -139,19 +139,16 @@ export class AgentActor {
     }
 
     public async wait(): Promise<string[]> {
-        //await initialiseDatabase();
         const agent = await this.agent();
         return [`${agent.label} waits.`];
     }
 
     public async setGoal(goal: string): Promise<void> {
-        //await initialiseDatabase();
         const agent = await this.agent();
         await this.agentService.updateAgentGoal(agent.agentId, goal);
     }
 
     public async ownsItem(itemId: string): Promise<boolean> {
-        //await initialiseDatabase();
         const agent = await this.agent();
         const ownedItems = await agent.items;
         const ownedItem = ownedItems.find(item => item.itemId === itemId);
@@ -159,13 +156,15 @@ export class AgentActor {
     }
 
     public async goExit(exitId: string): Promise<string[]> {
-        //await initialiseDatabase();
         const agent = await this.agent();
         const location = await agent.location;
         const exits = await location.exits;
-        const exit = exits.find(e => e.exitId === exitId);
+        const exit = exits.filter(e => !e.hidden).find(e => e.exitId === exitId);
         if (!exit) {
             throw new Error("Exit not found");
+        }
+        if (exit.locked) {
+            return [`${exit.name} is locked.`];
         }
         const exitEntity: Exit = await this.exitService.getById(exitId);
         const desinationLocation = await this.locationService.getLocationById(
@@ -175,11 +174,6 @@ export class AgentActor {
             agent.agentId,
             desinationLocation.locationId
         );
-        // Get agents present in the destination location
-        //const agentsPresent = await this.agentService.getAgentsByLocation(desinationLocation.locationId);
-        // let result = [
-        //     `${agent.label} goes to the ${desinationLocation.label}.`
-        // ];
         const result = await this.lookAround();
         return result;
     }
@@ -188,7 +182,6 @@ export class AgentActor {
         itemId: string,
         fromTarget?: string
     ): Promise<string[]> {
-        //await initialiseDatabase();
         const agent = await this.agent();
 
         if (fromTarget) {
@@ -214,7 +207,6 @@ export class AgentActor {
     }
 
     public async dropItem(itemId: string): Promise<string[]> {
-        //await initialiseDatabase();
         const agent = await this.agent();
         const ownedItems = await agent.items;
         const itemOwned = ownedItems.find(i => i.itemId === itemId);
@@ -229,20 +221,17 @@ export class AgentActor {
     }
 
     public async searchLocation(): Promise<string[]> {
-        //await initialiseDatabase();
         const agent = await this.agent();
         const location = await agent.location;
         return [`${agent.label} searches the ${location.label}.`];
     }
 
     public async emote(emote: string): Promise<string[]> {
-        //await initialiseDatabase();
         const agent = await this.agent();
         return [`${agent.label}: ${emote}.`];
     }
 
     public async lookAround(): Promise<string[]> {
-        //await initialiseDatabase();
         const agent = await this.agent();
         const location = await agent.location;
         const exits = await location.exits;
@@ -275,7 +264,6 @@ export class AgentActor {
     }
 
     public async itemIsAccessible(itemId: string): Promise<boolean> {
-        await initialiseDatabase();
         const agent: Agent = await this.agentService.getAgentById(this.agentId);
         const inventory = await agent.items;
         const location = await agent.location;
@@ -285,7 +273,6 @@ export class AgentActor {
     }
 
     public async lookAtItem(itemId: string): Promise<string[]> {
-        await initialiseDatabase();
         // If item is not in my inventory or present in my location,
         if (!this.itemIsAccessible(itemId)) {
             throw new Error("Item not found");
@@ -298,7 +285,6 @@ export class AgentActor {
     }
 
     public async lookAtAgent(agentId: string): Promise<string[]> {
-        await initialiseDatabase();
         const targetAgent = await this.agentService.getAgentById(agentId);
         const agent = await this.agent();
         // If the target agent is not in the same location, then I can't see it
@@ -317,7 +303,6 @@ export class AgentActor {
     }
 
     public async lookAtExit(exitId: string): Promise<string[]> {
-        await initialiseDatabase();
         const exit = await this.exitService.getById(exitId);
         const result: string[] = [];
         result.push(exit.longDescription);
@@ -325,7 +310,6 @@ export class AgentActor {
     }
 
     public async lookAtLocation(locationId: string): Promise<string[]> {
-        await initialiseDatabase();
         const location = await this.locationService.getLocationById(locationId);
         const result: string[] = [];
         result.push(location.longDescription);
@@ -336,7 +320,6 @@ export class AgentActor {
         targetAgentId: string,
         message: string
     ): Promise<string[]> {
-        await initialiseDatabase();
         const targetAgent = await this.agentService.getAgentById(targetAgentId);
         const targetAgentLocation = await targetAgent.location;
         const agent = await this.agent();
@@ -354,7 +337,6 @@ export class AgentActor {
     }
 
     public async attackAgent(targetAgentId: string): Promise<string[]> {
-        await initialiseDatabase();
         const agent = await this.agent();
         const targetAgent = await this.agentService.getAgentById(targetAgentId);
         const targetAgentLocation = await targetAgent.location;

@@ -17,6 +17,9 @@ export class Item implements IBaseProperties {
     @Column({ name: "long_description" })
     longDescription: string;
 
+    @Column({ name: "notes" })
+    notes: string;
+
     @Column({ name: "owner_agent_id", nullable: true })
     ownerAgentId?: string | null;
 
