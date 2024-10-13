@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS item (
     owner_item_id TEXT,
     weight INTEGER NOT NULL,
     capacity INTEGER NOT NULL,
+    hidden BOOLEAN NOT NULL DEFAULT FALSE,
+    notes TEXT,
     FOREIGN KEY (owner_agent_id) REFERENCES agent(agent_id) ON DELETE SET NULL,
     FOREIGN KEY (owner_location_id) REFERENCES location(location_id) ON DELETE SET NULL,
     FOREIGN KEY (owner_item_id) REFERENCES item(item_id) ON DELETE CASCADE
@@ -64,6 +66,7 @@ CREATE TABLE IF NOT EXISTS exit (
     owner_location_id TEXT,
     direction TEXT NOT NULL,
     destination_id TEXT NOT NULL,
+    hidden BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (owner_location_id) REFERENCES location(location_id) ON DELETE SET NULL,
     FOREIGN KEY (destination_id) REFERENCES location(location_id) ON DELETE CASCADE
 );
@@ -74,7 +77,7 @@ CREATE TABLE IF NOT EXISTS game_event (
     input_text TEXT NULL, -- The input text that the agent provided, if any
     command_type TEXT NOT NULL, -- The type of command that was issued
     command_arguments JSONB NOT NULL, -- The arguments for the command
-    associated_agent_id TEXT NULL, -- The ID of an agent that is also involved in the command
+    location_id TEXT NULL, -- The ID of the location that the command was issued in
     output_text TEXT NULL, -- Text output by running the command
     agents_present JSONB NULL, -- JSONB array of agents present in the same location as the command was issued
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -126,19 +129,22 @@ INSERT INTO agent (agent_id, name, short_description, long_description, owner_lo
 
 UPDATE agent SET autonomous = FALSE WHERE agent_id = 'char_39322';
 
-INSERT INTO item (item_id, name, short_description, long_description, owner_agent_id, owner_location_id, owner_item_id, weight, capacity) VALUES
-    ('item_phoenix_heart', 'The Phoenix Heart', 'A pulsating gemstone', 'A large gem that pulses with fiery energy, said to be the source of the district''s eternal flames.', NULL, 'loc_workshop', NULL, 5, 0),
-    ('item_fire_extinguisher', 'Magical Fire Extinguisher', 'A device that temporarily stops fires', 'A curious contraption that can temporarily extinguish magical fires in a small area.', 'char_39322', NULL, NULL, 3, 0),
-    ('item_heat_cloak', 'Heat-Resistant Cloak', 'A cloak that protects from extreme heat', 'A shimmering cloak that provides protection against the intense heat of the Burning District.', NULL, 'loc_fire_salvagers', NULL, 2, 0),
-    ('item_zezrans_journal', 'Zezran''s Journal', 'A partially burned book', 'A journal detailing Zezran''s experiments with fire elementals and the creation of the Phoenix Heart.', NULL, 'loc_zezrans_house', NULL, 1, 0),
-    ('item_elemental_jar', 'Elemental Containment Jar', 'A strange metal sphere', 'A reinforced jar designed to capture and contain elemental beings.', NULL, 'loc_workshop', NULL, 4, 0),
-    ('item_frostfire_bomb', 'Frostfire Bomb', 'A volatile magical explosive', 'A bomb that explodes into freezing flames, effective against fire elementals.', NULL, 'loc_fire_salvagers', NULL, 1, 0),
-    ('item_ember_whistle', 'Ember Whistle', 'A whistle that controls small flames', 'A small whistle made of glowing hot metal that can command nearby embers and small flames.', 'char_70451', NULL, NULL, 1, 0),
-    ('item_ashen_chronicle', 'Ashen Chronicle', 'A book that records memories', 'A tome made of compressed ash that magically records the memories of those who touch it.', 'char_28934', NULL, NULL, 2, 0),
-    ('item_phoenix_feather', 'Phoenix Feather', 'A magical feather of shifting colors', 'A feather that constantly shifts through various flame-like colors and is warm to the touch.', NULL, 'loc_phoenix_row', NULL, 1, 0),
-    ('item_flame_tongs', 'Flame Tongs', 'Tongs for handling hot objects', 'A pair of tongs that can safely grasp extremely hot or burning objects without transferring heat to the user.', 'char_91245', NULL, NULL, 3, 0),
-    ('item_fire_map', 'Fire Map', 'A map of the ever-changing flames', 'A magical map that updates in real-time, showing the current locations and intensities of fires in the district.', NULL, 'loc_flaming_goblet', NULL, 1, 0),
-    ('item_cinder_coins', 'Cinder Coins', 'Glowing hot coins', 'Currency used in the Burning District, these coins are always hot to the touch and glow like embers.', NULL, 'loc_smoldering_square', NULL, 1, 0);
+INSERT INTO item (item_id, name, short_description, long_description, owner_agent_id, owner_location_id, owner_item_id, weight, capacity, notes) VALUES
+    ('item_phoenix_heart', 'The Phoenix Heart', 'A pulsating gemstone', 'A large gem that pulses with fiery energy, said to be the source of the district''s eternal flames.', NULL, 'loc_workshop', NULL, 5, 0, 'Can be unlocked by the Rusty Key (item_rusty_key). Pyra (char_47802) desperately wants this item.'),
+    ('item_fire_extinguisher', 'Magical Fire Extinguisher', 'A device that temporarily stops fires', 'A curious contraption that can temporarily extinguish magical fires in a small area.', 'char_39322', NULL, NULL, 3, 0, 'Uncle Bob (char_62103) is terrified of this item and will flee if he sees it.'),
+    ('item_heat_cloak', 'Heat-Resistant Cloak', 'A cloak that protects from extreme heat', 'A shimmering cloak that provides protection against the intense heat of the Burning District.', NULL, 'loc_fire_salvagers', NULL, 2, 0, NULL),
+    ('item_zezrans_journal', 'Zezran''s Journal', 'A partially burned book', 'A journal detailing Zezran''s experiments with fire elementals and the creation of the Phoenix Heart.', NULL, 'loc_zezrans_house', NULL, 1, 0, 'Contains crucial information about the Phoenix Heart''s creation and potential weaknesses.'),
+    ('item_elemental_jar', 'Elemental Containment Jar', 'A strange metal sphere', 'A reinforced jar designed to capture and contain elemental beings.', NULL, 'loc_workshop', NULL, 4, 0, 'Can be used to capture Ember (char_70451) or other small fire elementals.'),
+    ('item_frostfire_bomb', 'Frostfire Bomb', 'A volatile magical explosive', 'A bomb that explodes into freezing flames, effective against fire elementals.', NULL, 'loc_fire_salvagers', NULL, 1, 0, 'Extremely effective against Inferna (char_59731) but may cause collateral damage.'),
+    ('item_ember_whistle', 'Ember Whistle', 'A whistle that controls small flames', 'A small whistle made of glowing hot metal that can command nearby embers and small flames.', 'char_70451', NULL, NULL, 1, 0, 'Can be used to communicate with and potentially control fire elementals.'),
+    ('item_ashen_chronicle', 'Ashen Chronicle', 'A book that records memories', 'A tome made of compressed ash that magically records the memories of those who touch it.', 'char_28934', NULL, NULL, 2, 0, 'Contains valuable historical information about the Burning District before the catastrophe.'),
+    ('item_phoenix_feather', 'Phoenix Feather', 'A magical feather of shifting colors', 'A feather that constantly shifts through various flame-like colors and is warm to the touch.', NULL, 'loc_phoenix_row', NULL, 1, 0, 'Inferna (char_59731) is drawn to this item and will attempt to acquire it if nearby.'),
+    ('item_flame_tongs', 'Flame Tongs', 'Tongs for handling hot objects', 'A pair of tongs that can safely grasp extremely hot or burning objects without transferring heat to the user.', 'char_91245', NULL, NULL, 3, 0, 'Can be used to safely handle the Phoenix Heart without being burned.'),
+    ('item_fire_map', 'Fire Map', 'A map of the ever-changing flames', 'A magical map that updates in real-time, showing the current locations and intensities of fires in the district.', NULL, 'loc_flaming_goblet', NULL, 1, 0, 'Essential for navigating the constantly changing landscape of the Burning District.'),
+    ('item_cinder_coins', 'Cinder Coins', 'Glowing hot coins', 'Currency used in the Burning District, these coins are always hot to the touch and glow like embers.', NULL, 'loc_smoldering_square', NULL, 1, 0, 'Can be used to bribe or trade with inhabitants of the Burning District.');
+
+INSERT INTO item (item_id, name, short_description, long_description, owner_location_id, weight, capacity, hidden, notes) VALUES
+    ('item_rusty_key', 'Rusty Key', 'A small, rusty key', 'A small, rusty key with the word "Entrance" inscribed on it.', 'loc_flaming_goblet', 1, 0, TRUE, 'Opens a hidden compartment in Zezran''s Workshop containing valuable research notes. Also unlocks the Phoenix Heart.');
 
 INSERT INTO exit (exit_id, name, short_description, long_description, owner_location_id, direction, destination_id) VALUES
     ('exit_to_street', 'Tavern Exit', 'The door to the burning street', 'A heavy iron door leading out to the perpetually burning street.', 'loc_flaming_goblet', 'north', 'loc_burning_street'),

@@ -43,7 +43,6 @@ export default async function command(
             const eventDescription: EventDescription | null = await interpreter.describeCommandResult(
                 agentId,
                 gameEvent,
-                false
             );
 
             // Check if the event description is valid
@@ -65,7 +64,7 @@ export default async function command(
 
         res.status(200).json(dtoResults);
     } catch (error) {
-        console.warn(`Error in autonomous agent actions: ${error}`);
+        console.warn(`Error in autonomous agent actions: ${error} ${error instanceof Error ? error.stack : ""}`);
         res.status(500).json({ error });
     }
 }
@@ -81,7 +80,7 @@ export class GameEventDTO {
         const { agent_id, input_text, command_type } = gameEvent;
         const command_arguments = gameEvent.arguments;
         return {
-            agent_id,
+            agent_id: agent_id ?? "system",
             input_text,
             command_type,
             command_arguments,

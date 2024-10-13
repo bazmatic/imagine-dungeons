@@ -134,6 +134,7 @@ export class AgentActor {
             this.agentId,
             inputText
         );
+
         return gameEvents;
     }
 
@@ -204,7 +205,7 @@ export class AgentActor {
         } else {
             const itemPresent = await this.itemIsAccessible(itemId);
             if (!itemPresent) {
-                throw new Error("Item not found");
+                return ["It's not here"];
             }
         }
         await this.itemService.setOwnerToAgent(itemId, agent.agentId);
@@ -218,13 +219,20 @@ export class AgentActor {
         const ownedItems = await agent.items;
         const itemOwned = ownedItems.find(i => i.itemId === itemId);
         if (!itemOwned) {
-            throw new Error("Item not found");
+            return [`${agent.label} doesn't have that.`];
         }
         // Set owner to agent's location
         const location = await agent.location;
         await this.itemService.setOwnerToLocation(itemId, location.locationId);
         const item = await this.itemService.getItemById(itemId);
         return [`${agent.label} drops the ${item.label}.`];
+    }
+
+    public async searchLocation(): Promise<string[]> {
+        //await initialiseDatabase();
+        const agent = await this.agent();
+        const location = await agent.location;
+        return [`${agent.label} searches the ${location.label}.`];
     }
 
     public async emote(emote: string): Promise<string[]> {
@@ -246,7 +254,8 @@ export class AgentActor {
         const agentsPresent = (
             await this.agentService.getAgentsByLocation(location.locationId)
         ).filter(a => a.agentId !== agent.agentId);
-        const itemsPresent = await location.items;
+
+        const itemsPresent = (await location.items).filter(i => !i.hidden);
         exits.forEach(e => {
             result.push(`To the ${e.direction}: ${e.shortDescription}`);
         });
@@ -272,7 +281,7 @@ export class AgentActor {
         const location = await agent.location;
         const itemsHere = await location.items;
         const accessibleItems = inventory.concat(itemsHere);
-        return !!accessibleItems.find(i => i.itemId === itemId);
+        return !!accessibleItems.filter(i => !i.hidden).find(i => i.itemId === itemId);
     }
 
     public async lookAtItem(itemId: string): Promise<string[]> {
@@ -446,6 +455,7 @@ export class AgentActor {
         const itemLabels = inventory.map(item => item.label).join(", ");
         return [`Your inventory contains: ${itemLabels}`];
     }
+
 }
 
 function startsWithVowel(word: string): boolean {

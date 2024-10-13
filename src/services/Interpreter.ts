@@ -7,13 +7,17 @@ import { ItemService } from "./Item.service";
 import { Agent } from "@/entity/Agent";
 import { ChatCompletionTool, FunctionDefinition } from "openai/resources";
 import { GameEvent } from "@/entity/GameEvent";
+import _ from "lodash";
+import { LocationService } from "./Location.service";
+import { Item } from "@/entity/Item";
+import { ATTACK_AGENT_COMMAND, DROP_ITEM_COMMAND, EMOTE_COMMAND, GET_INVENTORY_COMMAND, GIVE_ITEM_TO_AGENT_COMMAND, GO_EXIT_COMMAND, LOOK_AROUND_COMMAND, LOOK_AT_AGENT_COMMAND, LOOK_AT_EXIT_COMMAND, LOOK_AT_ITEM_COMMAND, OpenAiCommand, PICK_UP_ITEM_COMMAND, REVEAL_EXIT_COMMAND, REVEAL_ITEM_COMMAND, SEARCH_LOCATION_COMMAND, SPEAK_TO_AGENT_COMMAND, UPDATE_AGENT_INTENT_COMMAND, UPDATE_AGENT_MOOD_COMMAND, UPDATE_ITEM_DESCRIPTION_COMMAND, WAIT_COMMAND } from "@/types/Tools";
 
 export type EventDescription = {
     primary_text: string;
     extra_text?: string[];
-}
+};
 
-export type PromptContext = {
+export type AgentPromptContext = {
     calling_agent_id: string;
     location: {
         location_id: string;
@@ -42,24 +46,83 @@ export type PromptContext = {
     }>;
 };
 
+type ToolCallArguments = {
+    [COMMAND_TYPE.ATTACK_AGENT]: { target_agent_id: string };
+    [COMMAND_TYPE.DROP_ITEM]: { item_id: string };
+    [COMMAND_TYPE.EMOTE]: { emote_text: string };
+    [COMMAND_TYPE.GET_INVENTORY]: object;
+    [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: { item_id: string; target_agent_id: string };
+    [COMMAND_TYPE.GO_EXIT]: { exit_id: string };
+    [COMMAND_TYPE.LOOK_AROUND]: object;
+    [COMMAND_TYPE.LOOK_AT_AGENT]: { agent_id: string };
+    [COMMAND_TYPE.LOOK_AT_EXIT]: { exit_id: string };
+    [COMMAND_TYPE.LOOK_AT_ITEM]: { item_id: string };
+    [COMMAND_TYPE.PICK_UP_ITEM]: { item_id: string };
+    [COMMAND_TYPE.REVEAL_EXIT]: { exit_id: string };
+    [COMMAND_TYPE.REVEAL_ITEM]: { item_id: string };
+    [COMMAND_TYPE.SEARCH_EXIT]: { exit_id: string };
+    [COMMAND_TYPE.SEARCH_ITEM]: { item_id: string };
+    [COMMAND_TYPE.SEARCH_LOCATION]: { location_id: string };
+    [COMMAND_TYPE.SPEAK_TO_AGENT]: { target_agent_id: string; message: string };
+    [COMMAND_TYPE.UPDATE_AGENT_INTENT]: { intent: string };
+    [COMMAND_TYPE.UPDATE_AGENT_MOOD]: { mood: string };
+    [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: { item_id: string; description: string };
+    [COMMAND_TYPE.WAIT]: object;
+};
+
 export class Interpreter {
     private openai: OpenAI;
     private agentService: AgentService;
     private gameEventService: GameEventService;
-    //private locationService: LocationService;
     private exitService: ExitService;
     private itemService: ItemService;
+    private locationService: LocationService
 
     constructor() {
         this.openai = new OpenAI();
         this.agentService = new AgentService();
         this.gameEventService = new GameEventService();
-        //this.locationService = new LocationService();
         this.exitService = new ExitService();
+        this.locationService = new LocationService();
         this.itemService = new ItemService();
     }
 
-    private async getContext(agentId: string): Promise<PromptContext> {
+    private async getRefereeContext(locationId: string): Promise<AgentPromptContext> {
+        const location = await this.locationService.getLocationById(locationId);
+        const exits = await location.exits;
+        const itemsPresentAtLocation = await location.items;
+        const agentsPresent = await location.agents;
+        const itemsOwnedByAgentsPresent = (await Promise.all(agentsPresent.map(agent => agent.items))).flat();
+        const itemsPresent: Item[] = [...itemsPresentAtLocation, ...itemsOwnedByAgentsPresent];
+
+        return {
+            calling_agent_id: "system",
+            location: {
+                location_id: location.locationId,
+                name: location.label,
+                description: location.shortDescription
+            },
+            exits: exits.map(exit => ({
+                exit_id: exit.exitId,
+                description: exit.shortDescription,
+                direction: exit.direction
+            })),
+            items_present: itemsPresent.map(item => ({
+                item_id: item.itemId,
+                name: item.label,
+                hidden: item.hidden,
+                description: item.shortDescription
+            })),
+            agents_present: agentsPresent.map(agent => ({
+                agent_id: agent.agentId,
+                name: agent.label,
+                description: agent.longDescription
+            })),
+            inventory: []
+        }
+    }
+
+    private async getContext(agentId: string): Promise<AgentPromptContext> {
         const agent = await this.agentService.getAgentById(agentId);
         const location = await agent.location;
         const exits = await location.exits;
@@ -82,6 +145,7 @@ export class Interpreter {
             items_present: itemsPresent.map(item => ({
                 item_id: item.itemId,
                 name: item.label,
+                hidden: item.hidden,
                 description: item.shortDescription
             })),
             agents_present: agentsPresent.map(agent => ({
@@ -101,16 +165,17 @@ export class Interpreter {
         agentId: string,
         inputText: string
     ): Promise<GameEvent[]> {
+        // Get the agent and check if they are dead
         const agentActor = new AgentActor(agentId);
         const agent: Agent = await agentActor.agent();
         if (agent.health <= 0) {
             return [];
         }
-        const context: PromptContext = await this.getContext(agentId);
 
-        console.log(`===========================================`);
-        console.log(`Context: ${JSON.stringify(context, null, 4)}`);
-        console.log(`===========================================`);
+        // === Ask the AI what actions should be invoked based on the user's input ===
+
+        // == Get the context ==
+        const context: AgentPromptContext = await this.getContext(agentId);
 
         const content = {
             agent_command: inputText,
@@ -119,40 +184,43 @@ export class Interpreter {
             ${JSON.stringify(context, null, 4)}`
         };
 
+        // == Get the OpenAI messages ==
+        // System message: "You are an AI assistant that interprets the user's input and returns the appropriate tool calls."
         const openAiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
             [{ role: "system", content: parserPrompt }];
 
+        // User text input and context
         openAiMessages.push({ role: "user", content: JSON.stringify(content) });
 
-        //console.debug(`Content: ${JSON.stringify(openAiMessages, null, 4)}`);
-
+        // -- Get the tools ==
         const tools = getOpenAiTools(agent, context);
-        console.log(`Tools:`, tools.map(t => `${t.function.name} | `));
+
+        // Send the messages to OpenAI
         const response: OpenAI.Chat.Completions.ChatCompletion =
             await this.openai.chat.completions.create({
                 model: "gpt-4o-2024-08-06",
                 messages: openAiMessages,
-                tools, //: getOpenAiTools(agent, context),
-                tool_choice: "required",
-                //seed: 101,  
-
+                tools,
+                tool_choice: "required"
+                //seed: 101,
             });
+
+        // == Parse the response to get the tool calls ==
         const toolCalls = response.choices[0]?.message.tool_calls;
         if (!toolCalls || toolCalls.length === 0) {
             console.debug(JSON.stringify(response, null, 4));
             throw new Error("No tool calls found");
         }
-        console.log(`Tool calls: ${toolCalls.length}`);
-        console.log(`Choices: ${response.choices.length}`);
+        console.debug(`Tool calls: ${toolCalls.length}`);
+        console.debug(`Choices: ${response.choices.length}`);
 
         const rawResponse = response.choices[0]?.message;
         if (!rawResponse) {
             throw new Error("No response content found");
         }
 
-        //console.log(`Raw response: ${JSON.stringify(rawResponse, null, 4)}`);
-
-        const gameEvents: GameEvent[] = [];
+        // == Execute the tool calls to create game events ==
+        const agentGameEvents: GameEvent[] = [];
         for (const toolCall of toolCalls) {
             if (toolCall.function.name === "multi_tool_use.parallel") {
                 console.warn("multi_tool_use.parallel is not supported");
@@ -162,127 +230,271 @@ export class Interpreter {
             const commandType: COMMAND_TYPE = toolCall.function
                 .name as COMMAND_TYPE;
 
-            console.log(
+            console.debug(
                 `Calling ${commandType} with arguments ${JSON.stringify(
                     toolCallArguments
                 )}`
             );
-            let outputText: string[] = [];
 
-            switch (commandType) {
-                case COMMAND_TYPE.EMOTE:
-                    outputText = await agentActor.emote(
-                        toolCallArguments.emote_text
-                    );
-                    break;
+            const gameEvents = await this.  executeAgentToolCall(
+                agentActor,
+                commandType,
+                toolCallArguments
+            );
 
-                case COMMAND_TYPE.GO_EXIT:
-                    outputText = await agentActor.goExit(
-                        toolCallArguments.exit_id
-                    );
+            console.debug(`Game events: ${gameEvents.length}`);
 
-                    break;
-                case COMMAND_TYPE.PICK_UP_ITEM:
-                    outputText = await agentActor.pickUp(
-                        toolCallArguments.item_id
-                    );
+            agentGameEvents.push(...gameEvents);
+        }
 
-                    break;
-                case COMMAND_TYPE.DROP_ITEM:
-                    outputText = await agentActor.dropItem(
-                        toolCallArguments.item_id
-                    );
+        const consequentGameEvents: GameEvent[] =
+            await this.determineConsequentEvents(agentGameEvents);
 
-                    break;
-                case COMMAND_TYPE.LOOK_AT_ITEM:
-                    outputText = await agentActor.lookAtItem(
-                        toolCallArguments.item_id
-                    );
+        return [...agentGameEvents, ...consequentGameEvents];
+    }
 
-                    break;
-                case COMMAND_TYPE.LOOK_AT_AGENT:
-                    outputText = await agentActor.lookAtAgent(
-                        toolCallArguments.agent_id
-                    );
+    private async executeRefereeToolCall(commandType: COMMAND_TYPE, toolCallArguments: ToolCallArguments[COMMAND_TYPE]): Promise<GameEvent[]> {
+        switch (commandType) {
+            case COMMAND_TYPE.REVEAL_ITEM:
+                await this.itemService.revealItem(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.REVEAL_ITEM]).item_id
+                );
+                break;
+            case COMMAND_TYPE.REVEAL_EXIT:
+                await this.exitService.revealExit(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.REVEAL_EXIT]).exit_id
+                );
+                break;
+            case COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION:
+                await this.itemService.updateItemDescription(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]).item_id,
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]).description
+                );
+                break;
+            default:
+                console.warn(`Unknown command type: ${commandType}`);
+                return [];
+            
+        }
 
-                    break;
-                case COMMAND_TYPE.LOOK_AROUND:
-                    outputText = await agentActor.lookAround();
+        return [];
+    }
 
-                    break;
-                case COMMAND_TYPE.LOOK_AT_EXIT:
-                    outputText = await agentActor.lookAtExit(
-                        toolCallArguments.exit_id
-                    );
-                    break;
-                case COMMAND_TYPE.SPEAK_TO_AGENT:
-                    outputText = await agentActor.speakToAgent(
-                        toolCallArguments.target_agent_id,
-                        toolCallArguments.message
-                    );
-                    break;
-                case COMMAND_TYPE.UPDATE_AGENT_INTENT:
-                    outputText = await agentActor.updateAgentIntent(
-                        agentId,
-                        toolCallArguments.intent
-                    );
+    private async executeAgentToolCall(
+        agentActor: AgentActor,
+        commandType: COMMAND_TYPE,
+        toolCallArguments: ToolCallArguments[COMMAND_TYPE]
+    ): Promise<GameEvent[]> {
+        let outputText: string[] = [];
+        const agentId = await agentActor.agent().then(agent => agent.agentId);
 
-                    break;
-                case COMMAND_TYPE.UPDATE_AGENT_MOOD:
-                    outputText = await agentActor.updateAgentMood(
-                        agentId,
-                        toolCallArguments.mood
-                    );
-                    break;
-                case COMMAND_TYPE.WAIT:
-                    outputText = await agentActor.wait();
-                    break;
-                case COMMAND_TYPE.GIVE_ITEM_TO_AGENT:
-                    outputText = await agentActor.giveItemToAgent(
-                        toolCallArguments.item_id,
-                        toolCallArguments.target_agent_id
-                    );
-                    break;
-                case COMMAND_TYPE.GET_INVENTORY:
-                    outputText = await agentActor.getInventory();
-                    break;
-                case COMMAND_TYPE.ATTACK_AGENT:
-                    outputText = await agentActor.attackAgent(
-                        toolCallArguments.target_agent_id
-                    );
-                    break;
-                default:
-                    console.warn(`Unknown command type: ${commandType}`);
-                    continue;
-            }
-            const gameEvent: GameEvent = await this.gameEventService.makeGameEvent(
+        switch (commandType) {
+            case COMMAND_TYPE.EMOTE:
+                outputText = await agentActor.emote(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.EMOTE]).emote_text
+                );
+                break;
+
+            case COMMAND_TYPE.GO_EXIT:
+                outputText = await agentActor.goExit(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.GO_EXIT]).exit_id
+                );
+                break;
+            case COMMAND_TYPE.PICK_UP_ITEM:
+                outputText = await agentActor.pickUp(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.PICK_UP_ITEM]).item_id
+                );
+                break;
+            case COMMAND_TYPE.DROP_ITEM:
+                outputText = await agentActor.dropItem(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.DROP_ITEM]).item_id
+                );
+                break;
+            case COMMAND_TYPE.LOOK_AT_ITEM:
+                outputText = await agentActor.lookAtItem(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.LOOK_AT_ITEM]).item_id
+                );
+                break;
+            case COMMAND_TYPE.LOOK_AT_AGENT:
+                outputText = await agentActor.lookAtAgent(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.LOOK_AT_AGENT]).agent_id
+                );
+                break;
+            case COMMAND_TYPE.LOOK_AROUND:
+                outputText = await agentActor.lookAround();
+                break;
+            case COMMAND_TYPE.LOOK_AT_EXIT:
+                outputText = await agentActor.lookAtExit(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.LOOK_AT_EXIT]).exit_id
+                );
+                break;
+            case COMMAND_TYPE.SPEAK_TO_AGENT:
+                outputText = await agentActor.speakToAgent(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.SPEAK_TO_AGENT]).target_agent_id,
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.SPEAK_TO_AGENT]).message
+                );
+                break;
+            case COMMAND_TYPE.UPDATE_AGENT_INTENT:
+                outputText = await agentActor.updateAgentIntent(
+                    agentId,
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.UPDATE_AGENT_INTENT]).intent
+                );
+                break;
+            case COMMAND_TYPE.UPDATE_AGENT_MOOD:
+                outputText = await agentActor.updateAgentMood(
+                    agentId,
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.UPDATE_AGENT_MOOD]).mood
+                );
+                break;
+            case COMMAND_TYPE.WAIT:
+                outputText = await agentActor.wait();
+                break;
+            case COMMAND_TYPE.GIVE_ITEM_TO_AGENT:
+                outputText = await agentActor.giveItemToAgent(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.GIVE_ITEM_TO_AGENT]).item_id,
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.GIVE_ITEM_TO_AGENT]).target_agent_id
+                );
+                break;
+            case COMMAND_TYPE.GET_INVENTORY:
+                outputText = await agentActor.getInventory();
+                break;
+            case COMMAND_TYPE.ATTACK_AGENT:
+                outputText = await agentActor.attackAgent(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.ATTACK_AGENT]).target_agent_id
+                );
+                break;
+            case COMMAND_TYPE.SEARCH_LOCATION:
+                outputText = await agentActor.searchLocation();
+                break;
+            default:
+                console.warn(`Unknown command type: ${commandType}`);
+                return [];
+        }
+
+        const context = await this.getContext(agentId);
+        const agentGameEvent: GameEvent =
+            await this.gameEventService.makeGameEvent(
                 agentId,
-                inputText,
+                context.location.location_id,
+                "",  //No input text available here
                 commandType,
                 JSON.stringify(toolCallArguments),
                 outputText.join("\n"),
-                context
+                context.agents_present.map(agent => agent.agent_id)
             );
-            gameEvents.push(gameEvent);
+
+        return [agentGameEvent];
+    }
+
+    public async determineConsequentEvents(
+        agentGameEvents: GameEvent[]
+    ): Promise<GameEvent[]> {
+        // Now the AI will play the part of the DM and determine what events should follow, such as
+        // - revealing new items
+        // - chainging item descriptions
+        // - triggering new events
+        // - etc.
+
+        // Break the events up into groups by location
+        const eventsByLocation: Record<string, GameEvent[]> = _.groupBy(
+            agentGameEvents,
+            "location_id"
+        );
+
+        const consequentGameEvents: GameEvent[] = [];
+
+        for (const locationId in eventsByLocation) {
+            const events = eventsByLocation[locationId];
+
+            const systemPrompt = `You are a game master for a text adventure game.
+            You will be given a list of events that occurred in the game.
+            Your job is to determine what (if any) events should follow from these events.`;
+
+            const recentEvents: EventDescription[] = (
+                await Promise.all(
+                    events.map(e => this.describeCommandResult(null, e))
+                )
+            ).filter(e => e !== null) as EventDescription[];
+            if (recentEvents.length === 0) {
+                continue;
+            }
+            const recentEventsPrompt = `The following events occurred in this round in this location:\n${recentEvents
+                .map(e => `${e.primary_text}\n${e.extra_text?.join("\n")}`)
+                .join("\n\n")}`;
+
+            const context = await this.getRefereeContext(locationId);
+
+            const openAiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
+                [
+                    { role: "system", content: systemPrompt },
+                    { role: "system", content: recentEventsPrompt },
+                    { role: "system", content: `Here is the current context: ${JSON.stringify(context, null, 4)}` },
+                    {
+                        role: "user",
+                        content:
+                            "What tool calls should be made to reflect the events that occurred at this location? Respond with a list of tool calls that should be made."
+                    }
+                ];
+
+            const response: OpenAI.Chat.Completions.ChatCompletion =
+                await this.openai.chat.completions.create({
+                    model: "gpt-4o-2024-08-06",
+                    messages: openAiMessages,
+                    tools: REFEREE_OPENAI_TOOLS,
+                    tool_choice: "required"
+                });
+
+            const toolCalls = response.choices[0]?.message.tool_calls;
+            if (!toolCalls || toolCalls.length === 0) {
+                console.warn(JSON.stringify(response, null, 4));
+                throw new Error("No tool calls found");
+            }
+
+            for (const toolCall of toolCalls) {
+                const toolCallArguments = JSON.parse(toolCall.function.arguments);
+                const gameEvents: GameEvent[] = await this.executeRefereeToolCall(toolCall.function.name as COMMAND_TYPE, toolCallArguments);
+                //const agentIds: string[] = eventsByLocation[locationId].map(e => e.agent_id).filter(id => id !== null) as string[];
+                // const agentGameEvent: GameEvent = await this.gameEventService.makeGameEvent(
+                //     null,
+                //     "", // Note: inputText is not available here, consider passing it as a parameter if needed
+                //     toolCall.function.name as COMMAND_TYPE,
+                //     JSON.stringify(toolCallArguments),
+                //     "",
+                //     agentIds
+                // );
+                
+                
+                
+                consequentGameEvents.push(...gameEvents);
+            }
+            //const context = await this.getContext(agentId);
+
+    
         }
-        return gameEvents;
+        return consequentGameEvents;
     }
 
     public async describeCommandResult(
-        observerAgentId: string,
-        gameEvent: GameEvent,
-        hideDetails: boolean = false
+        observerAgentId: string | null,
+        gameEvent: GameEvent
+        //hideDetails: boolean = false
     ): Promise<EventDescription | null> {
         const firstPerson = observerAgentId === gameEvent.agent_id;
         const parameters = JSON.parse(gameEvent.command_arguments);
-        const actor = await this.agentService.getAgentById(gameEvent.agent_id);
+    
+        
 
-        if (!gameEvent.agents_present?.includes(observerAgentId)) {
-            return null ;
+        if (
+            observerAgentId &&
+            !gameEvent.agents_present?.includes(observerAgentId)
+        ) {
+            return null;
         }
         let primary_text: string = "";
+        const actorLabel = gameEvent.agent_id ? await this.agentService.getAgentById(gameEvent.agent_id).then(agent => agent.label) : "system";
         const extra_text: string[] = [];
-        const observerText = firstPerson ? "You" : actor.label;
+        const observerText = firstPerson ? "You" : actorLabel;
+        const showExtraText = firstPerson || observerAgentId === null;
         switch (gameEvent.command_type) {
             case COMMAND_TYPE.EMOTE: {
                 primary_text = `${gameEvent.output_text}`;
@@ -290,11 +502,10 @@ export class Interpreter {
             }
             case COMMAND_TYPE.GO_EXIT: {
                 const exit = await this.exitService.getById(parameters.exit_id);
-                primary_text = `${observerText} ${firstPerson ? "go" : "goes"} ${
-
-                        exit.direction
-                    }.`;
-                if (gameEvent.output_text && firstPerson && !hideDetails) {
+                primary_text = `${observerText} ${
+                    firstPerson ? "go" : "goes"
+                } ${exit.direction}.`;
+                if (gameEvent.output_text && showExtraText) {
                     extra_text.push(gameEvent.output_text);
                 }
                 break;
@@ -304,8 +515,8 @@ export class Interpreter {
                     parameters.item_id
                 );
                 primary_text = `${observerText} ${
-                        firstPerson ? "pick up" : "picks up"
-                    } the ${item.label}.`;
+                    firstPerson ? "pick up" : "picks up"
+                } the ${item.label}.`;
                 break;
             }
 
@@ -326,7 +537,7 @@ export class Interpreter {
                 primary_text = `${observerText} ${
                     firstPerson ? "look at" : "looks at"
                 } the ${item.label}.`;
-                if (gameEvent.output_text && !hideDetails) {
+                if (gameEvent.output_text && showExtraText) {
                     extra_text.push(gameEvent.output_text);
                 }
                 break;
@@ -339,7 +550,7 @@ export class Interpreter {
                 primary_text = `${observerText} ${
                     firstPerson ? "look at" : "looks at"
                 } ${agent.label}.`;
-                if (gameEvent.output_text && !hideDetails) {
+                if (gameEvent.output_text && showExtraText) {
                     extra_text.push(gameEvent.output_text);
                 }
                 break;
@@ -349,7 +560,7 @@ export class Interpreter {
                 primary_text = `${observerText} ${
                     firstPerson ? "look around" : "looks around"
                 }.`;
-                if (gameEvent.output_text && !hideDetails) {
+                if (gameEvent.output_text && showExtraText) {
                     extra_text.push(gameEvent.output_text);
                 }
                 break;
@@ -360,7 +571,7 @@ export class Interpreter {
                 primary_text = `${observerText} ${
                     firstPerson ? "look at" : "looks at"
                 } the ${exit.direction}.`;
-                if (gameEvent.output_text && !hideDetails) {
+                if (gameEvent.output_text && showExtraText) {
                     extra_text.push(gameEvent.output_text);
                 }
                 break;
@@ -373,12 +584,12 @@ export class Interpreter {
 
                 primary_text = `${observerText} ${
                     firstPerson ? "speak to" : "speaks to"
-                    } ${
-                        parameters.target_agent_id === gameEvent.agent_id
-                            ? "you"
-                            : targetAgent.label
+                } ${
+                    parameters.target_agent_id === gameEvent.agent_id
+                        ? "you"
+                        : targetAgent.label
                 }.`;
-                if (gameEvent.output_text && !hideDetails) {
+                if (gameEvent.output_text && showExtraText) {
                     extra_text.push(
                         `${observerText} ${firstPerson ? "say" : "says"}: "${
                             gameEvent.output_text
@@ -407,6 +618,14 @@ export class Interpreter {
                     firstPerson ? "wait" : "waits"
                 }.`;
                 break;
+
+            case COMMAND_TYPE.SEARCH_LOCATION: {
+                const location = await this.locationService.getLocationById(parameters.location_id);
+                primary_text = `${observerText} ${
+                    firstPerson ? "search" : "searches"
+                } ${location.label}.`;
+                break;
+            }
 
             case COMMAND_TYPE.GIVE_ITEM_TO_AGENT: {
                 try {
@@ -444,15 +663,46 @@ export class Interpreter {
                 primary_text = `${observerText} ${
                     firstPerson ? "attack" : "attacks"
                 } ${targetAgent.label}.`;
-                if (gameEvent.output_text && !hideDetails) {
+                if (gameEvent.output_text) {
                     extra_text.push(gameEvent.output_text);
                 }
                 break;
             }
+            case COMMAND_TYPE.SEARCH_LOCATION: {
+                primary_text = `${observerText} ${
+                    firstPerson ? "search" : "searches"
+                } the current location.`;
+                break;
+            }
+            case COMMAND_TYPE.SEARCH_ITEM: {
+                const item = await this.itemService.getItemById(parameters.item_id);
+                primary_text = `${observerText} ${firstPerson ? "search" : "searches"} the ${item.label}.`;
+                break;
+            }
+            case COMMAND_TYPE.SEARCH_EXIT: {
+                const exit = await this.exitService.getById(parameters.exit_id);
+                primary_text = `${observerText} ${firstPerson ? "search" : "searches"} the ${exit.direction}.`;
+                break;
+            }
+            case COMMAND_TYPE.REVEAL_ITEM: {
+                const item = await this.itemService.getItemById(parameters.item_id);
+                primary_text = `A ${item.label} is revealed.`;
+                break;
+            }
+            case COMMAND_TYPE.REVEAL_EXIT: {
+                const exit = await this.exitService.getById(parameters.exit_id);
+                primary_text = `An exit to the ${exit.direction} is revealed.`;
+                break;
+            }
+            case COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION: {
+                const item = await this.itemService.getItemById(parameters.item_id);
+                primary_text = `The ${item.label} has been changed.`;
+                break;
+            }
+
 
             default:
                 console.warn(`Unknown command type: ${gameEvent.command_type}`);
-
         }
 
         return {
@@ -482,10 +732,10 @@ If the user's input does not clearly call for one of the functions below, then c
 If the agent's input starts with quotation marks, or doesn't seem to match any of the available tools, send the text verbatim to speak_to_agent to speak to an agent that is present in the same location.
 `;
 
-export type AgentCommand = {
-    id: string;
-    openaiTool: FunctionDefinition;
-};
+// export type AgentCommand = {
+//     id: string;
+//     openaiTool: FunctionDefinition;
+// };
 
 export enum COMMAND_TYPE {
     ATTACK_AGENT = "attack_agent",
@@ -508,317 +758,128 @@ export enum COMMAND_TYPE {
     SEARCH_EXIT = "search_exit",
     REVEAL_ITEM = "reveal_item",
     REVEAL_EXIT = "reveal_exit",
+    UPDATE_ITEM_DESCRIPTION = "update_item_description"
 }
 
 export function getAgentCommands(
-    agent: Agent,
-    _context: PromptContext
-): AgentCommand[] {
-    const commonCommands = [
-        {
-            id: COMMAND_TYPE.EMOTE,
-            openaiTool: {
-                name: COMMAND_TYPE.EMOTE,
-                description:
-                    "Perform an action that has no direct effect, or express a visible action or emotion. Do not include any speech. Do not do anything that is covered by other commands. Describe the action from a third-person perspective. Do not prefix with the agent's name, simply output the emote text.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        emote_text: {
-                            type: "string",
-                            description:
-                                "A description of the character's expression, or emotional state that others can observe."
-                        }
-                    },
-                    required: ["emote_text"],
-                    additionalProperties: false
-                }
-            }
-        },
-        {
-            id: COMMAND_TYPE.GO_EXIT,
-            openaiTool: {
-                name: COMMAND_TYPE.GO_EXIT,
-                description: "Move the agent through the specified exit. This will change the agent's location.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        exit_id: {
-                            type: "string",
-                            description:
-                                "The id of the exit to move through. This must match exit_id values listed in the exits array of the context."
-                        }
-                    },
-                    required: ["exit_id"],
-                    additionalProperties: false
-                }
-            }
-        },
-        {
-            id: COMMAND_TYPE.PICK_UP_ITEM,
-            openaiTool: {
-                name: COMMAND_TYPE.PICK_UP_ITEM,
-                description: "Get, grab, collect or pick up an item near you. ",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        item_id: {
-                            type: "string",
-                            description:
-                                "The id of the item to get, grab, collect or pick up. This must match item_id values listed in the items_present array of the context."
-                        }
-                    },
-                    required: ["item_id"],
-                    additionalProperties: false
-                }
-            }
-        },
-        {
-            id: COMMAND_TYPE.DROP_ITEM,
-            openaiTool: {
-                name: COMMAND_TYPE.DROP_ITEM,
-                description: "Drop an item",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        item_id: {
-                            type: "string",
-                            description:
-                                "The id of the item to drop. This must match item_id values listed in the inventory array of the context."
-                        }
-                    },
-                    required: ["item_id"],
-                    additionalProperties: false
-                }
-            }
-        },
-        {
-            id: COMMAND_TYPE.SPEAK_TO_AGENT,
-            openaiTool: {
-                name: COMMAND_TYPE.SPEAK_TO_AGENT,
-                description:
-                    "Speak to an agent who is in the same location. You should call this if an agent has just spoken to you.\
-                If the input text starts with 'talk to' or 'say' or 'ask' or 'tell', then they are indicating that this tool should be called.\
-                Only return the spoken text, without any additional descriptive text.\
-                Exclude quotation marks. Eg: Hello Bob, how are you?",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        target_agent_id: {
-                            type: "string",
-                            description:
-                                "The id of the other agent to speak to. This must match agent_id values listed in the agents_present array of the context."
-                        },
-                        message: {
-                            type: "string",
-                            description:
-                                "The message to speak to the other agent, without any additional descriptive text. Exclude quotation marks."
-                        }
-                    },
-                    required: ["target_agent_id", "message"],
-                    additionalProperties: false
-                }
-            }
-        },
-        {
-            id: COMMAND_TYPE.WAIT,
-            openaiTool: {
-                name: "wait",
-                description: "Do nothing for this turn",
-            }
-        },
-        {
-            id: COMMAND_TYPE.GIVE_ITEM_TO_AGENT,
-            openaiTool: {
-                name: COMMAND_TYPE.GIVE_ITEM_TO_AGENT,
-                description:
-                    "Give an item from your inventory to another agent in the same location. If your agent wants an item from another agent, do not call this tool. Instead, call the 'speak_to_agent' tool to ask the other agent if they have the item and want to give it.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        item_id: {
-                            type: "string",
-                            description:
-                                "The id of the item to give. This must match item_id values listed in the inventory array of the context."
-                        },
-                        target_agent_id: {
-                            type: "string",
-                            description:
-                                "The id of the agent to give the item to. This must match agent_id values listed in the agents_present array of the context."
-                        }
-                    },
-                    required: ["item_id", "target_agent_id"],
-                    additionalProperties: false
-                }
-            }
-        },
-        {
-            id: COMMAND_TYPE.ATTACK_AGENT,
-            openaiTool: {
-                name: COMMAND_TYPE.ATTACK_AGENT,
-                description: "Attack an agent in the same location, in an attempt to defeat them or cause them harm. If the text suggests that the primary action is to attack an agent, then call this tool. Otherwise, do not call this tool.",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        target_agent_id: {
-                            type: "string",
-                            description:
-                                "The id of the agent to attack. This must match agent_id values listed in the agents_present array of the context."
-                        }
-                    },
-                    required: ["target_agent_id"],
-                    additionalProperties: false
-                }
-            }
-        }
+    agent: Agent | null,
+    _context: AgentPromptContext
+): OpenAiCommand[] {
+    const commonCommands: OpenAiCommand[] = [
+        ATTACK_AGENT_COMMAND,
+        DROP_ITEM_COMMAND,
+        EMOTE_COMMAND,
+        GIVE_ITEM_TO_AGENT_COMMAND,
+        GO_EXIT_COMMAND,
+        PICK_UP_ITEM_COMMAND,
+        SEARCH_LOCATION_COMMAND,
+        SPEAK_TO_AGENT_COMMAND,
+        WAIT_COMMAND,
     ];
 
-    const autonomousCommands = [
-        {
-            id: COMMAND_TYPE.UPDATE_AGENT_INTENT,
-            openaiTool: {
-                name: COMMAND_TYPE.UPDATE_AGENT_INTENT,
-                description:
-                    "Update your short-term goals so you can remember what you are doing. Briefly describing what you are doing or planning to do next. This overrides any previous intent. This does not change your location. The game state does not change when you update your intent. Your intent should begin with 'I intend to...'",
-                parameters: { 
-                    type: "object",
-                    properties: {
-                        intent: {
-                            type: "string",
-                            description:
-                                "Your new short-term goals. Briefly describing what you are doing or planning to do next."
-                        }
-                    },
-                    required: ["intent"],
-                    additionalProperties: false
-                }
-            }
-        },
-        {
-            id: COMMAND_TYPE.UPDATE_AGENT_MOOD,
-            openaiTool: {
-                name: COMMAND_TYPE.UPDATE_AGENT_MOOD,
-                description:
-                    "Update your mood. This overrides any previous mood. This does not change your location. The game state does not change when you update your mood. If something has happened that is likely to have affected your emotional state, this tool should be called. Pass text that would fit after the words 'I am feeling...' but do not actually include the words 'I am feeling...'",
-                parameters: {
-                    type: "object",
-                    properties: {
-                        mood: {
-                            type: "string",
-                            description:
-                                "Your new mood. This should be a single word or phrase describing your emotional state."
-                        }
-                    },
-                    required: ["mood"],
-                    additionalProperties: false 
-                }
-            }
-        }
+    const autonomousCommands: OpenAiCommand[] = [
+        UPDATE_AGENT_INTENT_COMMAND,
+        UPDATE_AGENT_MOOD_COMMAND
     ];
 
+    const nonAutonomousCommands: OpenAiCommand[] = [
+        GET_INVENTORY_COMMAND,
+        LOOK_AROUND_COMMAND,
+        LOOK_AT_AGENT_COMMAND,
+        LOOK_AT_EXIT_COMMAND,
+        LOOK_AT_ITEM_COMMAND,
+    ];
+
+    const refereeCommands: OpenAiCommand[] = [
+        REVEAL_ITEM_COMMAND,
+        REVEAL_EXIT_COMMAND,
+        UPDATE_ITEM_DESCRIPTION_COMMAND
+    ];
     
-
-    if (!agent.autonomous) {
-        // Add additional commands for non-autonomous agents
-        return [
-            ...commonCommands,
-            {
-                id: COMMAND_TYPE.LOOK_AT_ITEM,
-                openaiTool: {
-                    name: COMMAND_TYPE.LOOK_AT_ITEM,
-                    description: "Look at an item. If (and only if) the text suggests that the primary action is to look at an item, then call this tool. Otherwise, do not call this tool.",
-                    parameters: {
-                        type: "object",
-                        properties: {
-                            item_id: {
-                                type: "string",
-                                description:
-                                    "The id of the item to look at. This must match item_id values listed in the items_present array or inventory array of the context."
-                            }
-                        },
-                        required: ["item_id"],
-                        additionalProperties: false
-                    }
-                }
-            },
-            {
-                id: COMMAND_TYPE.LOOK_AT_AGENT,
-                openaiTool: {
-                    name: COMMAND_TYPE.LOOK_AT_AGENT,
-                    description:
-                        "Look at a game character present in the same location, eg 'look at Bob'. If (and only if) the text suggests that the primary action is to look at a character, then call this tool. Otherwise, do not call this tool.",
-                    parameters: {
-                        type: "object",
-                        properties: {
-                            agent_id: {
-                                type: "string",
-                                description:
-                                    "The id of the agent (character) to look at. This must match agent_id values listed in the agents_present array of the context."
-                            }
-                        },
-                        required: ["agent_id"],
-                        additionalProperties: false
-                    }
-                }
-            },
-            {
-                id: COMMAND_TYPE.LOOK_AROUND,
-                openaiTool: {
-                    name: COMMAND_TYPE.LOOK_AROUND,
-                    description:
-                        "Take a very detailed look around the current location."
-                }
-            },
-            {
-                id: COMMAND_TYPE.LOOK_AT_EXIT,
-                openaiTool: {
-                    name: COMMAND_TYPE.LOOK_AT_EXIT,
-                    description: "Look at an exit",
-                    parameters: {
-                        type: "object",
-                        properties: {
-                            exit_id: {
-                                type: "string",
-                                description:
-                                    "The id of the exit to look at. This must match exit_id values listed in the exits array of the context."
-                            }
-                        },
-                        required: ["exit_id"],
-                        additionalProperties: false
-                    }
-                }
-            },
-            {
-                id: COMMAND_TYPE.GET_INVENTORY,
-                openaiTool: {
-                    name: COMMAND_TYPE.GET_INVENTORY,
-                    description: "Get a list of items in your inventory",
-                    parameters: {
-                        type: "object",
-                        properties: {},
-                        additionalProperties: false
-                    }
-                }
-            }
-        ];
+    if (!agent) {
+        return refereeCommands;
     }
-    else {
-        return [
-            ...commonCommands,
-            ...autonomousCommands
-        ];
+    if (!agent.autonomous) {
+        return [...commonCommands, ...nonAutonomousCommands];
+    } else {
+        return [...commonCommands, ...autonomousCommands];
     }
 }
 
+  
+
 export function getOpenAiTools(
-    agent: Agent,
-    context: PromptContext
+    agent: Agent | null,
+    context: AgentPromptContext
 ): ChatCompletionTool[] {
-    const agentCommands = getAgentCommands(agent, context);
+    const agentCommands: OpenAiCommand[] = getAgentCommands(agent, context);
     return agentCommands.map(c => {
         return {
             type: "function",
-            function: { ...c.openaiTool }
+            function: { 
+                id: c.function.name,
+                ...c.function
+            }
         };
     });
 }
+
+export const REFEREE_OPENAI_TOOLS: ChatCompletionTool[] = [
+    {
+        type: "function",
+        function: {
+            name: COMMAND_TYPE.REVEAL_ITEM,
+            description:
+                "Change a hidden item to a visible item. This might happen if the user searches the location where the hidden item is. Do not use this to create new items.",
+            parameters: {
+                type: "object",
+                properties: {
+                    item_id: {
+                        type: "string",
+                        description:
+                            "The id of the item to reveal. This must match item_id values listed in the items_present array of the context."
+                    }
+                },
+                required: ["item_id"],
+                additionalProperties: false
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: COMMAND_TYPE.REVEAL_EXIT,
+            description:
+                "Change a hidden exit to a visible exit. This might happen if the user searches the location where the hidden exit is.",
+            parameters: {
+                type: "object",
+                properties: {
+                    exit_id: {
+                        type: "string"
+                    }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION,
+            description:
+                "Update the description of an item. This might happen something happens to the object that should be reflected in the description.",
+            parameters: {
+                type: "object",
+                properties: {
+                    item_id: {
+                        type: "string"
+                    },
+                    description: {
+                        type: "string"
+                    }
+                },
+                required: ["item_id", "description"],
+                additionalProperties: false
+            }
+        }
+    }
+];

@@ -10,6 +10,8 @@
       "typeorm": "typeorm-ts-node-commonjs"
    },
    "dependencies": {
+      "@types/lodash": "^4.17.10",
+      "lodash": "^4.17.21",
       "next": "14.2.13",
       "openai": "^4.67.1",
       "pg": "^8.4.0",

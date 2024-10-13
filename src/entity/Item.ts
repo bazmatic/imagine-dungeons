@@ -32,6 +32,9 @@ export class Item implements IBaseProperties {
     @Column()
     weight: number;
 
+    @Column({ name: "hidden", default: false })
+    hidden: boolean;
+
     // Relation to Agent
     @ManyToOne(() => Agent, agent => agent.items, { lazy: true, nullable: true })
     @JoinColumn({ name: "owner_agent_id", referencedColumnName: "agentId" })

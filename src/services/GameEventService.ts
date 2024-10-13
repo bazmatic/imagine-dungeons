@@ -2,7 +2,8 @@ import dotenv from "dotenv";
 import { Repository, Raw } from "typeorm";
 import { AppDataSource } from "@/data-source";
 import { GameEvent } from "@/entity/GameEvent";
-import { COMMAND_TYPE, PromptContext } from "./Interpreter";
+import { COMMAND_TYPE, AgentPromptContext } from "./Interpreter";
+import { Agent } from "http";
 dotenv.config();
 
 export class GameEventService {
@@ -13,20 +14,22 @@ export class GameEventService {
     }
 
     public async makeGameEvent(
-        agentId: string,
+        agentId: string | null,
+        locationId: string | null,
         inputText: string | undefined,
         commandType: COMMAND_TYPE,
         commandArguments: string,
         outputText: string | undefined,
-        context: PromptContext
+        agentsPresent: string[]
     ): Promise<GameEvent> {
         const gameEvent = new GameEvent();
-        gameEvent.agent_id = agentId;
+        gameEvent.agent_id = agentId ?? undefined;
+        gameEvent.location_id = locationId ?? undefined;
         gameEvent.input_text = inputText;
         gameEvent.command_type = commandType;
         gameEvent.command_arguments = commandArguments;
         gameEvent.output_text = outputText;
-        gameEvent.agents_present = context.agents_present.map(agent => agent.agent_id);
+        gameEvent.agents_present = agentsPresent;
         return gameEvent;
     }
 

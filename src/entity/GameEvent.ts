@@ -1,4 +1,5 @@
 // TypeORM
+
 import { COMMAND_TYPE } from '@/services/Interpreter';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
@@ -9,8 +10,11 @@ export class GameEvent {
     game_event_id: number;
 
     @Column()
-    agent_id: string;
+    agent_id?: string;
 
+    @Column()
+    location_id?: string;
+    
     @Column()
     input_text?: string;
 
@@ -23,9 +27,6 @@ export class GameEvent {
     get arguments(): Record<string, unknown> {
         return JSON.parse(this.command_arguments);
     }
-
-    @Column()
-    associated_agent_id?: string;
 
     @Column()
     output_text?: string;

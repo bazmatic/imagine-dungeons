@@ -30,4 +30,8 @@ export class ExitService {
         await this.exitRepository.update(id, itemData);
         return this.getById(id);
     }
+
+    async revealExit(exitId: string): Promise<void> {
+        await this.exitRepository.update(exitId, { hidden: false });
+    }
 }

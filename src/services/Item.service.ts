@@ -56,4 +56,16 @@ export class ItemService {
     async deleteItem(id: string): Promise<void> {
         await this.itemRepository.delete(id);
     }
+
+    async revealItem(itemId: string): Promise<void> {
+       await this.itemRepository.update(itemId, {
+        hidden: false
+       });
+    }
+
+    async updateItemDescription(itemId: string, description: string): Promise<void> {
+        await this.itemRepository.update(itemId, {
+            longDescription: description
+        });
+    }
 }

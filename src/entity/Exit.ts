@@ -40,6 +40,9 @@ export class Exit {
     @Column({ name: "direction" })
     direction: string;
 
+    @Column({ name: "hidden" })
+    hidden: boolean;
+
     @ManyToOne(() => Location, location => location.exits, { lazy: true })
     @JoinColumn({ name: "owner_location_id", referencedColumnName: "locationId" })
     location: Promise<Location>;
