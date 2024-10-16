@@ -3,8 +3,9 @@
 import { GameEvent } from "@/entity/GameEvent";
 import { initialiseDatabase } from "@/index";
 import { GameEventService } from "@/services/GameEventService";
-import { COMMAND_TYPE, EventDescription, Interpreter } from "@/services/Interpreter";
+import { EventDescription, Interpreter } from "@/services/Interpreter";
 import { WorldService } from "@/services/World.service";
+import { COMMAND_TYPE } from "@/types/Tools";
 import { NextApiRequest, NextApiResponse } from "next";
 
 export default async function command(

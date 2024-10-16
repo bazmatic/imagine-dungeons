@@ -10,6 +10,7 @@ import { GameEvent } from "@/entity/GameEvent";
 import _ from "lodash";
 import { LocationService } from "./Location.service";
 import { Item } from "@/entity/Item";
+import { COMMAND_TYPE, DO_NOTHING_COMMAND } from "@/types/Tools";
 import { ATTACK_AGENT_COMMAND, DROP_ITEM_COMMAND, EMOTE_COMMAND, GET_INVENTORY_COMMAND, GIVE_ITEM_TO_AGENT_COMMAND, GO_EXIT_COMMAND, LOOK_AROUND_COMMAND, LOOK_AT_AGENT_COMMAND, LOOK_AT_EXIT_COMMAND, LOOK_AT_ITEM_COMMAND, OpenAiCommand, PICK_UP_ITEM_COMMAND, REVEAL_EXIT_COMMAND, REVEAL_ITEM_COMMAND, SEARCH_LOCATION_COMMAND, SPEAK_TO_AGENT_COMMAND, UPDATE_AGENT_INTENT_COMMAND, UPDATE_AGENT_MOOD_COMMAND, UPDATE_ITEM_DESCRIPTION_COMMAND, WAIT_COMMAND } from "@/types/Tools";
 
 export type EventDescription = {
@@ -22,14 +23,14 @@ export type AgentPromptContext = {
     location: {
         location_id: string;
         name: string;
-        notes: string;
+        notes?: string;
         description: string;
     };
     exits: Array<{
         exit_id: string;
         description: string;
         locked: boolean;
-        notes: string;
+        notes?: string;
         direction: string;
     }>;
     items_present: Array<{
@@ -37,7 +38,7 @@ export type AgentPromptContext = {
         name: string;
         description: string;
         hidden: boolean;
-        notes: string;
+        notes?: string;
     }>;
     agents_present: Array<{
         agent_id: string;
@@ -49,14 +50,14 @@ export type AgentPromptContext = {
         name: string;
         description: string;
         hidden: boolean;
-        notes: string;
     }>;
 };
 
 type ToolCallArguments = {
     [COMMAND_TYPE.ATTACK_AGENT]: { target_agent_id: string };
     [COMMAND_TYPE.DROP_ITEM]: { item_id: string };
-    [COMMAND_TYPE.EMOTE]: { emote_text: string };
+    [COMMAND_TYPE.DO_NOTHING]: object;
+    [COMMAND_TYPE.EMOTE]: { emote_text: string; agent_id: string };
     [COMMAND_TYPE.GET_INVENTORY]: object;
     [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: { item_id: string; target_agent_id: string };
     [COMMAND_TYPE.GO_EXIT]: { exit_id: string };
@@ -134,7 +135,7 @@ export class Interpreter {
         }
     }
 
-    private async getContext(agentId: string): Promise<AgentPromptContext> {
+    private async getContext(agentId: string, includeNotes: boolean = false): Promise<AgentPromptContext> {
         const agent = await this.agentService.getAgentById(agentId);
         const location = await agent.location;
         const exits = await location.exits;
@@ -147,7 +148,7 @@ export class Interpreter {
             location: {
                 location_id: location.locationId,
                 name: location.label,
-                notes: location.notes,
+                notes: includeNotes ? location.notes : undefined,
                 description: location.shortDescription
             },
             exits: exits.map(exit => ({
@@ -155,13 +156,13 @@ export class Interpreter {
                 description: exit.shortDescription,
                 direction: exit.direction,
                 locked: exit.locked,
-                notes: exit.notes
+                notes: includeNotes ? exit.notes : undefined
             })),
             items_present: itemsPresent.map(item => ({
                 item_id: item.itemId,
                 name: item.label,
                 hidden: item.hidden,
-                notes: item.notes,
+                notes: includeNotes ? item.notes : undefined,
                 description: item.shortDescription
             })),
             agents_present: agentsPresent.map(agent => ({
@@ -173,7 +174,7 @@ export class Interpreter {
                 item_id: item.itemId,
                 name: item.label,
                 hidden: item.hidden,
-                notes: item.notes,
+                notes: includeNotes ? item.notes : undefined,
                 description: item.shortDescription
             }))
         };
@@ -219,15 +220,15 @@ export class Interpreter {
                 model: "gpt-4o-2024-08-06",
                 messages: openAiMessages,
                 tools,
-                tool_choice: "required"
-                //seed: 101,
+                tool_choice: "auto",
+                seed: 101,
             });
 
         // == Parse the response to get the tool calls ==
         const toolCalls = response.choices[0]?.message.tool_calls;
         if (!toolCalls || toolCalls.length === 0) {
             console.debug(JSON.stringify(response, null, 4));
-            throw new Error("No tool calls found");
+            return []; // TODO: Default action. Look confused?
         }
         console.debug(`Tool calls: ${toolCalls.length}`);
         console.debug(`Choices: ${response.choices.length}`);
@@ -254,7 +255,7 @@ export class Interpreter {
                 )}`
             );
 
-            const gameEvents = await this.  executeAgentToolCall(
+            const gameEvents = await this.executeAgentToolCall(
                 agentActor,
                 commandType,
                 toolCallArguments
@@ -272,7 +273,11 @@ export class Interpreter {
     }
 
     private async executeRefereeToolCall(commandType: COMMAND_TYPE, toolCallArguments: ToolCallArguments[COMMAND_TYPE], locationId: string): Promise<GameEvent[]> {
+        let outputText: string[] = [];
+
         switch (commandType) {
+            case COMMAND_TYPE.DO_NOTHING:
+                return [];
             case COMMAND_TYPE.REVEAL_ITEM:
                 await this.itemService.revealItem(
                     (toolCallArguments as ToolCallArguments[COMMAND_TYPE.REVEAL_ITEM]).item_id
@@ -294,21 +299,46 @@ export class Interpreter {
                     (toolCallArguments as ToolCallArguments[COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]).description
                 );
                 break;
+            case COMMAND_TYPE.EMOTE:
+
+                const agentActor = new AgentActor(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.EMOTE]).agent_id
+                );
+                outputText = await agentActor.emote(
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.EMOTE]).emote_text
+                );
+                break;
+            case COMMAND_TYPE.DO_NOTHING:
+                break;
+            
             default:
                 console.warn(`Unknown command type: ${commandType}`);
                 return [];
-            
+
+            // Create the game event
+            const agentsPresent = await this.agentService.getAgentsByLocation(locationId); // context = await this.getRefereeContext(locationId);
+            const gameEvent: GameEvent =
+                await this.gameEventService.makeGameEvent(
+                    "system",
+                    locationId,
+                    "",  //No input text available here, as this is a system event
+                    commandType,
+                    JSON.stringify(toolCallArguments),
+                    outputText.join("\n"),
+                    agentsPresent.map(agent => agent.agentId)
+                );
+            return [gameEvent];
         }
-        const context = await this.getRefereeContext(locationId);
+        const agentsPresent = await this.agentService.getAgentsByLocation(locationId); // context = await this.getRefereeContext(locationId);
         const gameEvent: GameEvent =
             await this.gameEventService.makeGameEvent(
                 "system",
                 locationId,
-                "",  //No input text available here
+                "",  //No input text available here, as this is a system event
                 commandType,
                 JSON.stringify(toolCallArguments),
                 undefined,
-                context.agents_present.map(agent => agent.agent_id)
+                agentsPresent.map(agent => agent.agentId)
             );
         return [gameEvent];
 
@@ -328,7 +358,8 @@ export class Interpreter {
                     (toolCallArguments as ToolCallArguments[COMMAND_TYPE.EMOTE]).emote_text
                 );
                 break;
-
+            case COMMAND_TYPE.DO_NOTHING:
+                break;
             case COMMAND_TYPE.GO_EXIT:
                 outputText = await agentActor.goExit(
                     (toolCallArguments as ToolCallArguments[COMMAND_TYPE.GO_EXIT]).exit_id
@@ -442,7 +473,13 @@ export class Interpreter {
 
             const systemPrompt = `You are a game master for a text adventure game.
             You will be given a list of events that occurred in the game.
-            Your job is to determine what (if any) events should follow from these events.`;
+            Your job is to determine what (if any) events should follow from these events.
+            If an agent actively searches for hidden items, or your notes indicate that an action warrants it,
+            you can choose to change a hidden item to a visible item.
+            Do not reveal an item if the agent is simply looking around. Something special must have happened.
+            If you choose have an agent perform an emote, to indicate them doing something appropriate for the recent events, you must also include the agent_id of the agent performing the emote.
+            If there are no relevant events, do not make any tool calls. Return an empty array.
+            `;
 
             const recentEvents: EventDescription[] = (
                 await Promise.all(
@@ -475,13 +512,13 @@ export class Interpreter {
                     model: "gpt-4o-2024-08-06",
                     messages: openAiMessages,
                     tools: REFEREE_OPENAI_TOOLS,
-                    tool_choice: "required"
+                    tool_choice: "auto"
                 });
 
             const toolCalls = response.choices[0]?.message.tool_calls;
             if (!toolCalls || toolCalls.length === 0) {
                 console.warn(JSON.stringify(response, null, 4));
-                throw new Error("No tool calls found");
+                return [];
             }
 
             for (const toolCall of toolCalls) {
@@ -623,7 +660,7 @@ export class Interpreter {
                         ? "you"
                         : targetAgent.label
                 }.`;
-                if (gameEvent.output_text && showExtraText) {
+                if (gameEvent.output_text) {
                     extra_text.push(
                         `${observerText} ${firstPerson ? "say" : "says"}: "${
                             gameEvent.output_text
@@ -752,7 +789,6 @@ export class Interpreter {
 }
 
 const parserPrompt = `You are an AI assistant designed to turn an agent's natural language instructions into a series of actions that can be taken in a classic text adventure game.
-You should return 2 or more actions.
 The agent is embedded in a game world with locations connected by exits.
 Locations contain items and other agents.
 Your agent is represented by calling_agent_id.
@@ -769,6 +805,7 @@ You are calling the function in the context of a specific agent represented by c
 You should call multiple functions, especially if the user's input seems to require it.
 If the user's input does not clearly call for one of the functions below, then call emote or wait.
 If the agent's input starts with quotation marks, or doesn't seem to match any of the available tools, send the text verbatim to speak_to_agent to speak to an agent that is present in the same location.
+If the agent attempts to do something that shouldn't be allowed, such as going through a locked exit, then use emote to make the agent look confused.
 `;
 
 // export type AgentCommand = {
@@ -776,30 +813,31 @@ If the agent's input starts with quotation marks, or doesn't seem to match any o
 //     openaiTool: FunctionDefinition;
 // };
 
-export enum COMMAND_TYPE {
-    ATTACK_AGENT = "attack_agent",
-    DROP_ITEM = "drop_item",
-    EMOTE = "emote",
-    GET_INVENTORY = "get_inventory",
-    GIVE_ITEM_TO_AGENT = "give_item_to_agent",
-    GO_EXIT = "go_exit",
-    LOOK_AROUND = "look_around",
-    LOOK_AT_AGENT = "look_at_agent",
-    LOOK_AT_EXIT = "look_at_exit",
-    LOOK_AT_ITEM = "look_at_item",
-    PICK_UP_ITEM = "pick_up_item",
-    SPEAK_TO_AGENT = "speak_to_agent",
-    UPDATE_AGENT_INTENT = "update_agent_intent",
-    UPDATE_AGENT_MOOD = "update_agent_mood",
-    WAIT = "wait",
-    SEARCH_ITEM = "search_item",
-    SEARCH_LOCATION = "search_location",
-    SEARCH_EXIT = "search_exit",
-    REVEAL_ITEM = "reveal_item",
-    REVEAL_EXIT = "reveal_exit",
-    UNLOCK_EXIT = "unlock_exit",
-    UPDATE_ITEM_DESCRIPTION = "update_item_description"
-}
+// export enum COMMAND_TYPE {
+    // ATTACK_AGENT = "attack_agent",
+    // DO_NOTHING = "do_nothing",
+    // DROP_ITEM = "drop_item",
+    // EMOTE = "emote",
+    // GET_INVENTORY = "get_inventory",
+    // GIVE_ITEM_TO_AGENT = "give_item_to_agent",
+    // GO_EXIT = "go_exit",
+    // LOOK_AROUND = "look_around",
+    // LOOK_AT_AGENT = "look_at_agent",
+    // LOOK_AT_EXIT = "look_at_exit",
+    // LOOK_AT_ITEM = "look_at_item",
+    // PICK_UP_ITEM = "pick_up_item",
+    // SPEAK_TO_AGENT = "speak_to_agent",
+    // UPDATE_AGENT_INTENT = "update_agent_intent",
+    // UPDATE_AGENT_MOOD = "update_agent_mood",
+    // WAIT = "wait",
+    // SEARCH_ITEM = "search_item",
+    // SEARCH_LOCATION = "search_location",
+    // SEARCH_EXIT = "search_exit",
+    // REVEAL_ITEM = "reveal_item",
+    // REVEAL_EXIT = "reveal_exit",
+    // UNLOCK_EXIT = "unlock_exit",
+    // UPDATE_ITEM_DESCRIPTION = "update_item_description"
+// }
 
 export function getAgentCommands(
     agent: Agent | null,
@@ -833,7 +871,8 @@ export function getAgentCommands(
     const refereeCommands: OpenAiCommand[] = [
         REVEAL_ITEM_COMMAND,
         REVEAL_EXIT_COMMAND,
-        UPDATE_ITEM_DESCRIPTION_COMMAND
+        UPDATE_ITEM_DESCRIPTION_COMMAND,
+        EMOTE_COMMAND
     ];
     
     if (!agent) {
@@ -845,8 +884,6 @@ export function getAgentCommands(
         return [...commonCommands, ...autonomousCommands];
     }
 }
-
-  
 
 export function getOpenAiTools(
     agent: Agent | null,
@@ -865,61 +902,77 @@ export function getOpenAiTools(
 }
 
 export const REFEREE_OPENAI_TOOLS: ChatCompletionTool[] = [
-    {
-        type: "function",
-        function: {
-            name: COMMAND_TYPE.REVEAL_ITEM,
-            description:
-                "Change a hidden item to a visible item. This might happen if the user searches the location where the hidden item is. Do not use this to create new items.",
-            parameters: {
-                type: "object",
-                properties: {
-                    item_id: {
-                        type: "string",
-                        description:
-                            "The id of the item to reveal. This must match item_id values listed in the items_present array of the context."
-                    }
-                },
-                required: ["item_id"],
-                additionalProperties: false
-            }
-        }
-    },
-    {
-        type: "function",
-        function: {
-            name: COMMAND_TYPE.REVEAL_EXIT,
-            description:
-                "Change a hidden exit to a visible exit. This might happen if the user searches the location where the hidden exit is.",
-            parameters: {
-                type: "object",
-                properties: {
-                    exit_id: {
-                        type: "string"
-                    }
-                }
-            }
-        }
-    },
-    {
-        type: "function",
-        function: {
-            name: COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION,
-            description:
-                "Update the description of an item. This might happen something happens to the object that should be reflected in the description.",
-            parameters: {
-                type: "object",
-                properties: {
-                    item_id: {
-                        type: "string"
-                    },
-                    description: {
-                        type: "string"
-                    }
-                },
-                required: ["item_id", "description"],
-                additionalProperties: false
-            }
-        }
-    }
+    REVEAL_ITEM_COMMAND,
+    REVEAL_EXIT_COMMAND,
+    UPDATE_ITEM_DESCRIPTION_COMMAND,
+    EMOTE_COMMAND,
+    DO_NOTHING_COMMAND
+    // {
+
+    //     type: "function",
+    //     function: {
+    //         name: COMMAND_TYPE.REVEAL_ITEM,
+    //         description:
+    //             "If an agent actively searches for hidden items, or your notes indicate that an action warrants it, you can choose to change a hidden item to a visible item. Do not reveal an item if the agent is simply looking around. Do not use this to create new items.",
+    //         parameters: {
+    //             type: "object",
+    //             properties: {
+    //                 item_id: {
+    //                     type: "string",
+    //                     description:
+    //                         "The id of the item to reveal. This must match item_id values listed in the items_present array of the context."
+    //                 }
+    //             },
+    //             required: ["item_id"],
+    //             additionalProperties: false
+    //         }
+    //     }
+    // },
+    // {
+    //     type: "function",
+    //     function: {
+    //         name: COMMAND_TYPE.REVEAL_EXIT,
+    //         description:
+    //             "If an agent actively searches for hidden exists, or your notes indicate that an action warrants it,  you can choose to change a hidden exit to a visible exit.",
+    //         parameters: {
+    //             type: "object",
+    //             properties: {
+    //                 exit_id: {
+    //                     type: "string"
+    //                 }
+    //             }
+    //         }
+    //     }
+    // },
+    // {
+    //     type: "function",
+    //     function: {
+    //         name: COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION,
+    //         description:
+    //             "Update the description of an item. This only happens if something unusual occurs to the item. If something happens that is important, it should be reflected in the description.",
+    //         parameters: {
+    //             type: "object",
+    //             properties: {
+    //                 item_id: {
+    //                     type: "string"
+    //                 },
+    //                 description: {
+    //                     type: "string"
+    //                 }
+    //             },
+    //             required: ["item_id", "description"],
+    //             additionalProperties: false
+    //         }
+    //     }
+    // },
+
+
+    // {
+    //     type: "function",
+    //     function: {
+    //         name: COMMAND_TYPE.DO_NOTHING,
+    //         description:
+    //             "If nothing happens, do nothing."
+    //     }
+    // }
 ];

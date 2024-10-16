@@ -115,8 +115,8 @@ export class AgentActor {
         // Get the instructions from the agent
         const response = await this.openai.chat.completions.create({
             model: "gpt-4o-2024-08-06",
-            messages
-            //seed: 100
+            messages,
+            seed: 100,
         });
 
         const choices = response.choices;

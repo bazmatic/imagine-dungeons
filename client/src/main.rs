@@ -5,6 +5,7 @@ use std::io::{self, Write}; // For input/output operations
 use imagind::{GameEventDTO};
 use colored::*;
 use reqwest::Response;
+use clearscreen; 
 
 const DEBUG: bool = true;
 
@@ -19,6 +20,11 @@ async fn main() {
     } else {
         "https://9b41-220-253-88-74.ngrok-free.app/api/command"
     };
+    // Clear the console
+    clearscreen::clear().unwrap();
+
+
+
     // Start the game by sending "look around"
     let res = client
         .post(api_url)

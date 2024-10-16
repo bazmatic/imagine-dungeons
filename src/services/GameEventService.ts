@@ -2,8 +2,7 @@ import dotenv from "dotenv";
 import { Repository, Raw } from "typeorm";
 import { AppDataSource } from "@/data-source";
 import { GameEvent } from "@/entity/GameEvent";
-import { COMMAND_TYPE, AgentPromptContext } from "./Interpreter";
-import { Agent } from "http";
+import { COMMAND_TYPE } from "@/types/Tools";
 dotenv.config();
 
 export class GameEventService {

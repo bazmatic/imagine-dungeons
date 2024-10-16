@@ -1,6 +1,6 @@
 // TypeORM
 
-import { COMMAND_TYPE } from '@/services/Interpreter';
+import { COMMAND_TYPE } from '@/types/Tools';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
 

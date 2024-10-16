@@ -7,6 +7,7 @@ export type AgentCommand = {
 
 export enum COMMAND_TYPE {
     ATTACK_AGENT = "attack_agent",
+    DO_NOTHING = "do_nothing",
     DROP_ITEM = "drop_item",
     EMOTE = "emote",
     GET_INVENTORY = "get_inventory",
@@ -26,7 +27,9 @@ export enum COMMAND_TYPE {
     SEARCH_EXIT = "search_exit",
     REVEAL_ITEM = "reveal_item",
     REVEAL_EXIT = "reveal_exit",
-    UPDATE_ITEM_DESCRIPTION = "update_item_description",
+    UNLOCK_EXIT = "unlock_exit",
+    UPDATE_ITEM_DESCRIPTION = "update_item_description"
+
     
 }
 
@@ -56,6 +59,10 @@ export const EMOTE_COMMAND: OpenAiCommand = {
                 emote_text: {
                     type: "string",
                     description: "A description of the character's expression, or emotional state that others can observe."
+                },
+                agent_id: {
+                    type: "string",
+                    description: "The id of the agent performing the emote. This must match agent_id values listed in the agents_present array of the context."
                 }
             },
             required: ["emote_text"],
@@ -390,5 +397,20 @@ export const UPDATE_ITEM_DESCRIPTION_COMMAND: OpenAiCommand = {
         }
     }
 };
+
+export const DO_NOTHING_COMMAND: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.DO_NOTHING,
+        description: "Do nothing",
+        parameters: {
+            type: "object",
+            properties: {},
+            additionalProperties: false
+        }
+    }
+};
+
+
 
 
