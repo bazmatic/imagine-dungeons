@@ -14,6 +14,7 @@ import { ExitService } from "@/services/Exit.service";
 import { LocationService } from "@/services/Location.service";
 import { AgentService } from "@/services/Agent.service";
 import { ItemService } from "@/services/Item.service";
+import { startsWithVowel } from "@/utils/strings";
 
 @Entity("agent")
 export class Agent implements IBaseProperties {

@@ -3,6 +3,7 @@ import { AgentService } from "./Agent.service";
 import { GameEvent } from "@/entity/GameEvent";
 import { GameEventService } from "./GameEventService";
 import { Referee } from "./Referee";
+import { AgentActor } from "@/actor/agent.actor";
 
 export class WorldService {
     private agentService: AgentService;
