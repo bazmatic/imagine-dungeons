@@ -1,12 +1,14 @@
 // Accept a text input from the user and return a response
 
+import { Agent } from "@/entity/Agent";
 import { GameEvent } from "@/entity/GameEvent";
+import { AgentService } from "@/services/Agent.service";
 import { initialiseDatabase } from "@/index";
 import { GameEventService } from "@/services/GameEventService";
-import { EventDescription, Interpreter } from "@/services/Interpreter";
 import { WorldService } from "@/services/World.service";
-import { COMMAND_TYPE } from "@/types/Tools";
+import { COMMAND_TYPE, EventDescription } from "@/types/types";
 import { NextApiRequest, NextApiResponse } from "next";
+import { Referee } from "@/services/Referee";
 
 export default async function command(
     req: NextApiRequest,
@@ -15,48 +17,46 @@ export default async function command(
     await initialiseDatabase();
 
     const { agentId, command } = req.body;
-    const interpreter = new Interpreter();
+    const referee = new Referee();
     const worldService = new WorldService();
-
+    const agentService = new AgentService();
     try {
-        const commandResponse: GameEvent[] = await interpreter.interpret(
+        const observerAgent = await agentService.getAgentById(agentId);
+        const directUserGameEvents: GameEvent[] = await referee.instructAgent(
             agentId,
             command
         );
+        const consequentUserGameEvents: GameEvent[] =
+            await referee.determineConsequentEvents(directUserGameEvents);
+
+        const combinedUserGameEvents = [...directUserGameEvents, ...consequentUserGameEvents];
+
         // Save all commands to the database
         const gameEventService = new GameEventService();
-        for (const gameEvent of commandResponse) {
+        for (const gameEvent of combinedUserGameEvents) {
             await gameEventService.saveGameEvent(gameEvent);
         }
 
-        const autonomousAgentResults = await worldService.autonomousAgentsAct();
+        // === Autonomous agents act ===
+        // This may change to running on their own thread in the future
+        const autonomousAgentGameEvents: GameEvent[] = await worldService.autonomousAgentsAct();
         // Save all autonomous agent results to the database
-        for (const gameEvent of autonomousAgentResults) {
+        for (const gameEvent of autonomousAgentGameEvents) {
             await gameEventService.saveGameEvent(gameEvent);
         }
+
+        // == Format the results ==
 
         // Combine the results from the user command and autonomous agents
-        const combinedResults = [...commandResponse, ...autonomousAgentResults];
+        const combinedResults = [...combinedUserGameEvents, ...autonomousAgentGameEvents];
 
         // Process each game event
         const processedEvents = await Promise.all(combinedResults.map(async (gameEvent) => {
-            // Get the event description
-            const eventDescription: EventDescription | null = await interpreter.describeCommandResult(
-                agentId,
-                gameEvent,
-            );
-
-            // Check if the event description is valid
-            if (!eventDescription?.primary_text) {
-                console.warn(`No primary text for game event: ${JSON.stringify(gameEvent)}`);
-                return null;
-            }
-
+  
             // Convert the game event to DTO
-            return GameEventDTO.fromGameEvent(
-                gameEvent, 
-                eventDescription.primary_text, 
-                eventDescription.extra_text
+            return await GameEventDTO.fromGameEvent(
+                observerAgent,
+                gameEvent
             );
         }));
 
@@ -77,16 +77,22 @@ export class GameEventDTO {
     public command_arguments: Record<string, unknown>;
     public primary_text: string;
     public extra_text?: string[];
-    static fromGameEvent(gameEvent: GameEvent, primary_text: string, extra_text?: string[]): GameEventDTO {
-        const { agent_id, input_text, command_type } = gameEvent;
+    static async fromGameEvent(observerAgent: Agent, gameEvent: GameEvent): Promise<GameEventDTO> {
+
+        // Get the event description
+        const eventDescription: EventDescription | null = await gameEvent.describe(
+            observerAgent
+        );
+
         const command_arguments = gameEvent.arguments;
+    
         return {
-            agent_id: agent_id ?? "system",
-            input_text,
-            command_type,
+            agent_id: gameEvent.agent_id ?? "system",
+            input_text: gameEvent.input_text,
+            command_type: gameEvent.command_type,
             command_arguments,
-            primary_text,
-            extra_text,
+            primary_text: eventDescription?.general_description ?? "",
+            extra_text: eventDescription?.extra_detail ?? [],
         }
     }
 }

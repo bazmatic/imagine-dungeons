@@ -1,8 +1,18 @@
 // TypeORM
 
-import { COMMAND_TYPE } from '@/types/Tools';
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { AgentService } from "@/services/Agent.service";
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    CreateDateColumn
+} from "typeorm";
 
+import { Agent } from "./Agent";
+import { ItemService } from "@/services/Item.service";
+import { ExitService } from "@/services/Exit.service";
+import { LocationService } from "@/services/Location.service";
+import { COMMAND_TYPE, EventDescription } from "@/types/types";
 
 @Entity()
 export class GameEvent {
@@ -14,7 +24,7 @@ export class GameEvent {
 
     @Column()
     location_id?: string;
-    
+
     @Column()
     input_text?: string;
 
@@ -36,4 +46,305 @@ export class GameEvent {
 
     @CreateDateColumn()
     created_at: Date;
+
+    public async describe(
+        observerAgent: Agent | null
+    ): Promise<EventDescription | null> {
+        const exitService = new ExitService();
+        const itemService = new ItemService();
+        const agentService = new AgentService();
+        const locationService = new LocationService();
+
+        // If the observer wasn't present at the e vent, don't describe it
+        if (
+            observerAgent &&
+            observerAgent?.agentId &&
+            !this.agents_present?.includes(observerAgent.agentId)
+        ) {
+            return null;
+        }
+        const isFirstPerson = observerAgent?.agentId === this.agent_id; // You are observing your own event
+        const observerName = isFirstPerson
+            ? "You"
+            : observerAgent?.label ?? "The Universe";
+        const parameters = JSON.parse(this.command_arguments);
+
+        let generalDescription: string = "";
+        const extraDetail: string[] = [];
+
+        // If you are the person you're observing or you are the system, show extra detail for events that have private details
+        const showPrivateDetail =
+            isFirstPerson || observerAgent?.agentId === null;
+
+        switch (this.command_type) {
+            case COMMAND_TYPE.EMOTE: {
+                // No general description for emotes, just the output text. There's no need to say "You emote"
+                generalDescription = `${this.output_text}`;
+                break;
+            }
+            case COMMAND_TYPE.GO_EXIT: {
+                // <Agent> goes <direction>
+                const exit = await exitService.getById(parameters.exit_id);
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "go" : "goes"
+                } ${exit.direction}.`;
+
+                break;
+            }
+            case COMMAND_TYPE.PICK_UP_ITEM: {
+                // Only general description for picking up an item
+                // <Agent> picks up <Item>
+                const item = await itemService.getItemById(parameters.item_id);
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "pick up" : "picks up"
+                } the ${item.label}.`;
+                break;
+            }
+
+            case COMMAND_TYPE.DROP_ITEM: {
+                // Only general description for dropping an item
+                // <Agent> drops <Item>
+                const item = await itemService.getItemById(parameters.item_id);
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "drop" : "drops"
+                } the ${item.label}.`;
+                break;
+            }
+
+            case COMMAND_TYPE.LOOK_AT_ITEM: {
+                // Usually a general description for looking at an item
+                // However some special items such as a book or magical items might have extra detail, egYou can see that there is a monster north of you"
+                // <Agent> looks at <Item
+                const item = await itemService.getItemById(parameters.item_id);
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "look at" : "looks at"
+                } the ${item.label}.`;
+
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+
+            case COMMAND_TYPE.LOOK_AT_AGENT: {
+                // A general description and then the description of the agent
+                // <Agent> looks at <Agent>
+                // <Description of agent>
+                const agent = await agentService.getAgentById(
+                    parameters.agent_id
+                );
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "look at" : "looks at"
+                } ${agent.label}.`;
+
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+
+            case COMMAND_TYPE.LOOK_AROUND: {
+                // A general description and then the description of the location, with various details.
+                // <Agent> looks around.
+                // <Description of location>
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "look around" : "looks around"
+                }.`;
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+
+            case COMMAND_TYPE.LOOK_AT_EXIT: {
+                // <Agent> looks at <Exit>
+                // <Description of exit>
+                const exit = await exitService.getById(parameters.exit_id);
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "look at" : "looks at"
+                } the ${exit.direction}.`;
+
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+
+            case COMMAND_TYPE.SPEAK_TO_AGENT: {
+                // <SpeakingAgent> speaks to <TargetAgent>
+                // <Speech>
+                const targetAgent = await agentService.getAgentById(
+                    parameters.target_agent_id
+                );
+
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "speak to" : "speaks to"
+                } ${
+                    parameters.target_agent_id === this.agent_id
+                        ? "you"
+                        : targetAgent.label
+                }.`;
+
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+            case COMMAND_TYPE.UPDATE_AGENT_INTENT:
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "resolve" : "resolves"
+                } to do something.`;
+
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+
+            case COMMAND_TYPE.UPDATE_AGENT_MOOD:
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "feel" : "feels"
+                }.`;
+                break;
+
+            case COMMAND_TYPE.WAIT:
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "wait" : "waits"
+                }.`;
+                break;
+
+            case COMMAND_TYPE.SEARCH_LOCATION: {
+                const location = await locationService.getLocationById(
+                    parameters.location_id
+                );
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "search" : "searches"
+                } ${location.label}.`;
+                break;
+            }
+
+            case COMMAND_TYPE.GIVE_ITEM_TO_AGENT: {
+                try {
+                    const item = await itemService.getItemById(
+                        parameters.item_id
+                    );
+                    const targetAgent = await agentService.getAgentById(
+                        parameters.target_agent_id
+                    );
+                    generalDescription = `${observerName} ${
+                        isFirstPerson ? "give" : "gives"
+                    } the ${item.label} to ${targetAgent.label}.`;
+                } catch (error) {
+                    console.error(error);
+                    generalDescription = `${observerName} ${
+                        isFirstPerson ? "try to give" : "tries to give"
+                    } something to someone, but it doesn't seem to work.`;
+                }
+                break;
+            }
+
+            case COMMAND_TYPE.GET_INVENTORY: {
+                // <Agent> checks their inventory.
+                // <Description of inventory>
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "check" : "checks"
+                } their inventory.`;
+
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+
+            case COMMAND_TYPE.ATTACK_AGENT: {
+                const targetAgent = await agentService.getAgentById(
+                    parameters.target_agent_id
+                );
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "attack" : "attacks"
+                } ${targetAgent.label}.`;
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+            case COMMAND_TYPE.SEARCH_LOCATION: {
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "search" : "searches"
+                } the current location.`;
+
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+            case COMMAND_TYPE.SEARCH_ITEM: {
+                const item = await itemService.getItemById(parameters.item_id);
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "search" : "searches"
+                } the ${item.label}.`;
+
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+            case COMMAND_TYPE.SEARCH_EXIT: {
+                const exit = await exitService.getById(parameters.exit_id);
+                generalDescription = `${observerName} ${
+                    isFirstPerson ? "search" : "searches"
+                } the ${exit.direction}.`;
+
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+            case COMMAND_TYPE.REVEAL_ITEM: {
+                const item = await itemService.getItemById(parameters.item_id);
+                generalDescription = `A ${item.label} is revealed.`;
+
+                // Always show extra detail for revealed items
+                if (this.output_text) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+            case COMMAND_TYPE.REVEAL_EXIT: {
+                const exit = await exitService.getById(parameters.exit_id);
+                generalDescription = `An exit to the ${exit.direction} is revealed.`;
+
+                // Always show extra detail for revealed exits
+                if (this.output_text) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+            case COMMAND_TYPE.UNLOCK_EXIT: {
+                const exit = await exitService.getById(parameters.exit_id);
+                generalDescription = `The ${exit.direction} is unlocked.`;
+
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+            case COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION: {
+                const item = await itemService.getItemById(parameters.item_id);
+                generalDescription = `The ${item.label} has been changed.`;
+
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+
+            default:
+                console.warn(`Unknown command type: ${this.command_type}`);
+        }
+
+        return {
+            general_description: generalDescription,
+            extra_detail: extraDetail
+        };
+    }
 }

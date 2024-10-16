@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { Repository, Raw } from "typeorm";
 import { AppDataSource } from "@/data-source";
 import { GameEvent } from "@/entity/GameEvent";
-import { COMMAND_TYPE } from "@/types/Tools";
+import { COMMAND_TYPE } from "@/types/types";
 dotenv.config();
 
 export class GameEventService {

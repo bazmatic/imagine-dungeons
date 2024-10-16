@@ -1,18 +1,18 @@
-import { AgentActor } from "@/actor/agent.actor";
+
 import { AgentService } from "./Agent.service";
 import { GameEvent } from "@/entity/GameEvent";
 import { GameEventService } from "./GameEventService";
-import { Interpreter } from "./Interpreter";
+import { Referee } from "./Referee";
 
 export class WorldService {
     private agentService: AgentService;
     private gameEventService: GameEventService;
-    private interpreter: Interpreter;
+    private referee: Referee;
 
     constructor() {
         this.agentService = new AgentService();
         this.gameEventService = new GameEventService();
-        this.interpreter = new Interpreter();
+        this.referee = new Referee();
     }
     public async autonomousAgentsAct(): Promise<GameEvent[]> {
         // For each agent with autonomous = true and activated = true
@@ -21,7 +21,7 @@ export class WorldService {
         const agentActions = agents.map(async (agent) => {
             const agentActor = new AgentActor(agent.agentId);
             const agentGameEvents: GameEvent[] = await agentActor.act();
-            const consequentGameEvents: GameEvent[] = []; //await this.interpreter.determineConsequentEvents(agentGameEvents);
+            const consequentGameEvents: GameEvent[] = await this.referee.determineConsequentEvents(agentGameEvents);
             const gameEvents = [...agentGameEvents, ...consequentGameEvents];
 
             await Promise.all(gameEvents.map(gameEvent => this.gameEventService.saveGameEvent(gameEvent)));
