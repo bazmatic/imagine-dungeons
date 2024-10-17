@@ -57,7 +57,7 @@ export class Item implements IBaseProperties {
     @OneToMany(() => Item, item => item.ownerItem, { lazy: true })
     items: Promise<Item[]>;
 
-    public async toDto(): Promise<ItemDto> {
+    public async toDto(system: boolean = false): Promise<ItemDto> {
         const items: Item[] = await this.items;
         return {
             id: this.itemId,
@@ -67,7 +67,7 @@ export class Item implements IBaseProperties {
             ownerId: this.ownerAgentId || this.ownerLocationId || this.ownerItemId || undefined,
             ownerKind: this.ownerAgentId ? GameObjectKind.AGENT : this.ownerLocationId ? GameObjectKind.LOCATION : this.ownerItemId ? GameObjectKind.ITEM : undefined,
             capacity: this.capacity,
-            weight: this.weight,
+            notes: system ? this.notes : undefined,
             items: await Promise.all(items.map(item => item.toDto()))
         };
     }
@@ -81,6 +81,6 @@ export class ItemDto {
     ownerId?: string;
     ownerKind?: GameObjectKind;
     capacity: number;
-    weight: number;
+    notes?: string;
     items: ItemDto[];
 }

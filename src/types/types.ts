@@ -5,41 +5,6 @@ export type EventDescription = {
     extra_detail?: string[];
 };
 
-export type AgentPromptContext = {
-    calling_agent_id: string;
-    location: {
-        location_id: string;
-        name: string;
-        notes?: string;
-        description: string;
-    };
-    exits: Array<{
-        exit_id: string;
-        description: string;
-        locked: boolean;
-        notes?: string;
-        direction: string;
-    }>;
-    items_present: Array<{
-        item_id: string;
-        name: string;
-        description: string;
-        hidden: boolean;
-        notes?: string;
-    }>;
-    agents_present: Array<{
-        agent_id: string;
-        name: string;
-        description: string;
-    }>;
-    inventory: Array<{
-        item_id: string;
-        name: string;
-        description: string;
-        hidden: boolean;
-    }>;
-};
-
 export type AgentCommand = {
     id: string;
     openaiTool: FunctionDefinition;

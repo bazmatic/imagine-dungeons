@@ -17,6 +17,7 @@ export class LocationDto {
     exits: ExitDto[];
     items: ItemDto[];
     agents: AgentDto[];
+    notes?: string;
 }
 
 @Entity("location")
@@ -51,7 +52,7 @@ export class Location {
     @OneToMany(() => Agent, agent => agent.location, { lazy: true })
     agents: Promise<Agent[]>;
 
-    public async toDto(): Promise<LocationDto> {
+    public async toDto(system: boolean = false): Promise<LocationDto> {
         const items: Item[] = await this.items;
         const exits: Exit[] = await this.exits;
         const agents: Agent[] = await this.agents;
@@ -63,7 +64,8 @@ export class Location {
             longDescription: this.longDescription,
             items: await Promise.all(items.map(item => item.toDto())),
             exits: await Promise.all(exits.map(exit => exit.toDto())),
-            agents: await Promise.all(agents.map(agent => agent.toDto()))
+            agents: await Promise.all(agents.map(agent => agent.toDto(system))),
+            notes: system ? this.notes : undefined
         };
     }
 }

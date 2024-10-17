@@ -74,7 +74,7 @@ export class Agent implements IBaseProperties {
     @Column({ name: "activated" })
     activated: boolean;
 
-    public async toDto(): Promise<AgentDto> {
+    public async toDto(system: boolean = false): Promise<AgentDto> {
         const items: Item[] = await this.items;
         return {
             id: this.agentId,
@@ -82,10 +82,10 @@ export class Agent implements IBaseProperties {
             shortDescription: this.shortDescription,
             longDescription: this.longDescription,
             locationId: this.ownerLocationId,
-            capacity: this.capacity,
-            backstory: this.backstory,
-            items: await Promise.all(items.map(item => item.toDto())),
-            defence: this.defence
+            capacity: system ? this.capacity : undefined,
+            backstory: system ? this.backstory : undefined,
+            items: system ? await Promise.all(items.map(item => item.toDto(system))) : [],
+            defence: system ? this.defence : undefined
         };
     }
 
@@ -398,8 +398,8 @@ export class AgentDto implements IBaseProperties {
     shortDescription: string;
     longDescription: string;
     locationId: string;
-    capacity: number;
-    backstory: string;
-    items: ItemDto[];
-    defence: number;
+    capacity?: number;
+    backstory?: string;
+    items?: ItemDto[];
+    defence?: number;
 }
