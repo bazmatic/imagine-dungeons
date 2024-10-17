@@ -1,34 +1,29 @@
 import dotenv from "dotenv";
 import { Agent } from "@/entity/Agent";
 import { AgentService } from "@/services/Agent.service";
-import { Exit } from "@/entity/Exit";
-import { ExitService } from "@/services/Exit.service";
-import { initialiseDatabase } from "..";
-import { ItemService } from "@/services/Item.service";
-import { LocationService } from "@/services/Location.service";
 import { OpenAI } from "openai";
 import { Location } from "@/entity/Location";
 import { Item } from "@/entity/Item";
 import { GameEventService } from "@/services/GameEventService";
 import { Referee } from "@/services/Referee";
 import { GameEvent } from "@/entity/GameEvent";
+import { EventDescription } from "@/types/types";
 
 dotenv.config();
 
+/*
+This represents an autonomous agent (NPC) in the game.
+The `act` method decides what to do and then the instructions are sent to the referee to be executed.
+*/
+
 export class AgentActor {
     private agentService: AgentService;
-    private exitService: ExitService;
-    private itemService: ItemService;
-    private locationService: LocationService;
     private gameEventService: GameEventService;
     private referee: Referee;
     private openai: OpenAI;
 
     constructor(public agentId: string) {
         this.agentService = new AgentService();
-        this.exitService = new ExitService();
-        this.itemService = new ItemService();
-        this.locationService = new LocationService();
         this.gameEventService = new GameEventService();
         this.referee = new Referee();
         this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -76,26 +71,40 @@ export class AgentActor {
         // Previous commands and response
         const previousGameEvents = await this.gameEventService.getRecentGameEvents(
             this.agentId,
-            6
+            20
         );
         // Filter commands
 
         // Now make historical messages
-        for (const ge of previousGameEvents) {
-            if (ge.agent_id === this.agentId && ge.input_text) {
-                const eventDescription = await ge.describe(
-                    agent
-                );
-                messages.push({
-                    role: "assistant",
-                    content: eventDescription?.general_description ?? "No general description"
-                });
-            }
-            messages.push({
-                role: "user",
-                content: ge.input_text ?? "No input text"
-            });
-        } // Added closing brace for the for loop
+        const recentEvents = await this.gameEventService.getRecentGameEvents(agent.agentId, 10);
+        const recentEventDescriptions: EventDescription[] = (
+            await Promise.all(
+                recentEvents.map(gameEvent => gameEvent.describe(agent))
+            )
+        ).filter(e => e !== null) as EventDescription[];
+        const recentEventsPrompt = `The following events occurred in this round in this location:\n${recentEventDescriptions
+            .map(e => `${e.general_description}: ${e.extra_detail?.join("\n")}`)
+            .join("\n\n")}`;
+    
+
+
+        // for (const ge of previousGameEvents) {
+        //     if (ge.agent_id === this.agentId && ge.input_text) {
+        //         const eventDescription = await ge.describe(
+        //             agent
+        //         );
+        //         messages.push({
+        //             role: "assistant",
+        //             content: eventDescription?.general_description ?? "No general description"
+        //         });
+        //     }
+        //     messages.push({
+        //         role: "user",
+        //         content: ge.input_text ?? "No input text"
+        //     });
+        // } // Added closing brace for the for loop
+
+        messages.push({ role: "system", content: recentEventsPrompt });
 
         // Ask the agent what to do
         messages.push({
@@ -121,7 +130,7 @@ export class AgentActor {
         }
 
         // Issue the command to the interpreter just as if it were a player
-        const gameEvents: GameEvent[] = await this.referee.instructAgent(
+        const gameEvents: GameEvent[] = await this.referee.acceptAgentInstructions(
             this.agentId,
             inputText
         );

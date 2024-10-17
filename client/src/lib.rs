@@ -5,11 +5,11 @@ use serde_json::Value;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GameEventDTO {
     pub agent_id: String,
-    pub input_text: Option<String>,
+    pub agent_name: String,
     pub command_type: CommandType,
     pub command_arguments: HashMap<String, Value>,
-    pub primary_text: String,
-    pub extra_text: Option<Vec<String>>,
+    pub general_description: String,
+    pub extra_detail: Option<Vec<String>>,
 }
 
 // Make an enum for the COMMAND_TYPE    
@@ -17,6 +17,7 @@ pub struct GameEventDTO {
 #[serde(rename_all = "snake_case")]
 pub enum CommandType {
     AttackAgent,
+    DoNothing,
     DropItem,
     Emote,
     GetInventory,

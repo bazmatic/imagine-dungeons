@@ -97,22 +97,14 @@ async fn handle_api_response(response: Response) {
     }
 }
 
-fn print_debug_info(game_event: &GameEventDTO) {
-    println!("Agent ID: {}", game_event.agent_id);
-    if let Some(input_text) = &game_event.input_text {
-        println!("Input Text: {}", input_text);
-    }
-    println!("Command Type: {:?}", game_event.command_type);
-    println!("Command Arguments: {:?}", game_event.command_arguments);
-}
-
 fn print_colored_event(game_event: &GameEventDTO) {
-    // Display the primary text as gray
-    println!("{}", game_event.primary_text.color("bright black"));
+    println!("{}", game_event.agent_name.color("bright blue"));
+    println!("{}", game_event.general_description.color("bright black"));
+    
 
     // Display the extra text as yellow
-    if let Some(extra_text) = &game_event.extra_text {
-        for line in extra_text {
+    if let Some(extra_detail) = &game_event.extra_detail {
+        for line in extra_detail {
             println!("{}", line.color("yellow"));
         }
     }

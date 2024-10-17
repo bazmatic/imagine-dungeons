@@ -22,7 +22,7 @@ export default async function command(
     const agentService = new AgentService();
     try {
         const observerAgent = await agentService.getAgentById(agentId);
-        const directUserGameEvents: GameEvent[] = await referee.instructAgent(
+        const directUserGameEvents: GameEvent[] = await referee.acceptAgentInstructions(
             agentId,
             command
         );
@@ -51,14 +51,15 @@ export default async function command(
         const combinedResults = [...combinedUserGameEvents, ...autonomousAgentGameEvents];
 
         // Process each game event
-        const processedEvents = await Promise.all(combinedResults.map(async (gameEvent) => {
-  
+        const processedEvents = [];
+        for (const gameEvent of combinedResults) {
             // Convert the game event to DTO
-            return await GameEventDTO.fromGameEvent(
+            const dto = await GameEventDTO.fromGameEvent(
                 observerAgent,
                 gameEvent
             );
-        }));
+            processedEvents.push(dto);
+        }
 
         // Filter out null results and cast to GameEventDTO[]
         const dtoResults: GameEventDTO[] = processedEvents.filter((dto): dto is GameEventDTO => dto !== null);
@@ -72,27 +73,36 @@ export default async function command(
 
 export class GameEventDTO {
     public agent_id: string;
+    public agent_name: string;
     public input_text?: string;
     public command_type: COMMAND_TYPE;
     public command_arguments: Record<string, unknown>;
-    public primary_text: string;
-    public extra_text?: string[];
+    public general_description: string;
+    public extra_detail?: string[];
     static async fromGameEvent(observerAgent: Agent, gameEvent: GameEvent): Promise<GameEventDTO> {
+       
 
         // Get the event description
         const eventDescription: EventDescription | null = await gameEvent.describe(
             observerAgent
         );
+            
+        let agentName = "system";
+        if (gameEvent.agent_id) {
+            const agentService = new AgentService();
+            const agent = await agentService.getAgentById(gameEvent.agent_id);
+            agentName = agent.label;
+        }
 
         const command_arguments = gameEvent.arguments;
     
         return {
             agent_id: gameEvent.agent_id ?? "system",
-            input_text: gameEvent.input_text,
+            agent_name: agentName,
             command_type: gameEvent.command_type,
             command_arguments,
-            primary_text: eventDescription?.general_description ?? "",
-            extra_text: eventDescription?.extra_detail ?? [],
+            general_description: eventDescription?.general_description ?? "",
+            extra_detail: eventDescription?.extra_detail ?? [],
         }
     }
 }

@@ -171,6 +171,18 @@ export class Referee {
         // User text input and context
         openAiMessages.push({ role: "user", content: JSON.stringify(content) });
 
+        // Get recent events
+        // TODO: Make a function to do this so it can be reused
+        const recentEvents = await this.gameEventService.getRecentGameEvents(agent.agentId, 10);
+        const recentEventDescriptions: EventDescription[] = (
+            await Promise.all(
+                recentEvents.map(gameEvent => gameEvent.describe(agent))
+            )
+        ).filter(e => e !== null) as EventDescription[];
+        const recentEventsPrompt = `The following events occurred in this round in this location:\n${recentEventDescriptions
+            .map(e => `${e.general_description}: ${e.extra_detail?.join("\n")}`)
+            .join("\n\n")}`;
+        openAiMessages.push({ role: "system", content: recentEventsPrompt });
         // -- Get the tools ==
         const tools = getOpenAiTools(agent, context);
 
@@ -209,7 +221,7 @@ export class Referee {
      * @param inputText The input text to instruct the agent with.
      * @returns The game events resulting from the agent's actions.
      */
-    public async instructAgent(
+    public async acceptAgentInstructions(
         agentId: string,
         inputText: string
     ): Promise<GameEvent[]> {
@@ -254,6 +266,7 @@ export class Referee {
         locationId: string
     ): Promise<GameEvent[]> {
         let outputText: string[] = [];
+        let actingAgentId: string = "system";
 
         switch (commandType) {
             case COMMAND_TYPE.DO_NOTHING:
@@ -298,6 +311,7 @@ export class Referee {
                     (toolCallArguments as ToolCallArguments[COMMAND_TYPE.EMOTE])
                         .emote_text
                 );
+                actingAgentId = agent.agentId;
                 break;
             case COMMAND_TYPE.DO_NOTHING:
                 break;
@@ -305,32 +319,19 @@ export class Referee {
             default:
                 console.warn(`Unknown command type: ${commandType}`);
                 return [];
-
-                // Create the game event
-                const agentsPresent =
-                    await this.agentService.getAgentsByLocation(locationId); // context = await this.getRefereeContext(locationId);
-                const gameEvent: GameEvent =
-                    await this.gameEventService.makeGameEvent(
-                        "system",
-                        locationId,
-                        "", //No input text available here, as this is a system event
-                        commandType,
-                        JSON.stringify(toolCallArguments),
-                        outputText.join("\n"),
-                        agentsPresent.map(agent => agent.agentId)
-                    );
-                return [gameEvent];
         }
         const agentsPresent = await this.agentService.getAgentsByLocation(
             locationId
-        ); // context = await this.getRefereeContext(locationId);
-        const gameEvent: GameEvent = await this.gameEventService.makeGameEvent(
-            "system",
+        );
+
+        const gameEvent: GameEvent =
+        await this.gameEventService.makeGameEvent(
+            actingAgentId,
             locationId,
             "", //No input text available here, as this is a system event
             commandType,
             JSON.stringify(toolCallArguments),
-            undefined,
+            outputText.join("\n"),
             agentsPresent.map(agent => agent.agentId)
         );
         return [gameEvent];
@@ -455,16 +456,19 @@ export class Referee {
                 return [];
         }
 
-        const context = await this.getContext(agentId);
+        //const context = await this.getContext(agentId);
+        const location = await agent.location;
+        const agentsPresent = await this.agentService.getAgentsByLocation(location.locationId);
+        
         const agentGameEvent: GameEvent =
             await this.gameEventService.makeGameEvent(
                 agentId,
-                context.location.location_id,
+                location.locationId,
                 "", //No input text available here
                 commandType,
                 JSON.stringify(toolCallArguments),
                 extraDetails.join("\n"),
-                context.agents_present.map(agent => agent.agent_id)
+                agentsPresent.map(agent => agent.agentId)
             );
 
         return [agentGameEvent];
@@ -539,7 +543,7 @@ export class Referee {
                     model: "gpt-4o-2024-08-06",
                     messages: openAiMessages,
                     tools: REFEREE_OPENAI_TOOLS,
-                    tool_choice: "auto"
+                    tool_choice: "required"
                 });
             const toolCalls = response.choices[0]?.message.tool_calls;
             if (!toolCalls || toolCalls.length === 0) {
@@ -635,71 +639,4 @@ export const REFEREE_OPENAI_TOOLS: ChatCompletionTool[] = [
     UPDATE_ITEM_DESCRIPTION_COMMAND,
     EMOTE_COMMAND,
     DO_NOTHING_COMMAND
-    // {
-
-    //     type: "function",
-    //     function: {
-    //         name: COMMAND_TYPE.REVEAL_ITEM,
-    //         description:
-    //             "If an agent actively searches for hidden items, or your notes indicate that an action warrants it, you can choose to change a hidden item to a visible item. Do not reveal an item if the agent is simply looking around. Do not use this to create new items.",
-    //         parameters: {
-    //             type: "object",
-    //             properties: {
-    //                 item_id: {
-    //                     type: "string",
-    //                     description:
-    //                         "The id of the item to reveal. This must match item_id values listed in the items_present array of the context."
-    //                 }
-    //             },
-    //             required: ["item_id"],
-    //             additionalProperties: false
-    //         }
-    //     }
-    // },
-    // {
-    //     type: "function",
-    //     function: {
-    //         name: COMMAND_TYPE.REVEAL_EXIT,
-    //         description:
-    //             "If an agent actively searches for hidden exists, or your notes indicate that an action warrants it,  you can choose to change a hidden exit to a visible exit.",
-    //         parameters: {
-    //             type: "object",
-    //             properties: {
-    //                 exit_id: {
-    //                     type: "string"
-    //                 }
-    //             }
-    //         }
-    //     }
-    // },
-    // {
-    //     type: "function",
-    //     function: {
-    //         name: COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION,
-    //         description:
-    //             "Update the description of an item. This only happens if something unusual occurs to the item. If something happens that is important, it should be reflected in the description.",
-    //         parameters: {
-    //             type: "object",
-    //             properties: {
-    //                 item_id: {
-    //                     type: "string"
-    //                 },
-    //                 description: {
-    //                     type: "string"
-    //                 }
-    //             },
-    //             required: ["item_id", "description"],
-    //             additionalProperties: false
-    //         }
-    //     }
-    // },
-
-    // {
-    //     type: "function",
-    //     function: {
-    //         name: COMMAND_TYPE.DO_NOTHING,
-    //         description:
-    //             "If nothing happens, do nothing."
-    //     }
-    // }
 ];

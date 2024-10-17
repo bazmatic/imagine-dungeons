@@ -63,10 +63,16 @@ export class GameEvent {
         ) {
             return null;
         }
+        const observerLocation = await observerAgent?.location;
         const isFirstPerson = observerAgent?.agentId === this.agent_id; // You are observing your own event
-        const observerName = isFirstPerson
-            ? "You"
-            : observerAgent?.label ?? "The Universe";
+        const isObserverPresent = observerAgent ? this.agents_present?.includes(observerAgent.agentId) : true;
+        let actorName = "The Universe";
+        if (this.agent_id) {
+            const actorAgent = await agentService.getAgentById(this.agent_id);
+            actorName = isFirstPerson
+                ? "You"
+            : actorAgent?.label ?? "The Universe";
+        } 
         const parameters = JSON.parse(this.command_arguments);
 
         let generalDescription: string = "";
@@ -85,7 +91,7 @@ export class GameEvent {
             case COMMAND_TYPE.GO_EXIT: {
                 // <Agent> goes <direction>
                 const exit = await exitService.getById(parameters.exit_id);
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "go" : "goes"
                 } ${exit.direction}.`;
 
@@ -95,7 +101,7 @@ export class GameEvent {
                 // Only general description for picking up an item
                 // <Agent> picks up <Item>
                 const item = await itemService.getItemById(parameters.item_id);
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "pick up" : "picks up"
                 } the ${item.label}.`;
                 break;
@@ -105,7 +111,7 @@ export class GameEvent {
                 // Only general description for dropping an item
                 // <Agent> drops <Item>
                 const item = await itemService.getItemById(parameters.item_id);
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "drop" : "drops"
                 } the ${item.label}.`;
                 break;
@@ -116,7 +122,7 @@ export class GameEvent {
                 // However some special items such as a book or magical items might have extra detail, egYou can see that there is a monster north of you"
                 // <Agent> looks at <Item
                 const item = await itemService.getItemById(parameters.item_id);
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "look at" : "looks at"
                 } the ${item.label}.`;
 
@@ -133,7 +139,7 @@ export class GameEvent {
                 const agent = await agentService.getAgentById(
                     parameters.agent_id
                 );
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "look at" : "looks at"
                 } ${agent.label}.`;
 
@@ -147,7 +153,7 @@ export class GameEvent {
                 // A general description and then the description of the location, with various details.
                 // <Agent> looks around.
                 // <Description of location>
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "look around" : "looks around"
                 }.`;
                 if (this.output_text && showPrivateDetail) {
@@ -160,7 +166,7 @@ export class GameEvent {
                 // <Agent> looks at <Exit>
                 // <Description of exit>
                 const exit = await exitService.getById(parameters.exit_id);
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "look at" : "looks at"
                 } the ${exit.direction}.`;
 
@@ -176,8 +182,9 @@ export class GameEvent {
                 const targetAgent = await agentService.getAgentById(
                     parameters.target_agent_id
                 );
+                const targetAgentLocation = await targetAgent.location;
 
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "speak to" : "speaks to"
                 } ${
                     parameters.target_agent_id === this.agent_id
@@ -185,13 +192,13 @@ export class GameEvent {
                         : targetAgent.label
                 }.`;
 
-                if (this.output_text && showPrivateDetail) {
+                if (this.output_text && (showPrivateDetail || isObserverPresent) ) {
                     extraDetail.push(this.output_text);
                 }
                 break;
             }
             case COMMAND_TYPE.UPDATE_AGENT_INTENT:
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "resolve" : "resolves"
                 } to do something.`;
 
@@ -201,13 +208,13 @@ export class GameEvent {
                 break;
 
             case COMMAND_TYPE.UPDATE_AGENT_MOOD:
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "feel" : "feels"
                 }.`;
                 break;
 
             case COMMAND_TYPE.WAIT:
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "wait" : "waits"
                 }.`;
                 break;
@@ -216,7 +223,7 @@ export class GameEvent {
                 const location = await locationService.getLocationById(
                     parameters.location_id
                 );
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "search" : "searches"
                 } ${location.label}.`;
                 break;
@@ -230,12 +237,12 @@ export class GameEvent {
                     const targetAgent = await agentService.getAgentById(
                         parameters.target_agent_id
                     );
-                    generalDescription = `${observerName} ${
+                    generalDescription = `${actorName} ${
                         isFirstPerson ? "give" : "gives"
                     } the ${item.label} to ${targetAgent.label}.`;
                 } catch (error) {
                     console.error(error);
-                    generalDescription = `${observerName} ${
+                    generalDescription = `${actorName} ${
                         isFirstPerson ? "try to give" : "tries to give"
                     } something to someone, but it doesn't seem to work.`;
                 }
@@ -245,7 +252,7 @@ export class GameEvent {
             case COMMAND_TYPE.GET_INVENTORY: {
                 // <Agent> checks their inventory.
                 // <Description of inventory>
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "check" : "checks"
                 } their inventory.`;
 
@@ -259,7 +266,7 @@ export class GameEvent {
                 const targetAgent = await agentService.getAgentById(
                     parameters.target_agent_id
                 );
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "attack" : "attacks"
                 } ${targetAgent.label}.`;
                 if (this.output_text && showPrivateDetail) {
@@ -268,7 +275,7 @@ export class GameEvent {
                 break;
             }
             case COMMAND_TYPE.SEARCH_LOCATION: {
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "search" : "searches"
                 } the current location.`;
 
@@ -279,7 +286,7 @@ export class GameEvent {
             }
             case COMMAND_TYPE.SEARCH_ITEM: {
                 const item = await itemService.getItemById(parameters.item_id);
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "search" : "searches"
                 } the ${item.label}.`;
 
@@ -290,7 +297,7 @@ export class GameEvent {
             }
             case COMMAND_TYPE.SEARCH_EXIT: {
                 const exit = await exitService.getById(parameters.exit_id);
-                generalDescription = `${observerName} ${
+                generalDescription = `${actorName} ${
                     isFirstPerson ? "search" : "searches"
                 } the ${exit.direction}.`;
 
