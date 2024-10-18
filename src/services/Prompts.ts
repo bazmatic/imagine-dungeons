@@ -10,6 +10,7 @@ import { LocationDto } from "@/entity/Location";
 import { ExitDto } from "@/entity/Exit";
 import _ from "lodash";
 import { getAvailableCommands } from "./Referee";
+import { AgentService } from "./Agent.service";
 
 const SEED = 100;
 
@@ -42,7 +43,7 @@ async function getLocationContext(
     ).toDto(isSystem);
     const observerAgentDto: AgentDto = isSystem
         ? SYSTEM_AGENT
-        : await observerAgent.toDto();
+        : await observerAgent.toDto(true);
 
 
     return {
@@ -55,6 +56,27 @@ async function getLocationContext(
         inventory: isSystem ? undefined : observerAgentDto.items
     };
 }
+
+// async function getAgentContext(observerAgent: Agent): Promise<AgentPromptContext> {
+//     const isSystem = observerAgent === null;
+//     const locationService = new LocationService();
+//     const location: LocationDto = await (
+//         await locationService.getLocationById(observerAgent.locationId)
+//     ).toDto(isSystem);
+//     const observerAgentDto: AgentDto = isSystem
+//         ? SYSTEM_AGENT
+//         : await observerAgent.toDto(true);
+
+//     return {
+//         observer_agent: observerAgentDto,
+//         location,
+//         exits: location.exits,
+//         items_present: location.items,
+//         autonomous_agents_present: location.agents.filter(agent => agent.autonomous),
+//         human_agents_present: location.agents.filter(agent => !agent.autonomous),
+//         inventory: observerAgentDto.items
+//     };
+// }
 
 async function describeRecentEvents(
     agentId: string,
@@ -144,6 +166,7 @@ export async function interpetAgentInstructions(
     const recentEventsMessage = await describeRecentEvents(actingAgent.agentId);
     const locationId = (await actingAgent.location).locationId;
     const context = await getLocationContext(locationId, actingAgent);
+    //const context = await get
     const systemPrompt = interpretAgentInstructionsSystemPrompt();
 
     const messages: ChatCompletionMessageParam[] = [
@@ -164,7 +187,7 @@ export async function interpetAgentInstructions(
         {
             role: "user",
             content:
-                "What minimal set of tool calls should be made to accurately carry out the actions that the agent should carry out based on the text description they provided? Respond with a list of tool calls that should be made."
+                "What minimal set of tool calls should be made to accurately carry out the actions that the agent should carry out based on the text description they provided? Respond with a list of tool calls that should be made. If nothing seems to fit well, just use an emote."
         }
     ];
     const openai = new OpenAI();

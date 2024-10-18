@@ -131,7 +131,9 @@ export class Agent implements IBaseProperties {
             this.agentId,
             desinationLocation.locationId
         );
-        return [];
+        const updatedAgent = await agentService.getAgentById(this.agentId);
+        const result = await updatedAgent.lookAround();
+        return result;
     }
 
     public async pickUp(
@@ -383,6 +385,15 @@ export class Agent implements IBaseProperties {
         } catch (error) {
             return [`That didn't work.`];
         }
+    }
+
+    public async useItem(itemId: string, _objectType: string, _objectId: string): Promise<string[]> {
+        const itemService = new ItemService();
+        const item = await itemService.getItemById(itemId);
+        if (!item) {
+            return [`That doesn't exist.`];
+        }
+        return [];
     }
 
     public async getInventory(): Promise<string[]> {

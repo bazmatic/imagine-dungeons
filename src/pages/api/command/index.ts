@@ -6,9 +6,10 @@ import { AgentService } from "@/services/Agent.service";
 import { initialiseDatabase } from "@/index";
 import { GameEventService } from "@/services/GameEventService";
 import { WorldService } from "@/services/World.service";
-import { COMMAND_TYPE, EventDescription } from "@/types/types";
+import { EventDescription } from "@/types/types";
 import { NextApiRequest, NextApiResponse } from "next";
 import { Referee } from "@/services/Referee";
+import { COMMAND_TYPE } from "@/types/commands";
 
 export default async function command(
     req: NextApiRequest,

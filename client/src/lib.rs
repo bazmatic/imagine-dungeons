@@ -38,5 +38,6 @@ pub enum CommandType {
     UpdateAgentIntent,
     UpdateAgentMood,
     UpdateItemDescription,
+    UseItem,
     Wait,
 }

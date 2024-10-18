@@ -12,7 +12,8 @@ import { Agent } from "./Agent";
 import { ItemService } from "@/services/Item.service";
 import { ExitService } from "@/services/Exit.service";
 import { LocationService } from "@/services/Location.service";
-import { COMMAND_TYPE, EventDescription } from "@/types/types";
+import { EventDescription } from "@/types/types";
+import { COMMAND_TYPE } from "@/types/commands";
 
 @Entity()
 export class GameEvent {
@@ -54,17 +55,18 @@ export class GameEvent {
         const itemService = new ItemService();
         const agentService = new AgentService();
         const locationService = new LocationService();
+        const isFirstPerson = observerAgent?.agentId === this.agent_id; // You are observing your own event
 
-        // If the observer wasn't present at the e vent, don't describe it
+        // If the observer wasn't present at the event, don't describe it
+        const isObserverPresent = observerAgent ? this.agents_present?.includes(observerAgent.agentId) : true;
         if (
-            observerAgent &&
             observerAgent?.agentId &&
-            !this.agents_present?.includes(observerAgent.agentId)
+            !isFirstPerson &&
+            !isObserverPresent
         ) {
             return null;
         }
-        const isFirstPerson = observerAgent?.agentId === this.agent_id; // You are observing your own event
-        const isObserverPresent = observerAgent ? this.agents_present?.includes(observerAgent.agentId) : true;
+        
         let actorName = "The Universe";
         if (this.agent_id) {
             const actorAgent = await agentService.getAgentById(this.agent_id);
@@ -94,6 +96,9 @@ export class GameEvent {
                     isFirstPerson ? "go" : "goes"
                 } ${exit.direction}.`;
 
+                if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
                 break;
             }
             case COMMAND_TYPE.PICK_UP_ITEM: {
@@ -336,7 +341,7 @@ export class GameEvent {
             }
             case COMMAND_TYPE.UNLOCK_EXIT: {
                 const exit = await exitService.getById(parameters.exit_id);
-                generalDescription = `The ${exit.direction} is unlocked.`;
+                generalDescription = `The ${exit.name} is unlocked.`;
 
                 if (this.output_text && showPrivateDetail) {
                     extraDetail.push(this.output_text);
@@ -349,6 +354,31 @@ export class GameEvent {
 
                 if (this.output_text && showPrivateDetail) {
                     extraDetail.push(this.output_text);
+                }
+                break;
+            }
+            case COMMAND_TYPE.USE_ITEM: {
+                const item = await itemService.getItemById(parameters.item_id);
+                if (parameters.object_type === "agent") {
+                    const targetAgent = await agentService.getAgentById(parameters.object_id);  
+                    generalDescription = `${actorName} ${
+                        isFirstPerson ? "use" : "uses"
+                    } the ${item.label} on ${targetAgent.label}.`;
+                } else if (parameters.object_type === "location") {
+                    const targetLocation = await locationService.getLocationById(parameters.object_id);
+                    generalDescription = `${actorName} ${
+                        isFirstPerson ? "use" : "uses"
+                    } the ${item.label} on ${targetLocation.label}.`;
+                } else if (parameters.object_type === "item") {
+                    const targetItem = await itemService.getItemById(parameters.object_id);
+                    generalDescription = `${actorName} ${
+                        isFirstPerson ? "use" : "uses"
+                    } the ${item.label} on the ${targetItem.label}.`;
+                } else if (parameters.object_type === "exit") {
+                    const exit = await exitService.getById(parameters.object_id);
+                    generalDescription = `${actorName} ${
+                        isFirstPerson ? "use" : "uses"
+                    } the ${item.label} on the ${exit.name}.`;
                 }
                 break;
             }

@@ -1,11 +1,82 @@
 import { FunctionDefinition } from "openai/resources";
-import { COMMAND_TYPE, OpenAiCommand } from "./types";
+import { OpenAiCommand } from "./types";
+
+export enum COMMAND_TYPE {
+    ATTACK_AGENT = "attack_agent",
+    DO_NOTHING = "do_nothing",
+    DROP_ITEM = "drop_item",
+    EMOTE = "emote",
+    GET_INVENTORY = "get_inventory",
+    GET_ITEM_FROM_ITEM = "get_item_from_item",
+    GIVE_ITEM_TO_AGENT = "give_item_to_agent",
+    GO_EXIT = "go_exit",
+    LOOK_AROUND = "look_around",
+    LOOK_AT_AGENT = "look_at_agent",
+    LOOK_AT_EXIT = "look_at_exit",
+    LOOK_AT_ITEM = "look_at_item",
+    PICK_UP_ITEM = "pick_up_item",
+    SPEAK_TO_AGENT = "speak_to_agent",
+    UPDATE_AGENT_INTENT = "update_agent_intent",
+    UPDATE_AGENT_MOOD = "update_agent_mood",
+    WAIT = "wait",
+    SEARCH_ITEM = "search_item",
+    SEARCH_LOCATION = "search_location",
+    SEARCH_EXIT = "search_exit",
+    REVEAL_ITEM = "reveal_item",
+    REVEAL_EXIT = "reveal_exit",
+    UNLOCK_EXIT = "unlock_exit",
+    USE_ITEM = "use_item",
+    UPDATE_ITEM_DESCRIPTION = "update_item_description"
+}
+
+export type ToolCallArguments = {
+    [COMMAND_TYPE.ATTACK_AGENT]: { target_agent_id: string };
+    [COMMAND_TYPE.DROP_ITEM]: { item_id: string };
+    [COMMAND_TYPE.DO_NOTHING]: object;
+    [COMMAND_TYPE.EMOTE]: { emote_text: string; agent_id: string };
+    [COMMAND_TYPE.GET_INVENTORY]: object;
+    [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: {
+        item_id: string;
+        target_item_id: string;
+    };
+    [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: {
+        item_id: string;
+        target_agent_id: string;
+    };
+    [COMMAND_TYPE.GO_EXIT]: { exit_id: string };
+    [COMMAND_TYPE.LOOK_AROUND]: object;
+    [COMMAND_TYPE.LOOK_AT_AGENT]: { agent_id: string };
+    [COMMAND_TYPE.LOOK_AT_EXIT]: { exit_id: string };
+    [COMMAND_TYPE.LOOK_AT_ITEM]: { item_id: string };
+    [COMMAND_TYPE.PICK_UP_ITEM]: { item_id: string };
+    [COMMAND_TYPE.REVEAL_EXIT]: { exit_id: string, reason: string };
+    [COMMAND_TYPE.REVEAL_ITEM]: { item_id: string, reason: string };
+    [COMMAND_TYPE.SEARCH_EXIT]: { exit_id: string };
+    [COMMAND_TYPE.SEARCH_ITEM]: { item_id: string };
+    [COMMAND_TYPE.SEARCH_LOCATION]: { location_id: string };
+    [COMMAND_TYPE.SPEAK_TO_AGENT]: { target_agent_id: string; message: string };
+    [COMMAND_TYPE.UNLOCK_EXIT]: { exit_id: string, reason: string };
+    [COMMAND_TYPE.UPDATE_AGENT_INTENT]: { intent: string, reason: string };
+    [COMMAND_TYPE.UPDATE_AGENT_MOOD]: { mood: string, reason: string };
+    [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: {
+        item_id: string;
+        description: string;
+        reason: string;
+    };
+    [COMMAND_TYPE.USE_ITEM]: {
+        object_type: string;
+        object_id: string;
+        item_id: string;
+    };
+    [COMMAND_TYPE.WAIT]: object;
+};
+
 
 export const EMOTE_COMMAND: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.EMOTE,
-        description: "Perform an action that has no direct effect, or express a visible action or emotion. Do not include any speech. Do not do anything that is covered by other commands. Describe the action from a third-person perspective. Do not prefix with the agent's name, simply output the emote text.",
+        description: "Perform an action that has no direct effect, or express a visible action or emotion. This can be used as a catch-all if nothing else seems to fit. Do not include any speech. Do not do anything that is covered by other commands. Describe the action from a third-person perspective. Do not prefix with the agent's name, simply output the emote text.",
         parameters: {
             type: "object",
             properties: {
@@ -366,9 +437,13 @@ export const REVEAL_ITEM_COMMAND: OpenAiCommand = {
                 item_id: {
                     type: "string",
                     description: "The id of the item to reveal. This must match item_id values listed in the items_present array or inventory array of the context."
+                },
+                reason: {
+                    type: "string",
+                    description: "The reason for revealing the item. This should be a short explanation for why the item is being revealed."
                 }
             },
-            required: ["item_id"],
+            required: ["item_id", "reason"],
             additionalProperties: false
         },
         strict: true
@@ -385,9 +460,13 @@ export const REVEAL_EXIT_COMMAND: OpenAiCommand = {
             properties: {
                 exit_id: {
                     type: "string"
+                },
+                reason: {
+                    type: "string",
+                    description: "The reason for revealing the exit. This should be a short explanation for why the exit is being revealed."
                 }
             },
-            required: ["exit_id"],
+            required: ["exit_id", "reason"],
             additionalProperties: false
         },
         strict: true
@@ -454,6 +533,34 @@ export const DO_NOTHING_COMMAND: OpenAiCommand = {
             type: "object",
             properties: {},
             additionalProperties: false
+        },
+        strict: true
+    }
+};
+
+export const USE_ITEM_COMMAND: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.USE_ITEM,
+        description: "Use an item on something",
+        parameters: {
+            type: "object",
+            properties: {
+                object_type: {
+                    type: "string",
+                    description: "The type of object to use the item on. This must be one of the following: 'agent', 'location', 'item', or 'exit'."
+                },
+                object_id: {
+                    type: "string",
+                    description: "The id of the object to use the item on. This must match object_id values listed in the objects array of the context."
+                },
+                item_id: {
+                    type: "string",
+                    description: "The id of the item to use. This must match item_id values listed in the inventory array of the context."
+                }
+            },
+            required: ["object_type", "object_id", "item_id"],
+            additionalProperties: false,
         },
         strict: true
     }

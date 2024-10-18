@@ -7,11 +7,10 @@ import { Agent } from "@/entity/Agent";
 import { GameEvent } from "@/entity/GameEvent";
 import _ from "lodash";
 import { LocationService } from "./Location.service";
-import { OpenAiCommand, ToolCallArguments } from "@/types/types";
-
-import { COMMAND_TYPE } from "@/types/types";
+import { OpenAiCommand } from "@/types/types";
 import * as Commands from "@/types/commands";
 import { determineConsequentEventsInLocation, interpetAgentInstructions, SYSTEM_AGENT } from "./Prompts";
+import { COMMAND_TYPE, ToolCallArguments } from "@/types/commands";
 
 export class Referee {
 
@@ -57,12 +56,12 @@ export class Referee {
     }
 
     private async executeSystemToolCall(
-        commandType: COMMAND_TYPE,
+        commandType: Commands.COMMAND_TYPE,
         toolCallArguments: ToolCallArguments[COMMAND_TYPE],
         locationId: string
     ): Promise<GameEvent[]> {
-        let outputText: string[] = [];
-        let actingAgent: Agent | null = null;
+        const outputText: string[] = [];
+        //let actingAgent: Agent | null = null;
         const agentService = new AgentService();
         const gameEventService = new GameEventService();
         const exitService = new ExitService();
@@ -154,7 +153,7 @@ export class Referee {
         const agentService = new AgentService();
         const gameEventService = new GameEventService();
 
-        switch (commandType) {
+            switch (commandType) {
             case COMMAND_TYPE.ATTACK_AGENT:
                 extraDetails = await agent.attackAgent(
                     (
@@ -196,6 +195,8 @@ export class Referee {
                         toolCallArguments as ToolCallArguments[COMMAND_TYPE.GO_EXIT]
                     ).exit_id
                 );
+                // const updatedAgent = await agentService.getAgentById(agentId);
+                // extraDetails = await updatedAgent.lookAround();
                 break;
             case COMMAND_TYPE.LOOK_AROUND:
                 extraDetails = await agent.lookAround();
@@ -274,6 +275,19 @@ export class Referee {
                     ).mood
                 );
                 break;
+            case COMMAND_TYPE.USE_ITEM:
+                extraDetails = await agent.useItem(
+                    (
+                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.USE_ITEM]
+                    ).item_id,
+                    (
+                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.USE_ITEM]
+                    ).object_type,
+                    (
+                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.USE_ITEM]
+                    ).object_id
+                );
+                break;
             case COMMAND_TYPE.WAIT:
                 extraDetails = await agent.wait();
                 break;
@@ -347,6 +361,7 @@ export function getAvailableCommands(
         Commands.SEARCH_ITEM_COMMAND,
         Commands.SEARCH_LOCATION_COMMAND,
         Commands.SPEAK_TO_AGENT_COMMAND,
+        Commands.USE_ITEM_COMMAND,
         Commands.WAIT_COMMAND,
     ];
 
