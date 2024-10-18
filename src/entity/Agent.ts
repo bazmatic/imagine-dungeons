@@ -85,7 +85,8 @@ export class Agent implements IBaseProperties {
             capacity: system ? this.capacity : undefined,
             backstory: system ? this.backstory : undefined,
             items: system ? await Promise.all(items.map(item => item.toDto(system))) : [],
-            defence: system ? this.defence : undefined
+            defence: system ? this.defence : undefined,
+            autonomous: this.autonomous
         };
     }
 
@@ -154,6 +155,26 @@ export class Agent implements IBaseProperties {
             if (!itemPresent) {
                 return [`You can't reach that.`];
             }
+        }
+        await itemService.setOwnerToAgent(itemId, this.agentId);
+        return [];
+    }
+
+    public async searchItem(itemId: string): Promise<string[]> {
+        const itemService = new ItemService();
+        const item = await itemService.getItemById(itemId);
+        if (!item) {
+            return [`That doesn't exist.`];
+        }
+        return [];
+    }
+
+    public async getItemFromItem(itemId: string, targetItemId: string): Promise<string[]> {
+        const itemService = new ItemService();
+        const item = await itemService.getItemById(itemId);
+        const targetItem = await itemService.getItemById(targetItemId);
+        if (!item || !targetItem) {
+            return [`That doesn't exist.`];
         }
         await itemService.setOwnerToAgent(itemId, this.agentId);
         return [];
@@ -402,4 +423,5 @@ export class AgentDto implements IBaseProperties {
     backstory?: string;
     items?: ItemDto[];
     defence?: number;
+    autonomous?: boolean;
 }

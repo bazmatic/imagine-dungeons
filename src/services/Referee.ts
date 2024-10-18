@@ -14,22 +14,8 @@ import * as Commands from "@/types/commands";
 import { determineConsequentEventsInLocation, interpetAgentInstructions, SYSTEM_AGENT } from "./Prompts";
 
 export class Referee {
-    private openai: OpenAI;
-    private agentService: AgentService;
-    private gameEventService: GameEventService;
-    private exitService: ExitService;
-    private itemService: ItemService;
-    private locationService: LocationService;
 
-    constructor() {
-        //this.openai = new OpenAI();
-        this.agentService = new AgentService();
-        this.gameEventService = new GameEventService();
-        this.exitService = new ExitService();
-        this.locationService = new LocationService();
-        this.itemService = new ItemService();
-    }
-
+    constructor() {}
     
     /**
      * Instruct an agent to perform an action.
@@ -39,17 +25,18 @@ export class Referee {
      */
     public async acceptAgentInstructions(
         agentId: string,
-        inputText: string
+        instructions: string
     ): Promise<GameEvent[]> {
         // Get the agent and check if they are dead
-        const agent: Agent = await this.agentService.getAgentById(agentId);
+        const agentService = new AgentService();
+        const agent: Agent = await agentService.getAgentById(agentId);
 
         if (await agent.isDead()) {
             return [];
         }
 
         // === Ask the AI what actions should be invoked based on the user's input ===
-        const toolCalls = await interpetAgentInstructions(inputText, agent);
+        const toolCalls = await interpetAgentInstructions(instructions, agent);
 
         // == Execute the tool calls to create game events ==
         const agentGameEvents: GameEvent[] = [];
@@ -61,7 +48,8 @@ export class Referee {
                 commandType,
                 toolCallArguments
             );
-
+            // Attach the instructions to the game event
+            gameEvents.forEach(gameEvent => gameEvent.input_text = instructions);
             agentGameEvents.push(...gameEvents);
         }
 
@@ -75,34 +63,55 @@ export class Referee {
     ): Promise<GameEvent[]> {
         let outputText: string[] = [];
         let actingAgent: Agent | null = null;
+        const agentService = new AgentService();
+        const gameEventService = new GameEventService();
+        const exitService = new ExitService();
+        const itemService = new ItemService();
+        const locationService = new LocationService();
+        const location = await locationService.getLocationById(locationId);
 
         switch (commandType) {
             case COMMAND_TYPE.DO_NOTHING:
                 return [];
    
             case COMMAND_TYPE.REVEAL_ITEM:
-                await this.itemService.revealItem(
+                await itemService.revealItem(
                     (
                         toolCallArguments as ToolCallArguments[COMMAND_TYPE.REVEAL_ITEM]
                     ).item_id
                 );
                 break;
             case COMMAND_TYPE.REVEAL_EXIT:
-                await this.exitService.revealExit(
+                await exitService.revealExit(
                     (
                         toolCallArguments as ToolCallArguments[COMMAND_TYPE.REVEAL_EXIT]
                     ).exit_id
                 );
                 break;
             case COMMAND_TYPE.UNLOCK_EXIT:
-                await this.exitService.unlockExit(
-                    (
-                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.UNLOCK_EXIT]
-                    ).exit_id
-                );
+                const exitId = (
+                    toolCallArguments as ToolCallArguments[COMMAND_TYPE.UNLOCK_EXIT]
+                ).exit_id;
+                const exits = await location.exits;
+                const exit = exits.find(e => e.exitId === exitId);
+                if (!exit) {
+                    outputText.push("That is not an exit.");
+                    break;
+                }
+                if (exit.locked) {
+                    await exitService.unlockExit(exitId);
+                }
                 break;
             case COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION:
-                await this.itemService.updateItemDescription(
+                const itemId = (
+                    toolCallArguments as ToolCallArguments[COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]
+                ).item_id;
+                const item = await itemService.getItemById(itemId);
+                if (!item) {
+                    outputText.push("That item doesn't exist.");
+                    break;
+                }
+                await itemService.updateItemDescription(
                     (
                         toolCallArguments as ToolCallArguments[COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]
                     ).item_id,
@@ -111,17 +120,7 @@ export class Referee {
                     ).description
                 );
                 break;
-            case COMMAND_TYPE.EMOTE:
-                // The agent is being controlled by the system. TODO: Consider making this how all autonomous agents are controlled, reducing a step.
-                actingAgent = await this.agentService.getAgentById(
-                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.EMOTE])
-                        .agent_id
-                );
-                outputText = await actingAgent.emote(
-                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.EMOTE])
-                        .emote_text
-                );
-                break;
+
             case COMMAND_TYPE.DO_NOTHING:
                 break;
 
@@ -129,13 +128,12 @@ export class Referee {
                 console.warn(`Unknown command type: ${commandType}`);
                 return [];
         }
-        const agentsPresent = await this.agentService.getAgentsByLocation(
+        const agentsPresent = await agentService.getAgentsByLocation(
             locationId
         );
 
-        const gameEvent: GameEvent =
-        await this.gameEventService.makeGameEvent(
-            actingAgent ? actingAgent.agentId : SYSTEM_AGENT.id,
+        const gameEvent: GameEvent = await gameEventService.makeGameEvent(
+            SYSTEM_AGENT.id, //TODO: fetch the actual system agent from DB
             locationId,
             "", //No input text available here, as this is a system event
             commandType,
@@ -153,6 +151,8 @@ export class Referee {
     ): Promise<GameEvent[]> {
         let extraDetails: string[] = [];
         const agentId = agent.agentId;
+        const agentService = new AgentService();
+        const gameEventService = new GameEventService();
 
         switch (commandType) {
             case COMMAND_TYPE.ATTACK_AGENT:
@@ -228,6 +228,23 @@ export class Referee {
                     ).item_id
                 );
                 break;
+            case COMMAND_TYPE.GET_ITEM_FROM_ITEM:
+                extraDetails = await agent.getItemFromItem(
+                    (
+                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.GET_ITEM_FROM_ITEM]
+                    ).item_id,
+                    (
+                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.GET_ITEM_FROM_ITEM]
+                    ).target_item_id
+                );
+                break;
+            case COMMAND_TYPE.SEARCH_ITEM:
+                extraDetails = await agent.searchItem(
+                    (
+                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.SEARCH_ITEM]
+                    ).item_id
+                );
+                break;
             case COMMAND_TYPE.SEARCH_LOCATION:
                 extraDetails = await agent.searchLocation();
                 break;
@@ -265,10 +282,9 @@ export class Referee {
                 return [];
         }
         const location = await agent.location;
-        const agentsPresent = await this.agentService.getAgentsByLocation(location.locationId);
-        
+        const agentsPresent = await agentService.getAgentsByLocation(location.locationId); 
         const agentGameEvent: GameEvent =
-            await this.gameEventService.makeGameEvent(
+            await gameEventService.makeGameEvent(
                 agentId,
                 location.locationId,
                 "", //No input text available here
@@ -321,14 +337,17 @@ export function getAvailableCommands(
 ): OpenAiCommand[] {
     const commonCommands: OpenAiCommand[] = [
         Commands.ATTACK_AGENT_COMMAND,
+        Commands.DO_NOTHING_COMMAND,
         Commands.DROP_ITEM_COMMAND,
         Commands.EMOTE_COMMAND,
+        Commands.GET_ITEM_FROM_ITEM_COMMAND,
         Commands.GIVE_ITEM_TO_AGENT_COMMAND,
         Commands.GO_EXIT_COMMAND,
         Commands.PICK_UP_ITEM_COMMAND,
+        Commands.SEARCH_ITEM_COMMAND,
         Commands.SEARCH_LOCATION_COMMAND,
         Commands.SPEAK_TO_AGENT_COMMAND,
-        Commands.WAIT_COMMAND
+        Commands.WAIT_COMMAND,
     ];
 
     const autonomousCommands: OpenAiCommand[] = [
@@ -345,10 +364,11 @@ export function getAvailableCommands(
     ];
 
     const refereeCommands: OpenAiCommand[] = [
-        Commands.REVEAL_ITEM_COMMAND,
+        Commands.DO_NOTHING_COMMAND,
         Commands.REVEAL_EXIT_COMMAND,
+        Commands.REVEAL_ITEM_COMMAND,
+        Commands.UNLOCK_EXIT_COMMAND,
         Commands.UPDATE_ITEM_DESCRIPTION_COMMAND,
-        Commands.EMOTE_COMMAND
     ];
 
     if (!agent) {

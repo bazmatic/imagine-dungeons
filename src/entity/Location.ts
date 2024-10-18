@@ -62,8 +62,8 @@ export class Location {
             name: this.label,
             shortDescription: this.shortDescription,
             longDescription: this.longDescription,
-            items: await Promise.all(items.map(item => item.toDto())),
-            exits: await Promise.all(exits.map(exit => exit.toDto())),
+            items: await Promise.all(items.map(item => item.toDto(system))),
+            exits: await Promise.all(exits.map(exit => exit.toDto(system))),
             agents: await Promise.all(agents.map(agent => agent.toDto(system))),
             notes: system ? this.notes : undefined
         };

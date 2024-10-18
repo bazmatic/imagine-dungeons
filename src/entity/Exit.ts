@@ -15,6 +15,9 @@ export class ExitDto {
     longDescription: string;
     destinationId: string;
     direction: string;
+    hidden?: boolean;
+    locked: boolean;
+    notes?: string;
 }
 
 @Entity("exit")
@@ -46,6 +49,7 @@ export class Exit {
     @Column({ name: "locked" })
     locked: boolean;
 
+
     @Column({ name: "notes" })
     notes: string;
 
@@ -53,7 +57,7 @@ export class Exit {
     @JoinColumn({ name: "owner_location_id", referencedColumnName: "locationId" })
     location: Promise<Location>;
 
-    public async toDto(): Promise<ExitDto> {
+    public async toDto(system: boolean = false): Promise<ExitDto> {
         return {
             id: this.exitId,
             name: this.name,
@@ -62,6 +66,9 @@ export class Exit {
             longDescription: this.longDescription,
             destinationId: this.destinationId,
             direction: this.direction,
+            hidden: system ? this.hidden : undefined,
+            locked: this.locked,
+            notes: system ? this.notes : undefined
         };
     }
 }

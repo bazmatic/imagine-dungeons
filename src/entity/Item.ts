@@ -68,7 +68,7 @@ export class Item implements IBaseProperties {
             ownerKind: this.ownerAgentId ? GameObjectKind.AGENT : this.ownerLocationId ? GameObjectKind.LOCATION : this.ownerItemId ? GameObjectKind.ITEM : undefined,
             capacity: this.capacity,
             notes: system ? this.notes : undefined,
-            items: await Promise.all(items.map(item => item.toDto()))
+            items: system ? await Promise.all(items.map(item => item.toDto(system))) : []
         };
     }
 }

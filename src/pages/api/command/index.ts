@@ -26,14 +26,12 @@ export default async function command(
             agentId,
             command
         );
-        const consequentUserGameEvents: GameEvent[] =
-            await referee.determineConsequentEvents(directUserGameEvents);
+ 
+        //const combinedUserGameEvents = [...directUserGameEvents, ...consequentUserGameEvents];
 
-        const combinedUserGameEvents = [...directUserGameEvents, ...consequentUserGameEvents];
-
-        // Save all commands to the database
+        // Save all events to the database so that they can be seen by other agents and the referee
         const gameEventService = new GameEventService();
-        for (const gameEvent of combinedUserGameEvents) {
+        for (const gameEvent of directUserGameEvents) {
             await gameEventService.saveGameEvent(gameEvent);
         }
 
@@ -45,13 +43,17 @@ export default async function command(
             await gameEventService.saveGameEvent(gameEvent);
         }
 
+        const consequentUserGameEvents: GameEvent[] = await referee.determineConsequentEvents([...directUserGameEvents, ...autonomousAgentGameEvents]);
+        for (const gameEvent of consequentUserGameEvents) {
+            await gameEventService.saveGameEvent(gameEvent);
+        }
+
         // == Format the results ==
+        // Combine the results 
+        const combinedResults = [...directUserGameEvents, ...consequentUserGameEvents, ...autonomousAgentGameEvents];
 
-        // Combine the results from the user command and autonomous agents
-        const combinedResults = [...combinedUserGameEvents, ...autonomousAgentGameEvents];
-
-        // Process each game event
-        const processedEvents = [];
+        // Process each game event into a DTO
+        const processedEvents: GameEventDTO[] = [];
         for (const gameEvent of combinedResults) {
             // Convert the game event to DTO
             const dto = await GameEventDTO.fromGameEvent(
@@ -61,8 +63,8 @@ export default async function command(
             processedEvents.push(dto);
         }
 
-        // Filter out null results and cast to GameEventDTO[]
-        const dtoResults: GameEventDTO[] = processedEvents.filter((dto): dto is GameEventDTO => dto !== null);
+        // Filter out null results
+        const dtoResults: GameEventDTO[] = processedEvents.filter((dto) => dto !== null);
 
         res.status(200).json(dtoResults);
     } catch (error) {

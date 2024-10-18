@@ -63,7 +63,6 @@ export class GameEvent {
         ) {
             return null;
         }
-        const observerLocation = await observerAgent?.location;
         const isFirstPerson = observerAgent?.agentId === this.agent_id; // You are observing your own event
         const isObserverPresent = observerAgent ? this.agents_present?.includes(observerAgent.agentId) : true;
         let actorName = "The Universe";
@@ -246,6 +245,15 @@ export class GameEvent {
                         isFirstPerson ? "try to give" : "tries to give"
                     } something to someone, but it doesn't seem to work.`;
                 }
+                break;
+            }
+
+            case COMMAND_TYPE.GET_ITEM_FROM_ITEM: {
+                const item = await itemService.getItemById(parameters.item_id);
+                const targetItem = await itemService.getItemById(parameters.target_item_id);
+                generalDescription = `${actorName} ${
+                    isFirstPerson ? "get" : "gets"
+                } the ${item.label} from the ${targetItem.label}.`;
                 break;
             }
 

@@ -18,9 +18,10 @@ export const EMOTE_COMMAND: OpenAiCommand = {
                     description: "The id of the agent performing the emote. This must match agent_id values listed in the agents_present array of the context."
                 }
             },
-            required: ["emote_text"],
+            required: ["emote_text", "agent_id"],
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -39,7 +40,8 @@ export const GO_EXIT_COMMAND: OpenAiCommand = {
             },
             required: ["exit_id"],
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -47,7 +49,7 @@ export const PICK_UP_ITEM_COMMAND: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.PICK_UP_ITEM,
-        description: "Get, grab, collect or pick up an item near you.",
+        description: "Get, grab, collect or pick up an item in your current location, not contained in another item. The item must be visible, not hidden. If the item is hidden, do not call this tool.",
         parameters: {
             type: "object",
             properties: {
@@ -58,9 +60,35 @@ export const PICK_UP_ITEM_COMMAND: OpenAiCommand = {
             },
             required: ["item_id"],
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
+
+export const GET_ITEM_FROM_ITEM_COMMAND: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.GET_ITEM_FROM_ITEM,
+        description: "Get a visible item from another visible item that is in your current location or inventory. This might happen if the user asks you to get something from a container or bag. The items must be visible, not hidden. If either item is hidden, do not call this tool.",
+        parameters: {
+            type: "object",
+            properties: {
+                item_id: {
+                    type: "string",
+                    description: "The id of the item to get. This must match item_id values listed in the items_present array of the context."
+                },
+                target_item_id: {
+                    type: "string",
+                    description: "The id of the item to get the item from. This must match item_id values listed in the items_present array of the context."
+                }
+            },
+            required: ["item_id", "target_item_id"],
+            additionalProperties: false
+        },
+        strict: true
+    }
+};
+
 
 export const DROP_ITEM_COMMAND: OpenAiCommand = {
     type: "function",
@@ -77,7 +105,8 @@ export const DROP_ITEM_COMMAND: OpenAiCommand = {
             },
             required: ["item_id"],
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -100,7 +129,8 @@ export const SPEAK_TO_AGENT_COMMAND: OpenAiCommand = {
             },
             required: ["target_agent_id", "message"],
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -113,8 +143,9 @@ export const WAIT_COMMAND: OpenAiCommand = {
             type: "object",
             properties: {},
             additionalProperties: false
-        }
-    }
+        },
+        strict: true
+    },
 };
 
 export const GIVE_ITEM_TO_AGENT_COMMAND: OpenAiCommand = {
@@ -136,7 +167,8 @@ export const GIVE_ITEM_TO_AGENT_COMMAND: OpenAiCommand = {
             },
             required: ["item_id", "target_agent_id"],
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -155,7 +187,8 @@ export const ATTACK_AGENT_COMMAND: OpenAiCommand = {
             },
             required: ["target_agent_id"],
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -168,7 +201,8 @@ export const SEARCH_LOCATION_COMMAND: OpenAiCommand = {
             type: "object",
             properties: {},
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -187,7 +221,8 @@ export const UPDATE_AGENT_INTENT_COMMAND: OpenAiCommand = {
             },
             required: ["intent"],
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -206,7 +241,8 @@ export const UPDATE_AGENT_MOOD_COMMAND: OpenAiCommand = {
             },
             required: ["mood"],
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -225,7 +261,28 @@ export const LOOK_AT_ITEM_COMMAND: OpenAiCommand = {
             },
             required: ["item_id"],
             additionalProperties: false
-        }
+        },
+        strict: true
+    }
+};
+
+export const SEARCH_ITEM_COMMAND: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.SEARCH_ITEM,
+        description: "Open, search inside, or look inside an item for hidden items or information. If (and only if) the text suggests that the primary action is to open, search, or look inside an item, then call this tool. Otherwise, do not call this tool.",
+        parameters: {
+            type: "object",
+            properties: {
+                item_id: {
+                    type: "string",
+                    description: "The id of the item to search. This must match item_id values listed in the items_present array or inventory array of the context."
+                }
+            },
+            required: ["item_id"],
+            additionalProperties: false
+        },
+        strict: true
     }
 };
 
@@ -243,8 +300,10 @@ export const LOOK_AT_AGENT_COMMAND: OpenAiCommand = {
                 }
             },
             required: ["agent_id"],
-            additionalProperties: false
-        }
+            additionalProperties: false,
+            
+        },
+        strict: true
     }
 };
 
@@ -257,7 +316,8 @@ export const LOOK_AROUND_COMMAND: OpenAiCommand = {
             type: "object",
             properties: {},
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -276,7 +336,8 @@ export const LOOK_AT_EXIT_COMMAND: OpenAiCommand = {
             },
             required: ["exit_id"],
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -289,7 +350,8 @@ export const GET_INVENTORY_COMMAND: OpenAiCommand = {
             type: "object",
             properties: {},
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -297,18 +359,19 @@ export const REVEAL_ITEM_COMMAND: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.REVEAL_ITEM,
-        description: "Change a hidden item to a visible item. This might happen if the user searches the location where the hidden item is. Do not use this to create new items.",
+        description: "Change a hidden item to a visible item. This might happen if the user searches the location or containing item where the hidden item is. Do not use this to create new items. Never, under any circumstances, reveal an item if it is contained within a hidden item.",
         parameters: {
             type: "object",
             properties: {
                 item_id: {
                     type: "string",
-                    description: "The id of the item to reveal. This must match item_id values listed in the items_present array of the context."
+                    description: "The id of the item to reveal. This must match item_id values listed in the items_present array or inventory array of the context."
                 }
             },
             required: ["item_id"],
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -326,7 +389,8 @@ export const REVEAL_EXIT_COMMAND: OpenAiCommand = {
             },
             required: ["exit_id"],
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 
@@ -343,13 +407,43 @@ export const UPDATE_ITEM_DESCRIPTION_COMMAND: OpenAiCommand = {
                 },
                 description: {
                     type: "string"
+                },
+                reason: {
+                    type: "string",
+                    description: "The reason for updating the item description. This should be a short explanation for why the item description is being updated."
                 }
             },
-            required: ["item_id", "description"],
-            additionalProperties: false
-        }
+            required: ["item_id", "description", "reason"],
+            additionalProperties: false,        
+        },
+        strict: true
     }
 };
+
+export const UNLOCK_EXIT_COMMAND: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.UNLOCK_EXIT,
+        description: "Unlock an exit. Do not do this lightly. This only happens under special circumstances, such as the correct key being used to unlock the exit. An agent must initiate this action by doing something specific to unlock the exit. For example, it is not enough to simply pick up a key. The user must state that the key was used to unlock the exit.",
+        parameters: {
+            type: "object",
+            properties: {
+                exit_id: {
+                    type: "string",
+                    description: "The id of the exit to unlock. This must match exit_id values listed in the exits array of the context. Hidden exits cannot be unlocked."
+                },
+                reason: {
+                    type: "string",
+                    description: "The reason for unlocking the exit. This should be a short explanation for why the exit is being unlocked."
+                }
+            },
+            required: ["exit_id", "reason"],
+            additionalProperties: false,
+        },
+        strict: true
+    }
+};
+
 
 export const DO_NOTHING_COMMAND: OpenAiCommand = {
     type: "function",
@@ -360,7 +454,8 @@ export const DO_NOTHING_COMMAND: OpenAiCommand = {
             type: "object",
             properties: {},
             additionalProperties: false
-        }
+        },
+        strict: true
     }
 };
 

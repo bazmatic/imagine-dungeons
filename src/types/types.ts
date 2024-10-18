@@ -16,6 +16,7 @@ export enum COMMAND_TYPE {
     DROP_ITEM = "drop_item",
     EMOTE = "emote",
     GET_INVENTORY = "get_inventory",
+    GET_ITEM_FROM_ITEM = "get_item_from_item",
     GIVE_ITEM_TO_AGENT = "give_item_to_agent",
     GO_EXIT = "go_exit",
     LOOK_AROUND = "look_around",
@@ -42,6 +43,10 @@ export type ToolCallArguments = {
     [COMMAND_TYPE.DO_NOTHING]: object;
     [COMMAND_TYPE.EMOTE]: { emote_text: string; agent_id: string };
     [COMMAND_TYPE.GET_INVENTORY]: object;
+    [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: {
+        item_id: string;
+        target_item_id: string;
+    };
     [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: {
         item_id: string;
         target_agent_id: string;
@@ -80,5 +85,6 @@ export type OpenAiCommand = {
             required?: string[];
             additionalProperties: boolean;
         };
+        strict?: boolean;
     };
 };
