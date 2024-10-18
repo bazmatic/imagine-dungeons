@@ -8,7 +8,7 @@ import { GameEvent } from "@/entity/GameEvent";
 import _ from "lodash";
 import { LocationService } from "./Location.service";
 import { OpenAiCommand } from "@/types/types";
-import * as Commands from "@/types/commands";
+import * as Tools from "@/types/commands";
 import { determineConsequentEventsInLocation, interpetAgentInstructions, SYSTEM_AGENT } from "./Prompts";
 import { COMMAND_TYPE, ToolCallArguments } from "@/types/commands";
 
@@ -346,44 +346,46 @@ export class Referee {
     }
 }
 
-export function getAvailableCommands(
+
+
+export function getAvailableTools(
     agent: Agent | null,
 ): OpenAiCommand[] {
     const commonCommands: OpenAiCommand[] = [
-        Commands.ATTACK_AGENT_COMMAND,
-        Commands.DO_NOTHING_COMMAND,
-        Commands.DROP_ITEM_COMMAND,
-        Commands.EMOTE_COMMAND,
-        Commands.GET_ITEM_FROM_ITEM_COMMAND,
-        Commands.GIVE_ITEM_TO_AGENT_COMMAND,
-        Commands.GO_EXIT_COMMAND,
-        Commands.PICK_UP_ITEM_COMMAND,
-        Commands.SEARCH_ITEM_COMMAND,
-        Commands.SEARCH_LOCATION_COMMAND,
-        Commands.SPEAK_TO_AGENT_COMMAND,
-        Commands.USE_ITEM_COMMAND,
-        Commands.WAIT_COMMAND,
+        Tools.ATTACK_AGENT_TOOL,
+        Tools.DO_NOTHING_TOOL,
+        Tools.DROP_ITEM_TOOL,
+        Tools.EMOTE_TOOL,
+        Tools.GET_ITEM_FROM_ITEM_TOOL,
+        Tools.GIVE_ITEM_TO_AGENT_TOOL,
+        Tools.GO_EXIT_TOOL,
+        Tools.PICK_UP_ITEM_TOOL,
+        Tools.SEARCH_ITEM_TOOL,
+        Tools.SEARCH_LOCATION_TOOL,
+        Tools.SPEAK_TO_AGENT_TOOL,
+        Tools.USE_ITEM_TOOL,
+        Tools.WAIT_TOOL,
     ];
 
     const autonomousCommands: OpenAiCommand[] = [
-        Commands.UPDATE_AGENT_INTENT_COMMAND,
-        Commands.UPDATE_AGENT_MOOD_COMMAND
+        Tools.UPDATE_AGENT_INTENT_TOOL,
+        Tools.UPDATE_AGENT_MOOD_TOOL
     ];
 
     const nonAutonomousCommands: OpenAiCommand[] = [
-        Commands.GET_INVENTORY_COMMAND,
-        Commands.LOOK_AROUND_COMMAND,
-        Commands.LOOK_AT_AGENT_COMMAND,
-        Commands.LOOK_AT_EXIT_COMMAND,
-        Commands.LOOK_AT_ITEM_COMMAND
+        Tools.GET_INVENTORY_TOOL,
+        Tools.LOOK_AROUND_TOOL,
+        Tools.LOOK_AT_AGENT_TOOL,
+        Tools.LOOK_AT_EXIT_TOOL,
+        Tools.LOOK_AT_ITEM_TOOL
     ];
 
     const refereeCommands: OpenAiCommand[] = [
-        Commands.DO_NOTHING_COMMAND,
-        Commands.REVEAL_EXIT_COMMAND,
-        Commands.REVEAL_ITEM_COMMAND,
-        Commands.UNLOCK_EXIT_COMMAND,
-        Commands.UPDATE_ITEM_DESCRIPTION_COMMAND,
+        Tools.DO_NOTHING_TOOL,
+        Tools.REVEAL_EXIT_TOOL,
+        Tools.REVEAL_ITEM_TOOL,
+        Tools.UNLOCK_EXIT_TOOL,
+        Tools.UPDATE_ITEM_DESCRIPTION_TOOL,
     ];
 
     if (!agent) {

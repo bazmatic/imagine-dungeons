@@ -9,7 +9,7 @@ import { ItemDto } from "@/entity/Item";
 import { LocationDto } from "@/entity/Location";
 import { ExitDto } from "@/entity/Exit";
 import _ from "lodash";
-import { getAvailableCommands } from "./Referee";
+import { getAvailableTools } from "./Referee";
 import { AgentService } from "./Agent.service";
 
 const SEED = 100;
@@ -166,6 +166,10 @@ export async function interpetAgentInstructions(
     const recentEventsMessage = await describeRecentEvents(actingAgent.agentId);
     const locationId = (await actingAgent.location).locationId;
     const context = await getLocationContext(locationId, actingAgent);
+
+
+
+
     //const context = await get
     const systemPrompt = interpretAgentInstructionsSystemPrompt();
 
@@ -194,7 +198,7 @@ export async function interpetAgentInstructions(
     const response: OpenAI.Chat.Completions.ChatCompletion =await openai.chat.completions.create({
         model: "gpt-4o-2024-08-06",
         messages,
-        tools: getAvailableCommands(actingAgent), // The tools will be different depending on the agent
+        tools: getAvailableTools(actingAgent), // The tools will be different depending on the agent
         tool_choice: "required",
         seed: SEED
     });
@@ -206,6 +210,23 @@ export async function interpetAgentInstructions(
         return [];
     }
     return toolCalls;
+}
+
+// Use a traditional parsing technique to determine the commands
+async function basicCommandInterpreter(instructions: string, actingAgent: Agent): Promise<ChatCompletionMessageToolCall[]> {
+    // The first word is a verb, the rest is a list of arguments
+    // Clean up the text to remove punctuation and make it easier to parse
+    const command = instructions.split(" ")[0].toLowerCase();
+    const args = instructions.split(" ").slice(1);
+
+    const commandLookup = getAvailableTools(actingAgent);
+    const command = commandLookup.find(c => c.function.name === command);
+    if (!command) {
+        return [];
+    }
+    return [command];
+ 
+
 }
 
 export async function determineConsequentEventsInLocation(
@@ -243,7 +264,7 @@ export async function determineConsequentEventsInLocation(
     const response: OpenAI.Chat.Completions.ChatCompletion = await openai.chat.completions.create({
         model: "gpt-4o-2024-08-06",
         messages,
-        tools: getAvailableCommands(null),
+        tools: getAvailableTools(null),
         tool_choice: "required",
         seed: SEED
     });

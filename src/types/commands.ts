@@ -71,8 +71,36 @@ export type ToolCallArguments = {
     [COMMAND_TYPE.WAIT]: object;
 };
 
+export const CommandSynonyms: Record<string, string[]> = {
+    [COMMAND_TYPE.ATTACK_AGENT]: ["attack", "fight", "hit", "strike", "assault", "battle"],
+    [COMMAND_TYPE.DO_NOTHING]: ["wait", "stand still", "idle"],
+    [COMMAND_TYPE.DROP_ITEM]: ["drop", "discard", "put down", "leave", "abandon"],
+    [COMMAND_TYPE.EMOTE]: ["emote", "express", "show", "display"],
+    [COMMAND_TYPE.GET_INVENTORY]: ["inventory"],
+    [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: ["get", "take", "remove"],
+    [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: ["give", "hand", "pass", "offer"],
+    [COMMAND_TYPE.GO_EXIT]: ["go", "move", "walk", "run", "enter", "exit"],
+    [COMMAND_TYPE.LOOK_AROUND]: ["look around", "observe", "survey", "scan"],
+    [COMMAND_TYPE.LOOK_AT_AGENT]: ["look", "examine", "inspect", "observe"],
+    [COMMAND_TYPE.LOOK_AT_EXIT]: ["look", "examine"],
+    [COMMAND_TYPE.LOOK_AT_ITEM]: ["look", "examine"],
+    [COMMAND_TYPE.PICK_UP_ITEM]: ["pick up", "take", "grab", "get"],
+    [COMMAND_TYPE.SPEAK_TO_AGENT]: ["speak to", "say", "ask", "tell"],
+    [COMMAND_TYPE.UPDATE_AGENT_INTENT]: [],
+    [COMMAND_TYPE.UPDATE_AGENT_MOOD]: [],
+    [COMMAND_TYPE.WAIT]: ["wait", "pause", "hold", "delay"],
+    [COMMAND_TYPE.SEARCH_ITEM]: ["search", "loot"],
+    [COMMAND_TYPE.SEARCH_LOCATION]: ["search", "loot"],
+    [COMMAND_TYPE.SEARCH_EXIT]: ["search", "loot"],
+    [COMMAND_TYPE.REVEAL_ITEM]: [],
+    [COMMAND_TYPE.REVEAL_EXIT]: [],
+    [COMMAND_TYPE.UNLOCK_EXIT]: ["unlock", "open"],
+    [COMMAND_TYPE.USE_ITEM]: ["use", "apply"],
+    [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: []
+}
 
-export const EMOTE_COMMAND: OpenAiCommand = {
+
+export const EMOTE_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.EMOTE,
@@ -96,7 +124,7 @@ export const EMOTE_COMMAND: OpenAiCommand = {
     }
 };
 
-export const GO_EXIT_COMMAND: OpenAiCommand = {
+export const GO_EXIT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.GO_EXIT,
@@ -116,7 +144,7 @@ export const GO_EXIT_COMMAND: OpenAiCommand = {
     }
 };
 
-export const PICK_UP_ITEM_COMMAND: OpenAiCommand = {
+export const PICK_UP_ITEM_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.PICK_UP_ITEM,
@@ -136,7 +164,7 @@ export const PICK_UP_ITEM_COMMAND: OpenAiCommand = {
     }
 };
 
-export const GET_ITEM_FROM_ITEM_COMMAND: OpenAiCommand = {
+export const GET_ITEM_FROM_ITEM_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.GET_ITEM_FROM_ITEM,
@@ -161,7 +189,7 @@ export const GET_ITEM_FROM_ITEM_COMMAND: OpenAiCommand = {
 };
 
 
-export const DROP_ITEM_COMMAND: OpenAiCommand = {
+export const DROP_ITEM_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.DROP_ITEM,
@@ -181,7 +209,7 @@ export const DROP_ITEM_COMMAND: OpenAiCommand = {
     }
 };
 
-export const SPEAK_TO_AGENT_COMMAND: OpenAiCommand = {
+export const SPEAK_TO_AGENT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.SPEAK_TO_AGENT,
@@ -205,7 +233,7 @@ export const SPEAK_TO_AGENT_COMMAND: OpenAiCommand = {
     }
 };
 
-export const WAIT_COMMAND: OpenAiCommand = {
+export const WAIT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.WAIT,
@@ -219,7 +247,7 @@ export const WAIT_COMMAND: OpenAiCommand = {
     },
 };
 
-export const GIVE_ITEM_TO_AGENT_COMMAND: OpenAiCommand = {
+export const GIVE_ITEM_TO_AGENT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.GIVE_ITEM_TO_AGENT,
@@ -243,7 +271,7 @@ export const GIVE_ITEM_TO_AGENT_COMMAND: OpenAiCommand = {
     }
 };
 
-export const ATTACK_AGENT_COMMAND: OpenAiCommand = {
+export const ATTACK_AGENT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.ATTACK_AGENT,
@@ -263,7 +291,7 @@ export const ATTACK_AGENT_COMMAND: OpenAiCommand = {
     }
 };
 
-export const SEARCH_LOCATION_COMMAND: OpenAiCommand = {
+export const SEARCH_LOCATION_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.SEARCH_LOCATION,
@@ -277,7 +305,7 @@ export const SEARCH_LOCATION_COMMAND: OpenAiCommand = {
     }
 };
 
-export const UPDATE_AGENT_INTENT_COMMAND: OpenAiCommand = {
+export const UPDATE_AGENT_INTENT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.UPDATE_AGENT_INTENT,
@@ -297,7 +325,7 @@ export const UPDATE_AGENT_INTENT_COMMAND: OpenAiCommand = {
     }
 };
 
-export const UPDATE_AGENT_MOOD_COMMAND: OpenAiCommand = {
+export const UPDATE_AGENT_MOOD_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.UPDATE_AGENT_MOOD,
@@ -317,7 +345,7 @@ export const UPDATE_AGENT_MOOD_COMMAND: OpenAiCommand = {
     }
 };
 
-export const LOOK_AT_ITEM_COMMAND: OpenAiCommand = {
+export const LOOK_AT_ITEM_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.LOOK_AT_ITEM,
@@ -337,7 +365,7 @@ export const LOOK_AT_ITEM_COMMAND: OpenAiCommand = {
     }
 };
 
-export const SEARCH_ITEM_COMMAND: OpenAiCommand = {
+export const SEARCH_ITEM_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.SEARCH_ITEM,
@@ -357,7 +385,7 @@ export const SEARCH_ITEM_COMMAND: OpenAiCommand = {
     }
 };
 
-export const LOOK_AT_AGENT_COMMAND: OpenAiCommand = {
+export const LOOK_AT_AGENT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.LOOK_AT_AGENT,
@@ -378,7 +406,7 @@ export const LOOK_AT_AGENT_COMMAND: OpenAiCommand = {
     }
 };
 
-export const LOOK_AROUND_COMMAND: OpenAiCommand = {
+export const LOOK_AROUND_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.LOOK_AROUND,
@@ -392,7 +420,7 @@ export const LOOK_AROUND_COMMAND: OpenAiCommand = {
     }
 };
 
-export const LOOK_AT_EXIT_COMMAND: OpenAiCommand = {
+export const LOOK_AT_EXIT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.LOOK_AT_EXIT,
@@ -412,7 +440,7 @@ export const LOOK_AT_EXIT_COMMAND: OpenAiCommand = {
     }
 };
 
-export const GET_INVENTORY_COMMAND: OpenAiCommand = {
+export const GET_INVENTORY_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.GET_INVENTORY,
@@ -426,7 +454,7 @@ export const GET_INVENTORY_COMMAND: OpenAiCommand = {
     }
 };
 
-export const REVEAL_ITEM_COMMAND: OpenAiCommand = {
+export const REVEAL_ITEM_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.REVEAL_ITEM,
@@ -450,7 +478,7 @@ export const REVEAL_ITEM_COMMAND: OpenAiCommand = {
     }
 };
 
-export const REVEAL_EXIT_COMMAND: OpenAiCommand = {
+export const REVEAL_EXIT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.REVEAL_EXIT,
@@ -473,7 +501,7 @@ export const REVEAL_EXIT_COMMAND: OpenAiCommand = {
     }
 };
 
-export const UPDATE_ITEM_DESCRIPTION_COMMAND: OpenAiCommand = {
+export const UPDATE_ITEM_DESCRIPTION_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION,
@@ -499,7 +527,7 @@ export const UPDATE_ITEM_DESCRIPTION_COMMAND: OpenAiCommand = {
     }
 };
 
-export const UNLOCK_EXIT_COMMAND: OpenAiCommand = {
+export const UNLOCK_EXIT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.UNLOCK_EXIT,
@@ -524,7 +552,7 @@ export const UNLOCK_EXIT_COMMAND: OpenAiCommand = {
 };
 
 
-export const DO_NOTHING_COMMAND: OpenAiCommand = {
+export const DO_NOTHING_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.DO_NOTHING,
@@ -538,7 +566,7 @@ export const DO_NOTHING_COMMAND: OpenAiCommand = {
     }
 };
 
-export const USE_ITEM_COMMAND: OpenAiCommand = {
+export const USE_ITEM_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.USE_ITEM,
@@ -565,6 +593,9 @@ export const USE_ITEM_COMMAND: OpenAiCommand = {
         strict: true
     }
 };
+
+
+
 
 
 
