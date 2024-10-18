@@ -136,7 +136,7 @@ async function getLocationContext(
 
 async function describeRecentEvents(
     agentId: string,
-    count: number = 10
+    count: number = 20
 ): Promise<string> {
     const gameEventService = new GameEventService();
     const recentEvents = await gameEventService.getRecentGameEvents(
@@ -301,10 +301,11 @@ export async function determineConsequentEventsInLocation(
         }
     ];
     const openai = new OpenAI();
+    const tools = getAvailableTools(null);
     const response: OpenAI.Chat.Completions.ChatCompletion = await openai.chat.completions.create({
         model: "gpt-4o-2024-08-06",
         messages,
-        tools: getAvailableTools(null),
+        tools,
         tool_choice: "required",
         seed: SEED
     });

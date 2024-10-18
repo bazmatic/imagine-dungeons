@@ -20,6 +20,7 @@ pub enum CommandType {
     DoNothing,
     DropItem,
     Emote,
+    Event,
     GetInventory,
     GetItemFromItem,
     GiveItemToAgent,

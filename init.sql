@@ -88,21 +88,21 @@ CREATE TABLE IF NOT EXISTS game_event (
     FOREIGN KEY (agent_id) REFERENCES agent(agent_id) ON DELETE CASCADE
 );
 
-INSERT INTO location (location_id, name, short_description, long_description) VALUES
-    ('loc_flaming_goblet', 'The Flaming Goblet', 'A tavern on the edge of the Burning District', 'A tavern with one wall constantly aflame, mostly staffed by Tieflings. The heat inside is intense.'),
-    ('loc_burning_street', 'Burning Street', 'A street engulfed in perpetual flames', 'Once a bustling street, now consumed by magical fire that cannot be extinguished.'),
-    ('loc_fire_salvagers', 'Fire Salvagers'' Camp', 'A makeshift camp of scavengers', 'A settlement of survivors who have adapted to life in the Burning District, trading in salvaged goods.'),
-    ('loc_zezrans_house', 'Zezran''s House', 'A partially burned wizard''s house', 'The former residence of the wizard Zezran, now a dangerous ruin with flames licking at its walls.'),
-    ('loc_workshop', 'Zezran''s Workshop', 'A cluttered magical workshop', 'The heart of Zezran''s experiments, filled with arcane equipment and magical artifacts.'),
-    ('loc_inferno_alley', 'Inferno Alley', 'A narrow alley of intense heat', 'A tight passage where the flames burn hottest, challenging even the most fire-resistant adventurers.'),
-    ('loc_elemental_plaza', 'Elemental Plaza', 'A wide open area with a fire elemental', 'A former city square now dominated by a massive fire elemental, believed to be the mother of the trapped elementals.'),
-    ('loc_ember_avenue', 'Ember Avenue', 'A wide street with floating embers', 'A broad avenue where glowing embers float through the air like fireflies, creating a beautiful yet dangerous spectacle.'),
-    ('loc_ash_lane', 'Ash Lane', 'A street covered in deep ash', 'A narrow lane where ash has accumulated to knee-depth, making movement difficult and hiding potential dangers.'),
-    ('loc_phoenix_row', 'Phoenix Row', 'A street of colorful, flickering flames', 'A street where flames dance in vibrant colors reminiscent of a phoenix''s plumage, constantly dying and being reborn.'),
-    ('loc_smoldering_square', 'Smoldering Square', 'A open area with smoldering ruins', 'A once-bustling marketplace, now a large square filled with the smoldering remains of stalls and buildings.'),
-    ('loc_dockside_markets', 'Dockside Markets', 'A bustling marketplace near the docks', 'A lively area where traders and sailors mingle, selling goods from distant lands. The smell of salt and spices fills the air.'),
-    ('loc_docks', 'The Docks', 'A series of wooden piers extending into the water', 'Wooden piers stretch out into the water, where ships of various sizes are moored. The air is thick with the smell of the sea and the sound of creaking wood.'),
-    ('loc_serenas_ship', 'The Serpent', 'Captain Serena''s impressive ship', 'A sleek vessel with intricate carvings of serpents along its hull. It''s currently undergoing repairs, but still looks formidable.');
+INSERT INTO location (location_id, name, short_description, long_description, notes) VALUES
+    ('loc_flaming_goblet', 'The Flaming Goblet', 'A tavern on the edge of the Burning District', 'A tavern with one wall constantly aflame, mostly staffed by Tieflings. The heat inside is intense.', 'Occasionally, in the distance, the mournful song of the Mother Fire Elemental can be heard.'),
+    ('loc_burning_street', 'Burning Street', 'A street engulfed in perpetual flames', 'Once a bustling street, now consumed by magical fire that cannot be extinguished.', NULL),
+    ('loc_fire_salvagers', 'Fire Salvagers'' Camp', 'A makeshift camp of scavengers', 'A settlement of survivors who have adapted to life in the Burning District, trading in salvaged goods.', NULL),
+    ('loc_zezrans_house', 'Zezran''s House', 'A partially burned wizard''s house', 'The former residence of the wizard Zezran, now a dangerous ruin with flames licking at its walls.', NULL),
+    ('loc_workshop', 'Zezran''s Workshop', 'A cluttered magical workshop', 'The heart of Zezran''s experiments, filled with arcane equipment and magical artifacts.', NULL),
+    ('loc_inferno_alley', 'Inferno Alley', 'A narrow alley of intense heat', 'A tight passage where the flames burn hottest, challenging even the most fire-resistant adventurers.', NULL),
+    ('loc_elemental_plaza', 'Elemental Plaza', 'A wide open area with a fire elemental', 'A former city square now dominated by a massive fire elemental, believed to be the mother of the trapped elementals.', NULL),
+    ('loc_ember_avenue', 'Ember Avenue', 'A wide street with floating embers', 'A broad avenue where glowing embers float through the air like fireflies, creating a beautiful yet dangerous spectacle.', NULL),
+    ('loc_ash_lane', 'Ash Lane', 'A street covered in deep ash', 'A narrow lane where ash has accumulated to knee-depth, making movement difficult and hiding potential dangers.', NULL),
+    ('loc_phoenix_row', 'Phoenix Row', 'A street of colorful, flickering flames', 'A street where flames dance in vibrant colors reminiscent of a phoenix''s plumage, constantly dying and being reborn.', NULL),
+    ('loc_smoldering_square', 'Smoldering Square', 'A open area with smoldering ruins', 'A once-bustling marketplace, now a large square filled with the smoldering remains of stalls and buildings.', NULL),
+    ('loc_dockside_markets', 'Dockside Markets', 'A bustling marketplace near the docks', 'A lively area where traders and sailors mingle, selling goods from distant lands. The smell of salt and spices fills the air.', NULL),
+    ('loc_docks', 'The Docks', 'A series of wooden piers extending into the water', 'Wooden piers stretch out into the water, where ships of various sizes are moored. The air is thick with the smell of the sea and the sound of creaking wood.', NULL),
+    ('loc_serenas_ship', 'The Serpent', 'Captain Serena''s impressive ship', 'A sleek vessel with intricate carvings of serpents along its hull. It''s currently undergoing repairs, but still looks formidable.', NULL);
 
 
 -- Update Captain Serena's location to her ship

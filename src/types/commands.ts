@@ -6,6 +6,7 @@ export enum COMMAND_TYPE {
     DO_NOTHING = "do_nothing",
     DROP_ITEM = "drop_item",
     EMOTE = "emote",
+    EVENT = "event",
     GET_INVENTORY = "get_inventory",
     GET_ITEM_FROM_ITEM = "get_item_from_item",
     GIVE_ITEM_TO_AGENT = "give_item_to_agent",
@@ -34,6 +35,7 @@ export type ToolCallArguments = {
     [COMMAND_TYPE.DROP_ITEM]: { item_id: string };
     [COMMAND_TYPE.DO_NOTHING]: object;
     [COMMAND_TYPE.EMOTE]: { emote_text: string; agent_id: string };
+    [COMMAND_TYPE.EVENT]: { event_text: string };
     [COMMAND_TYPE.GET_INVENTORY]: object;
     [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: {
         item_id: string;
@@ -172,6 +174,26 @@ const EMOTE_TOOL: OpenAiCommand = {
                 }
             },
             required: ["emote_text", "agent_id"],
+            additionalProperties: false
+        },
+        strict: true
+    }
+};
+
+const EVENT_TOOL: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.EVENT,
+        description: "Trigger an event in the game. This might happen if the user describes a game event that should happen, such as a sound, the ground shaking, or a rainstorm.",
+        parameters: {
+            type: "object",
+            properties: {
+                event_text: {
+                    type: "string",
+                    description: "A description of the event to trigger. This should be a short, simple description of the event."
+                }
+            },
+            required: ["event_text"],
             additionalProperties: false
         },
         strict: true
@@ -617,6 +639,7 @@ export const Tools: Record<COMMAND_TYPE, OpenAiCommand> = {
     [COMMAND_TYPE.DO_NOTHING]: DO_NOTHING_TOOL,
     [COMMAND_TYPE.DROP_ITEM]: DROP_ITEM_TOOL,
     [COMMAND_TYPE.EMOTE]: EMOTE_TOOL,
+    [COMMAND_TYPE.EVENT]: EVENT_TOOL,
     [COMMAND_TYPE.GET_INVENTORY]: GET_INVENTORY_TOOL,
     [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: GET_ITEM_FROM_ITEM_TOOL,
     [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: GIVE_ITEM_TO_AGENT_TOOL,

@@ -89,6 +89,10 @@ export class GameEvent {
                 generalDescription = `${this.output_text}`;
                 break;
             }
+            case COMMAND_TYPE.EVENT: {
+                generalDescription = `${this.output_text}`;
+                break;
+            }
             case COMMAND_TYPE.GO_EXIT: {
                 // <Agent> goes <direction>
                 const exit = await exitService.getById(parameters.exit_id);

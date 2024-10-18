@@ -72,6 +72,14 @@ export class Referee {
         switch (commandType) {
             case COMMAND_TYPE.DO_NOTHING:
                 return [];
+
+            case COMMAND_TYPE.EVENT:
+                outputText.push(
+                    (
+                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.EVENT]
+                    ).event_text
+                );
+                break;
    
             case COMMAND_TYPE.REVEAL_ITEM:
                 await itemService.revealItem(
@@ -348,24 +356,24 @@ export class Referee {
 
 // Use a traditional parsing technique to determine the commands
 //TODO: Finish this
-async function basicCommandInterpreter(instructions: string, actingAgent: Agent): Promise<void> {
-    // The first word is a verb, the rest is a list of arguments
-    // Clean up the text to remove punctuation and make it easier to parse
-    const verb = instructions.split(" ")[0].toLowerCase();
-    const args = instructions.split(" ").slice(1);
+// async function basicCommandInterpreter(instructions: string, actingAgent: Agent): Promise<void> {
+//     // The first word is a verb, the rest is a list of arguments
+//     // Clean up the text to remove punctuation and make it easier to parse
+//     const verb = instructions.split(" ")[0].toLowerCase();
+//     const args = instructions.split(" ").slice(1);
 
-    const availableCommands = getAvailableCommands(actingAgent);
-    const matchingCommands: COMMAND_TYPE[] = [];
-    for (const command of availableCommands) {
-        if (CommandSynonyms[command].includes(verb)) {
-            matchingCommands.push(command);
-        }
-    }
-    // Try each one
-    for (const command of matchingCommands) {
-        const tool = Tools[command];
-    }    
-}
+//     const availableCommands = getAvailableCommands(actingAgent);
+//     const matchingCommands: COMMAND_TYPE[] = [];
+//     for (const command of availableCommands) {
+//         if (CommandSynonyms[command].includes(verb)) {
+//             matchingCommands.push(command);
+//         }
+//     }
+//     // Try each one
+//     for (const command of matchingCommands) {
+//         const tool = Tools[command];
+//     }    
+// }
 
 export function getAvailableCommands(
     agent: Agent | null,
@@ -401,6 +409,7 @@ export function getAvailableCommands(
 
     const refereeTools = [
         COMMAND_TYPE.DO_NOTHING,
+        COMMAND_TYPE.EVENT,
         COMMAND_TYPE.REVEAL_EXIT,
         COMMAND_TYPE.REVEAL_ITEM,
         COMMAND_TYPE.UNLOCK_EXIT,
