@@ -100,7 +100,61 @@ export const CommandSynonyms: Record<string, string[]> = {
 }
 
 
-export const EMOTE_TOOL: OpenAiCommand = {
+const ATTACK_AGENT_TOOL: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.ATTACK_AGENT,
+        description: "Attack an agent in the same location, in an attempt to defeat them or cause them harm. If the text suggests that the primary action is to attack an agent, then call this tool. Otherwise, do not call this tool.",
+        parameters: {
+            type: "object",
+            properties: {
+                target_agent_id: {
+                    type: "string",
+                    description: "The id of the agent to attack. This must match agent_id values listed in the agents_present array of the context."
+                }
+            },
+            required: ["target_agent_id"],
+            additionalProperties: false
+        },
+        strict: true
+    }
+};
+
+const DO_NOTHING_TOOL: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.DO_NOTHING,
+        description: "Do nothing",
+        parameters: {
+            type: "object",
+            properties: {},
+            additionalProperties: false
+        },
+        strict: true
+    }
+};
+
+const DROP_ITEM_TOOL: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.DROP_ITEM,
+        description: "Drop an item",
+        parameters: {
+            type: "object",
+            properties: {
+                item_id: {
+                    type: "string",
+                    description: "The id of the item to drop. This must match item_id values listed in the inventory array of the context."
+                }
+            },
+            required: ["item_id"],
+            additionalProperties: false
+        },
+        strict: true
+    }
+};
+
+const EMOTE_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.EMOTE,
@@ -124,47 +178,21 @@ export const EMOTE_TOOL: OpenAiCommand = {
     }
 };
 
-export const GO_EXIT_TOOL: OpenAiCommand = {
+const GET_INVENTORY_TOOL: OpenAiCommand = {
     type: "function",
     function: {
-        name: COMMAND_TYPE.GO_EXIT,
-        description: "Move the agent through the specified exit. This will change the agent's location.",
+        name: COMMAND_TYPE.GET_INVENTORY,
+        description: "Get a list of items in your inventory",
         parameters: {
             type: "object",
-            properties: {
-                exit_id: {
-                    type: "string",
-                    description: "The id of the exit to move through. This must match exit_id values listed in the exits array of the context."
-                }
-            },
-            required: ["exit_id"],
+            properties: {},
             additionalProperties: false
         },
         strict: true
     }
 };
 
-export const PICK_UP_ITEM_TOOL: OpenAiCommand = {
-    type: "function",
-    function: {
-        name: COMMAND_TYPE.PICK_UP_ITEM,
-        description: "Get, grab, collect or pick up an item in your current location, not contained in another item. The item must be visible, not hidden. If the item is hidden, do not call this tool.",
-        parameters: {
-            type: "object",
-            properties: {
-                item_id: {
-                    type: "string",
-                    description: "The id of the item to get, grab, collect or pick up. This must match item_id values listed in the items_present array of the context."
-                }
-            },
-            required: ["item_id"],
-            additionalProperties: false
-        },
-        strict: true
-    }
-};
-
-export const GET_ITEM_FROM_ITEM_TOOL: OpenAiCommand = {
+ const GET_ITEM_FROM_ITEM_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.GET_ITEM_FROM_ITEM,
@@ -188,66 +216,7 @@ export const GET_ITEM_FROM_ITEM_TOOL: OpenAiCommand = {
     }
 };
 
-
-export const DROP_ITEM_TOOL: OpenAiCommand = {
-    type: "function",
-    function: {
-        name: COMMAND_TYPE.DROP_ITEM,
-        description: "Drop an item",
-        parameters: {
-            type: "object",
-            properties: {
-                item_id: {
-                    type: "string",
-                    description: "The id of the item to drop. This must match item_id values listed in the inventory array of the context."
-                }
-            },
-            required: ["item_id"],
-            additionalProperties: false
-        },
-        strict: true
-    }
-};
-
-export const SPEAK_TO_AGENT_TOOL: OpenAiCommand = {
-    type: "function",
-    function: {
-        name: COMMAND_TYPE.SPEAK_TO_AGENT,
-        description: "Speak to an agent who is in the same location. You should call this if an agent has just spoken to you. If the input text starts with 'talk to' or 'say' or 'ask' or 'tell', then they are indicating that this tool should be called. Only return the spoken text, without any additional descriptive text. Exclude quotation marks. Eg: Hello Bob, how are you?",
-        parameters: {
-            type: "object",
-            properties: {
-                target_agent_id: {
-                    type: "string",
-                    description: "The id of the other agent to speak to. This must match agent_id values listed in the agents_present array of the context."
-                },
-                message: {
-                    type: "string",
-                    description: "The message to speak to the other agent, without any additional descriptive text. Exclude quotation marks."
-                }
-            },
-            required: ["target_agent_id", "message"],
-            additionalProperties: false
-        },
-        strict: true
-    }
-};
-
-export const WAIT_TOOL: OpenAiCommand = {
-    type: "function",
-    function: {
-        name: COMMAND_TYPE.WAIT,
-        description: "Do nothing for this turn",
-        parameters: {
-            type: "object",
-            properties: {},
-            additionalProperties: false
-        },
-        strict: true
-    },
-};
-
-export const GIVE_ITEM_TO_AGENT_TOOL: OpenAiCommand = {
+const GIVE_ITEM_TO_AGENT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.GIVE_ITEM_TO_AGENT,
@@ -271,31 +240,31 @@ export const GIVE_ITEM_TO_AGENT_TOOL: OpenAiCommand = {
     }
 };
 
-export const ATTACK_AGENT_TOOL: OpenAiCommand = {
+const GO_EXIT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
-        name: COMMAND_TYPE.ATTACK_AGENT,
-        description: "Attack an agent in the same location, in an attempt to defeat them or cause them harm. If the text suggests that the primary action is to attack an agent, then call this tool. Otherwise, do not call this tool.",
+        name: COMMAND_TYPE.GO_EXIT,
+        description: "Move the agent through the specified exit. This will change the agent's location.",
         parameters: {
             type: "object",
             properties: {
-                target_agent_id: {
+                exit_id: {
                     type: "string",
-                    description: "The id of the agent to attack. This must match agent_id values listed in the agents_present array of the context."
+                    description: "The id of the exit to move through. This must match exit_id values listed in the exits array of the context."
                 }
             },
-            required: ["target_agent_id"],
+            required: ["exit_id"],
             additionalProperties: false
         },
         strict: true
     }
 };
 
-export const SEARCH_LOCATION_TOOL: OpenAiCommand = {
+const LOOK_AROUND_TOOL: OpenAiCommand = {
     type: "function",
     function: {
-        name: COMMAND_TYPE.SEARCH_LOCATION,
-        description: "Search the current location for items or exits.",
+        name: COMMAND_TYPE.LOOK_AROUND,
+        description: "Take a very detailed look around the current location.",
         parameters: {
             type: "object",
             properties: {},
@@ -305,87 +274,7 @@ export const SEARCH_LOCATION_TOOL: OpenAiCommand = {
     }
 };
 
-export const UPDATE_AGENT_INTENT_TOOL: OpenAiCommand = {
-    type: "function",
-    function: {
-        name: COMMAND_TYPE.UPDATE_AGENT_INTENT,
-        description: "Update your short-term goals so you can remember what you are doing. Briefly describing what you are doing or planning to do next. This overrides any previous intent. This does not change your location. The game state does not change when you update your intent. Your intent should begin with 'I intend to...'",
-        parameters: {
-            type: "object",
-            properties: {
-                intent: {
-                    type: "string",
-                    description: "Your new short-term goals. Briefly describing what you are doing or planning to do next."
-                }
-            },
-            required: ["intent"],
-            additionalProperties: false
-        },
-        strict: true
-    }
-};
-
-export const UPDATE_AGENT_MOOD_TOOL: OpenAiCommand = {
-    type: "function",
-    function: {
-        name: COMMAND_TYPE.UPDATE_AGENT_MOOD,
-        description: "Update your mood. This overrides any previous mood. This does not change your location. The game state does not change when you update your mood. If something has happened that is likely to have affected your emotional state, this tool should be called. Pass text that would fit after the words 'I am feeling...' but do not actually include the words 'I am feeling...'",
-        parameters: {
-            type: "object",
-            properties: {
-                mood: {
-                    type: "string",
-                    description: "Your new mood. This should be a single word or phrase describing your emotional state."
-                }
-            },
-            required: ["mood"],
-            additionalProperties: false
-        },
-        strict: true
-    }
-};
-
-export const LOOK_AT_ITEM_TOOL: OpenAiCommand = {
-    type: "function",
-    function: {
-        name: COMMAND_TYPE.LOOK_AT_ITEM,
-        description: "Look at an item. If (and only if) the text suggests that the primary action is to look at an item, then call this tool. Otherwise, do not call this tool.",
-        parameters: {
-            type: "object",
-            properties: {
-                item_id: {
-                    type: "string",
-                    description: "The id of the item to look at. This must match item_id values listed in the items_present array or inventory array of the context."
-                }
-            },
-            required: ["item_id"],
-            additionalProperties: false
-        },
-        strict: true
-    }
-};
-
-export const SEARCH_ITEM_TOOL: OpenAiCommand = {
-    type: "function",
-    function: {
-        name: COMMAND_TYPE.SEARCH_ITEM,
-        description: "Open, search inside, or look inside an item for hidden items or information. If (and only if) the text suggests that the primary action is to open, search, or look inside an item, then call this tool. Otherwise, do not call this tool.",
-        parameters: {
-            type: "object",
-            properties: {
-                item_id: {
-                    type: "string",
-                    description: "The id of the item to search. This must match item_id values listed in the items_present array or inventory array of the context."
-                }
-            },
-            required: ["item_id"],
-            additionalProperties: false
-        },
-        strict: true
-    }
-};
-
-export const LOOK_AT_AGENT_TOOL: OpenAiCommand = {
+const LOOK_AT_AGENT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.LOOK_AT_AGENT,
@@ -406,21 +295,7 @@ export const LOOK_AT_AGENT_TOOL: OpenAiCommand = {
     }
 };
 
-export const LOOK_AROUND_TOOL: OpenAiCommand = {
-    type: "function",
-    function: {
-        name: COMMAND_TYPE.LOOK_AROUND,
-        description: "Take a very detailed look around the current location.",
-        parameters: {
-            type: "object",
-            properties: {},
-            additionalProperties: false
-        },
-        strict: true
-    }
-};
-
-export const LOOK_AT_EXIT_TOOL: OpenAiCommand = {
+const LOOK_AT_EXIT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.LOOK_AT_EXIT,
@@ -440,21 +315,70 @@ export const LOOK_AT_EXIT_TOOL: OpenAiCommand = {
     }
 };
 
-export const GET_INVENTORY_TOOL: OpenAiCommand = {
+const LOOK_AT_ITEM_TOOL: OpenAiCommand = {
     type: "function",
     function: {
-        name: COMMAND_TYPE.GET_INVENTORY,
-        description: "Get a list of items in your inventory",
+        name: COMMAND_TYPE.LOOK_AT_ITEM,
+        description: "Look at an item. If (and only if) the text suggests that the primary action is to look at an item, then call this tool. Otherwise, do not call this tool.",
         parameters: {
             type: "object",
-            properties: {},
+            properties: {
+                item_id: {
+                    type: "string",
+                    description: "The id of the item to look at. This must match item_id values listed in the items_present array or inventory array of the context."
+                }
+            },
+            required: ["item_id"],
             additionalProperties: false
         },
         strict: true
     }
 };
 
-export const REVEAL_ITEM_TOOL: OpenAiCommand = {
+const PICK_UP_ITEM_TOOL: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.PICK_UP_ITEM,
+        description: "Get, grab, collect or pick up an item in your current location, not contained in another item. The item must be visible, not hidden. If the item is hidden, do not call this tool.",
+        parameters: {
+            type: "object",
+            properties: {
+                item_id: {
+                    type: "string",
+                    description: "The id of the item to get, grab, collect or pick up. This must match item_id values listed in the items_present array of the context."
+                }
+            },
+            required: ["item_id"],
+            additionalProperties: false
+        },
+        strict: true
+    }
+};
+
+const REVEAL_EXIT_TOOL: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.REVEAL_EXIT,
+        description: "Change a hidden exit to a visible exit. This might happen if the user searches the location where the hidden exit is.",
+        parameters: {
+            type: "object",
+            properties: {
+                exit_id: {
+                    type: "string"
+                },
+                reason: {
+                    type: "string",
+                    description: "The reason for revealing the exit. This should be a short explanation for why the exit is being revealed."
+                }
+            },
+            required: ["exit_id", "reason"],
+            additionalProperties: false
+        },
+        strict: true
+    }
+};
+
+const REVEAL_ITEM_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.REVEAL_ITEM,
@@ -478,30 +402,149 @@ export const REVEAL_ITEM_TOOL: OpenAiCommand = {
     }
 };
 
-export const REVEAL_EXIT_TOOL: OpenAiCommand = {
+const SEARCH_EXIT_TOOL: OpenAiCommand = {
     type: "function",
     function: {
-        name: COMMAND_TYPE.REVEAL_EXIT,
-        description: "Change a hidden exit to a visible exit. This might happen if the user searches the location where the hidden exit is.",
+        name: COMMAND_TYPE.SEARCH_EXIT,
+        description: "Search an exit for hidden items or information. If (and only if) the text suggests that the primary action is to search an exit, then call this tool. Otherwise, do not call this tool.",
         parameters: {
             type: "object",
             properties: {
                 exit_id: {
-                    type: "string"
-                },
-                reason: {
                     type: "string",
-                    description: "The reason for revealing the exit. This should be a short explanation for why the exit is being revealed."
+                    description: "The id of the exit to search. This must match exit_id values listed in the exits array of the context."
                 }
             },
-            required: ["exit_id", "reason"],
+            required: ["exit_id"],
+            additionalProperties: false
+        },
+        strict: true      
+    }
+};
+
+const SEARCH_ITEM_TOOL: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.SEARCH_ITEM,
+        description: "Open, search inside, or look inside an item for hidden items or information. If (and only if) the text suggests that the primary action is to open, search, or look inside an item, then call this tool. Otherwise, do not call this tool.",
+        parameters: {
+            type: "object",
+            properties: {
+                item_id: {
+                    type: "string",
+                    description: "The id of the item to search. This must match item_id values listed in the items_present array or inventory array of the context."
+                }
+            },
+            required: ["item_id"],
             additionalProperties: false
         },
         strict: true
     }
 };
 
-export const UPDATE_ITEM_DESCRIPTION_TOOL: OpenAiCommand = {
+const SEARCH_LOCATION_TOOL: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.SEARCH_LOCATION,
+        description: "Search the current location for items or exits.",
+        parameters: {
+            type: "object",
+            properties: {},
+            additionalProperties: false
+        },
+        strict: true
+    }
+};
+
+const SPEAK_TO_AGENT_TOOL: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.SPEAK_TO_AGENT,
+        description: "Speak to an agent who is in the same location. You should call this if an agent has just spoken to you. If the input text starts with 'talk to' or 'say' or 'ask' or 'tell', then they are indicating that this tool should be called. Only return the spoken text, without any additional descriptive text. Exclude quotation marks. Eg: Hello Bob, how are you?",
+        parameters: {
+            type: "object",
+            properties: {
+                target_agent_id: {
+                    type: "string",
+                    description: "The id of the other agent to speak to. This must match agent_id values listed in the agents_present array of the context."
+                },
+                message: {
+                    type: "string",
+                    description: "The message to speak to the other agent, without any additional descriptive text. Exclude quotation marks."
+                }
+            },
+            required: ["target_agent_id", "message"],
+            additionalProperties: false
+        },
+        strict: true
+    }
+};
+
+const UNLOCK_EXIT_TOOL: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.UNLOCK_EXIT,
+        description: "Unlock an exit. Do not do this lightly. This only happens under special circumstances, such as the correct key being used to unlock the exit. An agent must initiate this action by doing something specific to unlock the exit. For example, it is not enough to simply pick up a key. The user must state that the key was used to unlock the exit.",
+        parameters: {
+            type: "object",
+            properties: {
+                exit_id: {
+                    type: "string",
+                    description: "The id of the exit to unlock. This must match exit_id values listed in the exits array of the context. Hidden exits cannot be unlocked."
+                },
+                reason: {
+                    type: "string",
+                    description: "The reason for unlocking the exit. This should be a short explanation for why the exit is being unlocked."
+                }
+            },
+            required: ["exit_id", "reason"],
+            additionalProperties: false,
+        },
+        strict: true
+    }
+};
+
+const UPDATE_AGENT_INTENT_TOOL: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.UPDATE_AGENT_INTENT,
+        description: "Update your short-term goals so you can remember what you are doing. Briefly describing what you are doing or planning to do next. This overrides any previous intent. This does not change your location. The game state does not change when you update your intent. Your intent should begin with 'I intend to...'",
+        parameters: {
+            type: "object",
+            properties: {
+                intent: {
+                    type: "string",
+                    description: "Your new short-term goals. Briefly describing what you are doing or planning to do next."
+                }
+            },
+            required: ["intent"],
+            additionalProperties: false
+        },
+        strict: true
+    }
+};
+
+const UPDATE_AGENT_MOOD_TOOL: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.UPDATE_AGENT_MOOD,
+        description: "Update your mood. This overrides any previous mood. This does not change your location. The game state does not change when you update your mood. If something has happened that is likely to have affected your emotional state, this tool should be called. Pass text that would fit after the words 'I am feeling...' but do not actually include the words 'I am feeling...'",
+        parameters: {
+            type: "object",
+            properties: {
+                mood: {
+                    type: "string",
+                    description: "Your new mood. This should be a single word or phrase describing your emotional state."
+                }
+            },
+            required: ["mood"],
+            additionalProperties: false
+        },
+        strict: true
+    }
+};
+
+const UPDATE_ITEM_DESCRIPTION_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION,
@@ -527,46 +570,7 @@ export const UPDATE_ITEM_DESCRIPTION_TOOL: OpenAiCommand = {
     }
 };
 
-export const UNLOCK_EXIT_TOOL: OpenAiCommand = {
-    type: "function",
-    function: {
-        name: COMMAND_TYPE.UNLOCK_EXIT,
-        description: "Unlock an exit. Do not do this lightly. This only happens under special circumstances, such as the correct key being used to unlock the exit. An agent must initiate this action by doing something specific to unlock the exit. For example, it is not enough to simply pick up a key. The user must state that the key was used to unlock the exit.",
-        parameters: {
-            type: "object",
-            properties: {
-                exit_id: {
-                    type: "string",
-                    description: "The id of the exit to unlock. This must match exit_id values listed in the exits array of the context. Hidden exits cannot be unlocked."
-                },
-                reason: {
-                    type: "string",
-                    description: "The reason for unlocking the exit. This should be a short explanation for why the exit is being unlocked."
-                }
-            },
-            required: ["exit_id", "reason"],
-            additionalProperties: false,
-        },
-        strict: true
-    }
-};
-
-
-export const DO_NOTHING_TOOL: OpenAiCommand = {
-    type: "function",
-    function: {
-        name: COMMAND_TYPE.DO_NOTHING,
-        description: "Do nothing",
-        parameters: {
-            type: "object",
-            properties: {},
-            additionalProperties: false
-        },
-        strict: true
-    }
-};
-
-export const USE_ITEM_TOOL: OpenAiCommand = {
+const USE_ITEM_TOOL: OpenAiCommand = {
     type: "function",
     function: {
         name: COMMAND_TYPE.USE_ITEM,
@@ -594,9 +598,45 @@ export const USE_ITEM_TOOL: OpenAiCommand = {
     }
 };
 
+const WAIT_TOOL: OpenAiCommand = {
+    type: "function",
+    function: {
+        name: COMMAND_TYPE.WAIT,
+        description: "Do nothing for this turn",
+        parameters: {
+            type: "object",
+            properties: {},
+            additionalProperties: false
+        },
+        strict: true
+    },
+};
 
-
-
-
-
+export const Tools: Record<COMMAND_TYPE, OpenAiCommand> = {
+    [COMMAND_TYPE.ATTACK_AGENT]: ATTACK_AGENT_TOOL,
+    [COMMAND_TYPE.DO_NOTHING]: DO_NOTHING_TOOL,
+    [COMMAND_TYPE.DROP_ITEM]: DROP_ITEM_TOOL,
+    [COMMAND_TYPE.EMOTE]: EMOTE_TOOL,
+    [COMMAND_TYPE.GET_INVENTORY]: GET_INVENTORY_TOOL,
+    [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: GET_ITEM_FROM_ITEM_TOOL,
+    [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: GIVE_ITEM_TO_AGENT_TOOL,
+    [COMMAND_TYPE.GO_EXIT]: GO_EXIT_TOOL,
+    [COMMAND_TYPE.LOOK_AROUND]: LOOK_AROUND_TOOL,
+    [COMMAND_TYPE.LOOK_AT_AGENT]: LOOK_AT_AGENT_TOOL,
+    [COMMAND_TYPE.LOOK_AT_EXIT]: LOOK_AT_EXIT_TOOL,
+    [COMMAND_TYPE.LOOK_AT_ITEM]: LOOK_AT_ITEM_TOOL,
+    [COMMAND_TYPE.PICK_UP_ITEM]: PICK_UP_ITEM_TOOL,
+    [COMMAND_TYPE.REVEAL_EXIT]: REVEAL_EXIT_TOOL,
+    [COMMAND_TYPE.REVEAL_ITEM]: REVEAL_ITEM_TOOL,
+    [COMMAND_TYPE.SEARCH_EXIT]: SEARCH_EXIT_TOOL,
+    [COMMAND_TYPE.SEARCH_ITEM]: SEARCH_ITEM_TOOL,
+    [COMMAND_TYPE.SEARCH_LOCATION]: SEARCH_LOCATION_TOOL,
+    [COMMAND_TYPE.SPEAK_TO_AGENT]: SPEAK_TO_AGENT_TOOL,
+    [COMMAND_TYPE.UNLOCK_EXIT]: UNLOCK_EXIT_TOOL,
+    [COMMAND_TYPE.UPDATE_AGENT_INTENT]: UPDATE_AGENT_INTENT_TOOL,
+    [COMMAND_TYPE.UPDATE_AGENT_MOOD]: UPDATE_AGENT_MOOD_TOOL,
+    [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: UPDATE_ITEM_DESCRIPTION_TOOL,
+    [COMMAND_TYPE.USE_ITEM]: USE_ITEM_TOOL,
+    [COMMAND_TYPE.WAIT]: WAIT_TOOL
+};
 

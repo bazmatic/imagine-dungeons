@@ -1,6 +1,6 @@
 import { Agent, AgentDto } from "@/entity/Agent";
 import { GameEvent } from "@/entity/GameEvent";
-import { EventDescription } from "@/types/types";
+import { EventDescription, OpenAiCommand } from "@/types/types";
 import { OpenAI } from "openai";
 import { ChatCompletionMessageParam, ChatCompletionMessageToolCall } from "openai/resources";
 import { GameEventService } from "./GameEventService";
@@ -10,7 +10,7 @@ import { LocationDto } from "@/entity/Location";
 import { ExitDto } from "@/entity/Exit";
 import _ from "lodash";
 import { getAvailableTools } from "./Referee";
-import { AgentService } from "./Agent.service";
+
 
 const SEED = 100;
 
@@ -30,6 +30,62 @@ export const SYSTEM_AGENT: AgentDto = {
     longDescription: "The system",
     locationId: "system"
 };
+
+const SCENARIO_PROMPT = `Timeline of Events
+Years Ago:
+- Undisclosed Time - Ancient History: 
+  Elysia Everwood's elven family suffers a tragedy when a magical artefact they were studying explodes, destroying their home and leaving Elysia the sole survivor. She is blamed for the incident and cast out.
+
+- ~20 Years Ago:
+  - Wizard Zezran successfully captures baby fire elementals on the Elemental Plane of Fire, intending to use their essence to create powerful magical objects.
+  - Zezran details his success in a letter to his colleague, Bob Pangborn, referring to his creation as "The Phoenix Heart."
+  - Driven by jealousy, Bob breaks into Zezran's lab and attacks him, mortally wounding him.
+  - In the chaos, Bob disturbs a protective circle, accidentally unleashing the mother fire elemental from the jar containing one remaining hatchling.
+  - The mother elemental, unable to free her other children trapped within the Phoenix Heart, unleashes a wave of fire that engulfs the district, creating the Burning District.
+  - Bob barely escapes with his life.
+
+Following Years:
+- The Burning District becomes a treacherous and uninhabitable region, constantly ravaged by unpredictable flames.
+- The mother fire elemental returns frequently to the district, her sorrow and rage fueling the flames, as she sings lullabies to her trapped children.
+- Survivors of the initial blast and those seeking opportunity form the Fire Salvagers' Encampment within a safer pocket of the district.
+
+Present Day:
+- Days Ago: 
+  Paff Pinkerton, nephew of Bob, discovers evidence of his uncle's involvement in the Burning and confronts him.
+
+- Today:
+  - Paff, determined to stop the fire, sets off with a group of adventurers to find and destroy the Phoenix Heart.
+  - Bob, realizing Paff's intentions, sets out to retrieve the Phoenix Heart for himself, believing it to be his by right.
+  - Bandits, taking advantage of the chaos, set a trap, using a seemingly distressed traveler as bait to lure unsuspecting victims into an ambush.
+
+Cast of Characters
+
+Principle Characters:
+1. Zezran: A gifted but ambitious wizard who specialised in elemental magic. His pursuit of power led to the Burning District's creation, and his current fate remains unknown. Is he truly dead, or did he find a way to escape to the Elemental Plane of Fire?
+2. Bob Pangborn AKA "The Great Bob": A bitter and reclusive wizard, formerly a colleague of Zezran. He blames Zezran for the Burning District and desires the Phoenix Heart for himself. He is now an elderly and frail man consumed by his past and driven by greed.
+3. Paff Pinkerton: Bob's nephew, a well-meaning and determined young man who seeks to undo the tragedy of the Burning District. He is thrust into a dangerous quest to destroy the Phoenix Heart, unaware of the forces working against him.
+
+Supporting Characters:
+4. Captain Serena: A seasoned tiefling sea captain whose ship is docked for repairs near the Burning District. She possesses valuable knowledge about Zezran and the Elemental Planes and could be a valuable ally, for a price.
+5. Elysia Everwood: A haunted elven woman with a tragic past, seeking to clear her family name and uncover the truth behind a devastating magical accident. She finds herself a captive of bandits within the Burning District, her knowledge a valuable bargaining chip.
+6. The Flaming Goblet Staff: Tiefling workers at a tavern on the edge of the Burning District. They are accustomed to the heat and danger and offer information and services to adventurers for a price.
+7. The Fire Salvagers: A resourceful group of survivors who have adapted to life in the Burning District. They scavenge for resources and trade with outsiders, but are wary of strangers.
+
+Creatures:
+8. The Mother Fire Elemental: A powerful and vengeful being whose grief and rage fuel the Burning District. She fiercely protects her trapped offspring within the Phoenix Heart, a formidable and terrifying presence.
+9. Ash Zombies: Reanimated corpses imbued with fire, products of the Burning District's magic. They are drawn to heat and pose a constant threat to those who dare enter the district.
+10. Fire Slaters: Small, fiery creatures resembling oversized isopods, native to the Elemental Plane of Fire. They are not inherently aggressive but will defend themselves with bursts of heat.
+11. Inferno Worm: A colossal worm-like creature with a fiery hide, capable of burrowing and spewing flames. It is a mobile hazard within the Burning District, blocking paths and posing a significant challenge.
+12. Scrap Golems: Constructs made from salvaged metal, guarding the Fire Salvagers' Encampment. They are resistant to fire and possess surprising strength and resilience.
+
+Antagonists:
+13. The Bandits: Opportunistic individuals exploiting the chaos of the Burning District. They set ambushes, kidnap for ransom, and seek to profit from the misfortune of others.
+
+This cast of characters, entangled by the Burning District's creation, are driven by a complex web of motivations, desires, and ambitions. As Paff embarks on his quest to quench the flames, he will encounter these individuals and creatures, each playing their part in the unfolding drama of "The Burning District."
+`;
+
+
+
 
 // Return everything about the location that the observer agent can see
 async function getLocationContext(
@@ -212,22 +268,6 @@ export async function interpetAgentInstructions(
     return toolCalls;
 }
 
-// Use a traditional parsing technique to determine the commands
-async function basicCommandInterpreter(instructions: string, actingAgent: Agent): Promise<ChatCompletionMessageToolCall[]> {
-    // The first word is a verb, the rest is a list of arguments
-    // Clean up the text to remove punctuation and make it easier to parse
-    const command = instructions.split(" ")[0].toLowerCase();
-    const args = instructions.split(" ").slice(1);
-
-    const commandLookup = getAvailableTools(actingAgent);
-    const command = commandLookup.find(c => c.function.name === command);
-    if (!command) {
-        return [];
-    }
-    return [command];
- 
-
-}
 
 export async function determineConsequentEventsInLocation(
     locationId: string,
@@ -284,6 +324,7 @@ export async function agentMakesInstructions(
     const recentEventsMessage = await describeRecentEvents(actingAgent.agentId);
     const systemPrompt = await agentMakesInstructionsSystemPrompt(actingAgent);
     const messages: ChatCompletionMessageParam[] = [
+        { role: "system", content: SCENARIO_PROMPT },
         { role: "system", content: systemPrompt },
         { role: "system", content: recentEventsMessage }
     ];
@@ -310,3 +351,4 @@ export async function agentMakesInstructions(
     }
     return instructions;
 }
+

@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+
 import { AgentService } from "./Agent.service";
 import { GameEventService } from "./GameEventService";
 import { ExitService } from "./Exit.service";
@@ -8,9 +8,9 @@ import { GameEvent } from "@/entity/GameEvent";
 import _ from "lodash";
 import { LocationService } from "./Location.service";
 import { OpenAiCommand } from "@/types/types";
-import * as Tools from "@/types/commands";
 import { determineConsequentEventsInLocation, interpetAgentInstructions, SYSTEM_AGENT } from "./Prompts";
 import { COMMAND_TYPE, ToolCallArguments } from "@/types/commands";
+import { Tools } from "@/types/commands";
 
 export class Referee {
 
@@ -56,7 +56,7 @@ export class Referee {
     }
 
     private async executeSystemToolCall(
-        commandType: Commands.COMMAND_TYPE,
+        commandType: COMMAND_TYPE,
         toolCallArguments: ToolCallArguments[COMMAND_TYPE],
         locationId: string
     ): Promise<GameEvent[]> {
@@ -346,78 +346,82 @@ export class Referee {
     }
 }
 
+// Use a traditional parsing technique to determine the commands
+//TODO: Finish this
+async function basicCommandInterpreter(instructions: string, actingAgent: Agent): Promise<void> {
+    // The first word is a verb, the rest is a list of arguments
+    // Clean up the text to remove punctuation and make it easier to parse
+    const verb = instructions.split(" ")[0].toLowerCase();
+    const args = instructions.split(" ").slice(1);
 
+    const availableCommands = getAvailableCommands(actingAgent);
+    const matchingCommands: COMMAND_TYPE[] = [];
+    for (const command of availableCommands) {
+        if (CommandSynonyms[command].includes(verb)) {
+            matchingCommands.push(command);
+        }
+    }
+    // Try each one
+    for (const command of matchingCommands) {
+        const tool = Tools[command];
+    }    
+}
+
+export function getAvailableCommands(
+    agent: Agent | null,
+): COMMAND_TYPE[] {
+    const commonTools = [
+        COMMAND_TYPE.ATTACK_AGENT,
+        COMMAND_TYPE.DO_NOTHING,
+        COMMAND_TYPE.DROP_ITEM,
+        COMMAND_TYPE.EMOTE,
+        COMMAND_TYPE.GET_ITEM_FROM_ITEM,
+        COMMAND_TYPE.GIVE_ITEM_TO_AGENT,
+        COMMAND_TYPE.GO_EXIT,
+        COMMAND_TYPE.PICK_UP_ITEM,
+        COMMAND_TYPE.SEARCH_ITEM,
+        COMMAND_TYPE.SEARCH_LOCATION,
+        COMMAND_TYPE.SPEAK_TO_AGENT,
+        COMMAND_TYPE.USE_ITEM,
+        COMMAND_TYPE.WAIT
+    ];
+
+    const autonomousTools = [
+        COMMAND_TYPE.UPDATE_AGENT_INTENT,
+        COMMAND_TYPE.UPDATE_AGENT_MOOD
+    ];
+
+    const nonAutonomousTools = [
+        COMMAND_TYPE.GET_INVENTORY,
+        COMMAND_TYPE.LOOK_AROUND,
+        COMMAND_TYPE.LOOK_AT_AGENT,
+        COMMAND_TYPE.LOOK_AT_EXIT,
+        COMMAND_TYPE.LOOK_AT_ITEM
+    ];
+
+    const refereeTools = [
+        COMMAND_TYPE.DO_NOTHING,
+        COMMAND_TYPE.REVEAL_EXIT,
+        COMMAND_TYPE.REVEAL_ITEM,
+        COMMAND_TYPE.UNLOCK_EXIT,
+        COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION
+    ];
+
+    if (!agent) {
+        return refereeTools;
+    }
+    if (!agent.autonomous) {
+        return [...commonTools, ...nonAutonomousTools];
+    } else {
+        return [...commonTools, ...autonomousTools];
+    }
+}
 
 export function getAvailableTools(
     agent: Agent | null,
 ): OpenAiCommand[] {
-    const commonCommands: OpenAiCommand[] = [
-        Tools.ATTACK_AGENT_TOOL,
-        Tools.DO_NOTHING_TOOL,
-        Tools.DROP_ITEM_TOOL,
-        Tools.EMOTE_TOOL,
-        Tools.GET_ITEM_FROM_ITEM_TOOL,
-        Tools.GIVE_ITEM_TO_AGENT_TOOL,
-        Tools.GO_EXIT_TOOL,
-        Tools.PICK_UP_ITEM_TOOL,
-        Tools.SEARCH_ITEM_TOOL,
-        Tools.SEARCH_LOCATION_TOOL,
-        Tools.SPEAK_TO_AGENT_TOOL,
-        Tools.USE_ITEM_TOOL,
-        Tools.WAIT_TOOL,
-    ];
-
-    const autonomousCommands: OpenAiCommand[] = [
-        Tools.UPDATE_AGENT_INTENT_TOOL,
-        Tools.UPDATE_AGENT_MOOD_TOOL
-    ];
-
-    const nonAutonomousCommands: OpenAiCommand[] = [
-        Tools.GET_INVENTORY_TOOL,
-        Tools.LOOK_AROUND_TOOL,
-        Tools.LOOK_AT_AGENT_TOOL,
-        Tools.LOOK_AT_EXIT_TOOL,
-        Tools.LOOK_AT_ITEM_TOOL
-    ];
-
-    const refereeCommands: OpenAiCommand[] = [
-        Tools.DO_NOTHING_TOOL,
-        Tools.REVEAL_EXIT_TOOL,
-        Tools.REVEAL_ITEM_TOOL,
-        Tools.UNLOCK_EXIT_TOOL,
-        Tools.UPDATE_ITEM_DESCRIPTION_TOOL,
-    ];
-
-    if (!agent) {
-        return refereeCommands;
-    }
-    if (!agent.autonomous) {
-        return [...commonCommands, ...nonAutonomousCommands];
-    } else {
-        return [...commonCommands, ...autonomousCommands];
-    }
+    const availableCommands = getAvailableCommands(agent);
+    return availableCommands.map(c => {
+        return Tools[c]
+    });
 }
-
-// export function getOpenAiTools(
-//     agent: Agent | null,
-//     context: AgentPromptContext
-// ): ChatCompletionTool[] {
-//     const agentCommands: OpenAiCommand[] = getAgentCommands(agent, context);
-//     return agentCommands.map(c => {
-//         return {
-//             type: "function",
-//             function: {
-//                 id: c.function.name,
-//                 ...c.function
-//             }
-//         };
-//     });
-// }
-
-// export const REFEREE_OPENAI_TOOLS: ChatCompletionTool[] = [
-//     REVEAL_ITEM_COMMAND,
-//     REVEAL_EXIT_COMMAND,
-//     UPDATE_ITEM_DESCRIPTION_COMMAND,
-//     EMOTE_COMMAND,
-//     DO_NOTHING_COMMAND
-// ];
