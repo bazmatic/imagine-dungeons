@@ -10,6 +10,7 @@
       "typeorm": "typeorm-ts-node-commonjs"
    },
    "dependencies": {
+      "@anthropic-ai/sdk": "^0.29.2",
       "@types/lodash": "^4.17.10",
       "lodash": "^4.17.21",
       "next": "14.2.13",
