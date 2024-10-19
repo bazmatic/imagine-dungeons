@@ -258,11 +258,11 @@ export class GameEvent {
             }
 
             case COMMAND_TYPE.GET_ITEM_FROM_ITEM: {
-                const item = await itemService.getItemById(parameters.item_id);
+                const containerItem = await itemService.getItemById(parameters.container_item_id);
                 const targetItem = await itemService.getItemById(parameters.target_item_id);
                 generalDescription = `${actorName} ${
                     isFirstPerson ? "get" : "gets"
-                } the ${item.label} from the ${targetItem.label}.`;
+                } the ${targetItem.label} from the ${containerItem.label}.`;
                 break;
             }
 

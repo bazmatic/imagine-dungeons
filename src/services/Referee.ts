@@ -10,7 +10,7 @@ import { LocationService } from "./Location.service";;
 import { SYSTEM_AGENT } from "./Prompts";
 import { COMMAND_TYPE, ToolCallArguments } from "@/types/commands";
 import { Tools } from "@/types/commands";
-import { OpenAiHelper } from "./Ai";
+import { AnthropicAiHelper, OpenAiHelper } from "./Ai";
 import { AiTool, AiToolCall } from "@/types/types";
 
 export class Referee {
@@ -84,13 +84,28 @@ export class Referee {
                 );
                 break;
    
-            case COMMAND_TYPE.REVEAL_ITEM:
-                await itemService.revealItem(
-                    (
-                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.REVEAL_ITEM]
-                    ).item_id
-                );
+            case COMMAND_TYPE.REVEAL_ITEM: {
+                // Get the item
+                const itemId = (
+                    toolCallArguments as ToolCallArguments[COMMAND_TYPE.REVEAL_ITEM]
+                ).item_id;
+                const item = await itemService.getItemById(itemId);
+                if (!item) {
+                    //outputText.push("That item doesn't exist.");
+                    break;
+                }
+                if (item.ownerItemId) {
+                    //outputText.push("That item is inside something else.");
+                    break;
+                }
+                if (!item.hidden) {
+                    //outputText.push("That item is not hidden.");
+                    break;
+                }
+                await itemService.revealItem(itemId);
                 break;
+            }
+
             case COMMAND_TYPE.REVEAL_EXIT:
                 await exitService.revealExit(
                     (
@@ -244,7 +259,7 @@ export class Referee {
                 extraDetails = await agent.getItemFromItem(
                     (
                         toolCallArguments as ToolCallArguments[COMMAND_TYPE.GET_ITEM_FROM_ITEM]
-                    ).item_id,
+                    ).container_item_id,
                     (
                         toolCallArguments as ToolCallArguments[COMMAND_TYPE.GET_ITEM_FROM_ITEM]
                     ).target_item_id

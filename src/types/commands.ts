@@ -38,7 +38,7 @@ export type ToolCallArguments = {
     [COMMAND_TYPE.EVENT]: { event_text: string };
     [COMMAND_TYPE.GET_INVENTORY]: object;
     [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: {
-        item_id: string;
+        container_item_id: string;
         target_item_id: string;
     };
     [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: {
@@ -171,15 +171,15 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
     },
     [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: {
         name: COMMAND_TYPE.GET_ITEM_FROM_ITEM,
-        description: "Get a visible item from another visible item that is in your current location or inventory. This might happen if the user asks you to get something from a container or bag. The items must be visible, not hidden. If either item is hidden, do not call this tool.",
+        description: "Get an item from an container item. This might happen if the user asks you to get something from a container or bag. The container must be visible, not hidden. The container must be owned by the agent, or be in the agent's current location.",
         parameters: {
-            item_id: {
+            container_item_id: {
                 type: "string",
-                description: "The id of the item to get. This must match item_id values listed in the items_present array of the context."
+                description: "The id of the item to get the item from. This must match item_id values listed in the items_present array of the context."
             },
             target_item_id: {
                 type: "string",
-                description: "The id of the item to get the item from. This must match item_id values listed in the items_present array of the context."
+                description: "The id of the item to get. This must match item_id values listed in the items_present array of the context."
             }
         }
     },
@@ -267,7 +267,7 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
     },
     [COMMAND_TYPE.REVEAL_ITEM]: {
         name: COMMAND_TYPE.REVEAL_ITEM,
-        description: "Change a hidden item to a visible item. This might happen if the user searches the location or containing item where the hidden item is. Do not use this to create new items. Never, under any circumstances, reveal an item if it is contained within a hidden item.",
+        description: "Change a hidden item to a visible item. This might happen if the user searches the location or containing item where the hidden item is. Do not use this to create new items. Only reveal an item if it has an ownerKind of 'location' (i.e is not contained within another item or owned by an agent).",
         parameters: {
             item_id: {
                 type: "string",

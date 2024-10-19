@@ -4,7 +4,7 @@ import {
     Column,
     ManyToOne,
     OneToMany,
-    JoinColumn,
+    JoinColumn
 } from "typeorm";
 import { GameObjectKind, IBaseProperties } from "./BaseItem";
 import { Location } from "./Location";
@@ -46,7 +46,7 @@ export class Agent implements IBaseProperties {
 
     @Column({ name: "current_intent" })
     currentIntent: string;
-    
+
     @Column()
     capacity: number;
 
@@ -64,8 +64,14 @@ export class Agent implements IBaseProperties {
     items: Promise<Item[]>;
 
     // Relation to Location (Owner)
-    @ManyToOne(() => Location, location => location.agents, { lazy: true, nullable: true })
-    @JoinColumn({ name: "owner_location_id", referencedColumnName: "locationId" })
+    @ManyToOne(() => Location, location => location.agents, {
+        lazy: true,
+        nullable: true
+    })
+    @JoinColumn({
+        name: "owner_location_id",
+        referencedColumnName: "locationId"
+    })
     location: Promise<Location>;
 
     @Column({ name: "autonomous" })
@@ -84,12 +90,13 @@ export class Agent implements IBaseProperties {
             locationId: this.ownerLocationId,
             capacity: system ? this.capacity : undefined,
             backstory: system ? this.backstory : undefined,
-            items: system ? await Promise.all(items.map(item => item.toDto(system))) : [],
+            items: system
+                ? await Promise.all(items.map(item => item.toDto(system)))
+                : [],
             defence: system ? this.defence : undefined,
             autonomous: this.autonomous
         };
     }
-
 
     public async wait(): Promise<string[]> {
         return [];
@@ -109,20 +116,22 @@ export class Agent implements IBaseProperties {
     }
 
     public async goExit(exitId: string): Promise<string[]> {
-        const exitService = new ExitService();  
+        const exitService = new ExitService();
         const locationService = new LocationService();
         const agentService = new AgentService();
 
         const location = await this.location;
         const exits = await location.exits;
-        const exit = exits.filter(e => !e.hidden).find(e => e.exitId === exitId);
+        const exit = exits
+            .filter(e => !e.hidden)
+            .find(e => e.exitId === exitId);
         if (!exit) {
             return [`You can't go that way.`];
         }
         if (exit.locked) {
             return [`It's locked.`];
         }
-        
+
         const exitEntity: Exit = await exitService.getById(exitId);
         const desinationLocation = await locationService.getLocationById(
             exitEntity.destinationId
@@ -136,28 +145,14 @@ export class Agent implements IBaseProperties {
         return result;
     }
 
-    public async pickUp(
-        itemId: string,
-        fromTarget?: string
-    ): Promise<string[]> {
+    public async pickUp(itemId: string): Promise<string[]> {
         const itemService = new ItemService();
-        if (fromTarget) {
-            // Get the item from the target
-            // Check that the agent owns the target
-            const ownsTarget = await this.ownsItem(fromTarget);
-            if (!ownsTarget) {
-                return [`You can't pick that up.`];
-            }
-            const item = await itemService.getItemById(fromTarget);
-            if (!item) {
-                return [`That doesn't exist.`];
-            }
-        } else {
-            const itemPresent = await this.itemIsAccessible(itemId);
-            if (!itemPresent) {
-                return [`You can't reach that.`];
-            }
+
+        const itemPresent = await this.itemIsAccessible(itemId);
+        if (!itemPresent) {
+            return [`You can't reach that.`];
         }
+
         await itemService.setOwnerToAgent(itemId, this.agentId);
         return [];
     }
@@ -168,17 +163,34 @@ export class Agent implements IBaseProperties {
         if (!item) {
             return [`That doesn't exist.`];
         }
-        return [];
+        if (item.hidden) {
+            return [`You can't search that.`];
+        }
+        // Return the item's contents
+        const contents = await item.items;
+        const contentsLabels = contents.map(i => i.label).join(", ");
+        return [`You find ${contentsLabels} in the ${item.label}.`];
     }
 
-    public async getItemFromItem(itemId: string, targetItemId: string): Promise<string[]> {
+    public async getItemFromItem(
+        containerItemId: string,
+        targetItemId: string
+    ): Promise<string[]> {
         const itemService = new ItemService();
-        const item = await itemService.getItemById(itemId);
+        const containerItemPresent = await this.itemIsAccessible(
+            containerItemId
+        );
+        if (!containerItemPresent) {
+            return [`You can't reach that.`];
+        }
         const targetItem = await itemService.getItemById(targetItemId);
-        if (!item || !targetItem) {
+        if (!targetItem) {
             return [`That doesn't exist.`];
         }
-        await itemService.setOwnerToAgent(itemId, this.agentId);
+        if (targetItem.ownerItemId !== containerItemId) {
+            return [`You can't reach that.`];
+        }
+        await itemService.setOwnerToAgent(targetItemId, this.agentId);
         return [];
     }
 
@@ -235,8 +247,7 @@ export class Agent implements IBaseProperties {
         return result;
     }
 
-
-    public async lookAtItem(itemId: string): Promise<string[]> {   
+    public async lookAtItem(itemId: string): Promise<string[]> {
         // If item is not in my inventory or present in my location,
         if (!this.itemIsAccessible(itemId)) {
             throw new Error("Item not found");
@@ -293,7 +304,6 @@ export class Agent implements IBaseProperties {
         if (agentLocation.locationId !== targetAgentLocation.locationId) {
             return [`You can't see ${targetAgent.label}.`];
         } else {
-            
             if (targetAgent.autonomous) {
                 await agentService.activateAutonomy(targetAgentId, true);
             }
@@ -322,8 +332,12 @@ export class Agent implements IBaseProperties {
             for (let i = 0; i < this.damage; i++) {
                 totalDamage += Math.floor(Math.random() * 6) + 1;
             }
-            details.push(`${this.label} does ${totalDamage} damage to ${targetAgent.label}.`);
-            const updatedTargetAgent = await targetAgent.sustainDamage(-totalDamage);
+            details.push(
+                `${this.label} does ${totalDamage} damage to ${targetAgent.label}.`
+            );
+            const updatedTargetAgent = await targetAgent.sustainDamage(
+                -totalDamage
+            );
             if (await updatedTargetAgent.isDead()) {
                 details.push(`${updatedTargetAgent.label} is dead.`);
                 await agentService.activateAutonomy(targetAgentId, false);
@@ -343,7 +357,10 @@ export class Agent implements IBaseProperties {
         return [intent];
     }
 
-    public async updateAgentMood(agentId: string, mood: string): Promise<string[]> {
+    public async updateAgentMood(
+        agentId: string,
+        mood: string
+    ): Promise<string[]> {
         const agentService = new AgentService();
         await agentService.updateAgentMood(agentId, mood);
         return [mood];
@@ -351,7 +368,10 @@ export class Agent implements IBaseProperties {
 
     public async sustainDamage(health: number): Promise<Agent> {
         const agentService = new AgentService();
-        const updatedAgent = await agentService.updateAgentHealth(this.agentId, health);
+        const updatedAgent = await agentService.updateAgentHealth(
+            this.agentId,
+            health
+        );
         return updatedAgent;
     }
 
@@ -363,9 +383,7 @@ export class Agent implements IBaseProperties {
         const itemService = new ItemService();
 
         try {
-            const targetAgent = await agentService.getAgentById(
-                targetAgentId
-            );
+            const targetAgent = await agentService.getAgentById(targetAgentId);
 
             // Check if the item is in the agent's inventory
             if (!(await this.ownsItem(itemId))) {
@@ -380,14 +398,18 @@ export class Agent implements IBaseProperties {
             }
 
             // Transfer the item
-            await itemService.setOwnerToAgent(itemId, targetAgentId);;
+            await itemService.setOwnerToAgent(itemId, targetAgentId);
             return [];
         } catch (error) {
             return [`That didn't work.`];
         }
     }
 
-    public async useItem(itemId: string, _objectType: string, _objectId: string): Promise<string[]> {
+    public async useItem(
+        itemId: string,
+        _objectType: string,
+        _objectId: string
+    ): Promise<string[]> {
         const itemService = new ItemService();
         const item = await itemService.getItemById(itemId);
         if (!item) {
@@ -414,14 +436,14 @@ export class Agent implements IBaseProperties {
         const location = await agent.location;
         const itemsHere = await location.items;
         const accessibleItems = inventory.concat(itemsHere);
-        return !!accessibleItems.filter(i => !i.hidden).find(i => i.itemId === itemId);
+        return !!accessibleItems
+            .filter(i => !i.hidden)
+            .find(i => i.itemId === itemId);
     }
 
     public async isDead(): Promise<boolean> {
         return this.health <= 0;
     }
-
-
 }
 
 export class AgentDto implements IBaseProperties {
