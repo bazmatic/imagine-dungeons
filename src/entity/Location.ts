@@ -3,11 +3,14 @@ import {
     OneToMany,
     PrimaryColumn,
     Column,
+    ManyToMany,
+    JoinTable,
 } from "typeorm";
 
 import { Exit, ExitDto } from "./Exit";
 import { Item, ItemDto } from "./Item";
 import { Agent, AgentDto } from "./Agent";
+import { CreatureTemplate, CreatureTemplateDto } from "./CreatureTemplate";
 
 export class LocationDto {
     id: string;
@@ -18,6 +21,7 @@ export class LocationDto {
     items: ItemDto[];
     agents: AgentDto[];
     notes?: string;
+    creatureTemplates?: CreatureTemplateDto[];
 }
 
 @Entity("location")
@@ -52,10 +56,26 @@ export class Location {
     @OneToMany(() => Agent, agent => agent.location, { lazy: true })
     agents: Promise<Agent[]>;
 
+    // Creature templates that might spawn in this location
+    @ManyToMany(() => CreatureTemplate)
+    @JoinTable({
+        name: "creature_template_location",
+        joinColumn: {
+            name: "location_id",
+            referencedColumnName: "locationId"
+        },
+        inverseJoinColumn: {
+            name: "template_id",
+            referencedColumnName: "templateId"
+        }
+    })
+    creatureTemplates: CreatureTemplate[];
+
     public async toDto(system: boolean = false): Promise<LocationDto> {
         const items: Item[] = await this.items;
         const exits: Exit[] = await this.exits;
         const agents: Agent[] = await this.agents;
+        const creatureTemplates: CreatureTemplate[] = await this.creatureTemplates;
 
         return {
             id: this.locationId,
@@ -65,7 +85,8 @@ export class Location {
             items: await Promise.all(items.map(item => item.toDto(system))),
             exits: await Promise.all(exits.map(exit => exit.toDto(system))),
             agents: await Promise.all(agents.map(agent => agent.toDto(system))),
-            notes: system ? this.notes : undefined
+            notes: system ? this.notes : undefined,
+            creatureTemplates: system ? creatureTemplates.map(template => template.toDto(system)) : undefined
         };
     }
 }

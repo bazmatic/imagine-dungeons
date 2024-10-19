@@ -146,6 +146,20 @@ export class Referee {
                 );
                 break;
 
+            case COMMAND_TYPE.SPAWN_AGENT:
+                const templateId = (
+                    toolCallArguments as ToolCallArguments[COMMAND_TYPE.SPAWN_AGENT]
+                ).template_id;
+                const locationId = (
+                    toolCallArguments as ToolCallArguments[COMMAND_TYPE.SPAWN_AGENT]
+                ).location_id;
+                const name = (
+                    toolCallArguments as ToolCallArguments[COMMAND_TYPE.SPAWN_AGENT]
+                ).name;
+                await agentService.spawnAgentFromTemplate(templateId, locationId, name);
+                //outputText.push(`${newAgent.label} arrives.`);
+                break;
+
             case COMMAND_TYPE.DO_NOTHING:
                 break;
 
@@ -358,7 +372,7 @@ export class Referee {
         const consequentGameEvents: GameEvent[] = [];
         for (const locationId in eventsByLocation) {
             const events = eventsByLocation[locationId];
-            const locationToolCalls: AiToolCall[] = await aiHelper.determineConsequentEvents(locationId, events);
+            const locationToolCalls: AiToolCall[] = await aiHelper. determineConsequentEvents(locationId, events);
             for (const toolCall of locationToolCalls) {
                 const gameEvents: GameEvent[] =
                     await this.executeSystemToolCall(
@@ -431,6 +445,7 @@ export function getAvailableCommands(
         COMMAND_TYPE.EVENT,
         COMMAND_TYPE.REVEAL_EXIT,
         COMMAND_TYPE.REVEAL_ITEM,
+        COMMAND_TYPE.SPAWN_AGENT,
         COMMAND_TYPE.UNLOCK_EXIT,
         COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION
     ];

@@ -1,6 +1,8 @@
 import { AppDataSource } from "@/data-source";
 import { Repository } from "typeorm";
 import { Agent } from "@/entity/Agent";
+import { CreatureTemplateService } from "@/services/CreatureTemplate.service";
+import { generateId } from "@/utils/strings";
 
 export class AgentService {
     private agentRepository: Repository<Agent>;
@@ -73,5 +75,29 @@ export class AgentService {
     async updateAgentDefence(id: string, defence: number): Promise<Agent> {
         await this.agentRepository.update(id, { defence: defence });
         return this.getAgentById(id);
+    }
+
+    async spawnAgentFromTemplate(templateId: string, locationId: string, name: string): Promise<Agent> {
+        const creatureTemplateService = new CreatureTemplateService();
+        const template = await creatureTemplateService.getTemplateById(templateId);
+
+        const newAgentData: Partial<Agent> = {
+            agentId: `char_${generateId()}`, // Generate a unique ID
+            label: name,
+            shortDescription: template.shortDescription,
+            longDescription: template.longDescription,
+            ownerLocationId: locationId,
+            capacity: template.capacity,
+            health: template.health,
+            damage: template.damage,
+            defence: template.defence,
+            backstory: template.backstory,
+            mood: template.mood,
+            notes: template.notes,
+            autonomous: true,
+            activated: true
+        };
+
+        return this.createAgent(newAgentData);
     }
 }

@@ -10,22 +10,20 @@ export class LocationService {
     }
 
     async getAllLocations(): Promise<Location[]> {
-        
-        const locations = await this.locationRepository.find({
-            relations: [
-                "exits"
-            ]
+        return this.locationRepository.find({
+            relations: ['exits', 'items', 'agents', 'creatureTemplates']
         });
-        return locations;  
     }
 
     async getLocationById(id: string): Promise<Location> {
-        return this.locationRepository.findOneOrFail({
+        const location = await this.locationRepository.findOne({
             where: { locationId: id },
-            // relations: [
-
-            // ]
+            relations: ['exits', 'items', 'agents', 'creatureTemplates']
         });
+        if (!location) {
+            throw new Error(`Location with id ${id} not found`);
+        }
+        return location;
     }
     
     async createLocation(locationData: Partial<Location>): Promise<Location> {

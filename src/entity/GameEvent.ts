@@ -14,6 +14,7 @@ import { ExitService } from "@/services/Exit.service";
 import { LocationService } from "@/services/Location.service";
 import { EventDescription } from "@/types/types";
 import { COMMAND_TYPE } from "@/types/commands";
+import { CreatureTemplateService } from "@/services/CreatureTemplate.service";
 
 @Entity()
 export class GameEvent {
@@ -286,7 +287,7 @@ export class GameEvent {
                 generalDescription = `${actorName} ${
                     isFirstPerson ? "attack" : "attacks"
                 } ${targetAgent.label}.`;
-                if (this.output_text && showPrivateDetail) {
+                if (this.output_text) {
                     extraDetail.push(this.output_text);
                 }
                 break;
@@ -319,6 +320,16 @@ export class GameEvent {
                 } the ${exit.direction}.`;
 
                 if (this.output_text && showPrivateDetail) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
+            case COMMAND_TYPE.SPAWN_AGENT: {
+                const creatureTemplateService = new CreatureTemplateService();
+                const template = await creatureTemplateService.getTemplateById(parameters.template_id);
+                generalDescription = `${template.name} arrives.`;
+
+                if (this.output_text) {
                     extraDetail.push(this.output_text);
                 }
                 break;

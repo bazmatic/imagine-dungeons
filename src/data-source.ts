@@ -6,6 +6,7 @@ import { Agent } from "./entity/Agent"
 import { Location } from "./entity/Location"
 import { AgentMessage } from "./entity/AgentMessage"
 import { GameEvent } from "./entity/GameEvent"
+import { CreatureTemplate } from "./entity/CreatureTemplate"
 
 export const AppDataSource = new DataSource({
     type: "postgres",
@@ -17,12 +18,13 @@ export const AppDataSource = new DataSource({
     synchronize: false,
     logging: false,
     entities: [
-        Location,
-        Exit,
-        Item,
         Agent,
         AgentMessage,
-        GameEvent
+        CreatureTemplate,
+        Exit,
+        GameEvent,
+        Item,
+        Location,
     ],
     migrations: [],
     subscribers: [],

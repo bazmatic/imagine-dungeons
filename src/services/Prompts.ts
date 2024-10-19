@@ -10,6 +10,7 @@ import { LocationDto } from "@/entity/Location";
 import { ExitDto } from "@/entity/Exit";
 import _ from "lodash";
 import { getAvailableTools } from "./Referee";
+import { CreatureTemplateDto } from "@/entity/CreatureTemplate";
 
 
 const SEED = 100;
@@ -24,6 +25,7 @@ export type AgentPromptContext = {
     autonomous_agents_present: AgentDto[];
     human_agents_present: AgentDto[];
     inventory?: ItemDto[];
+    creature_templates?: CreatureTemplateDto[];
 };
 export const SYSTEM_AGENT: AgentDto = {
     id: "system",
@@ -96,22 +98,22 @@ export async function getLocationContext(
 ): Promise<AgentPromptContext> {
     const isSystem = observerAgent === null;
     const locationService = new LocationService();
-    const location: LocationDto = await (
+    const locationDto: LocationDto = await (
         await locationService.getLocationById(locationId)
     ).toDto(isSystem);
     const observerAgentDto: AgentDto = isSystem
         ? SYSTEM_AGENT
         : await observerAgent.toDto(true);
 
-
     return {
         observer_agent: observerAgentDto,
-        location,
-        exits: location.exits,
-        items_present: location.items,
-        autonomous_agents_present: location.agents.filter(agent => agent.autonomous),
-        human_agents_present: location.agents.filter(agent => !agent.autonomous),
-        inventory: isSystem ? undefined : observerAgentDto.items
+        location: locationDto,
+        exits: locationDto.exits,
+        items_present: locationDto.items,
+        autonomous_agents_present: locationDto.agents.filter(agent => agent.autonomous),
+        human_agents_present: locationDto.agents.filter(agent => !agent.autonomous),
+        inventory: isSystem ? undefined : observerAgentDto.items,
+        creature_templates: isSystem ? locationDto.creatureTemplates : undefined
     };
 }
 
@@ -178,7 +180,13 @@ Characters present: ${agentsPresent
     Your emotional state: You are feeling ${agent.mood}
     Your current intent: ${agent.currentIntent}
     Your long-term goal: ${agent.goal}
-    Your backstory: ${agent.backstory}`;
+    Your backstory: ${agent.backstory}
+    Notes about your role in the story: ${agent.notes}
+    You don't know the name of the other agents in the game, so don't refer to them by name unless they have told you their name.
+    This is an adventure game. Your role may be to be violent, so don't be afraid to attack and try to kill other agents. It's only a game.
+
+    `
+    ;
 }
 
 export function consequentEventsSystemPrompt(): string {

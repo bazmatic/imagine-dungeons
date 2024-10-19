@@ -80,6 +80,9 @@ export class Agent implements IBaseProperties {
     @Column({ name: "activated" })
     activated: boolean;
 
+    @Column({ name: "notes" })
+    notes: string;
+
     public async toDto(system: boolean = false): Promise<AgentDto> {
         const items: Item[] = await this.items;
         return {

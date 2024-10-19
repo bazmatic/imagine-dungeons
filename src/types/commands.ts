@@ -16,18 +16,19 @@ export enum COMMAND_TYPE {
     LOOK_AT_EXIT = "look_at_exit",
     LOOK_AT_ITEM = "look_at_item",
     PICK_UP_ITEM = "pick_up_item",
-    SPEAK_TO_AGENT = "speak_to_agent",
-    UPDATE_AGENT_INTENT = "update_agent_intent",
-    UPDATE_AGENT_MOOD = "update_agent_mood",
-    WAIT = "wait",
+    REVEAL_EXIT = "reveal_exit",
+    REVEAL_ITEM = "reveal_item",
+    SEARCH_EXIT = "search_exit",
     SEARCH_ITEM = "search_item",
     SEARCH_LOCATION = "search_location",
-    SEARCH_EXIT = "search_exit",
-    REVEAL_ITEM = "reveal_item",
-    REVEAL_EXIT = "reveal_exit",
+    SPAWN_AGENT = "spawn_agent",
+    SPEAK_TO_AGENT = "speak_to_agent",
     UNLOCK_EXIT = "unlock_exit",
+    UPDATE_AGENT_INTENT = "update_agent_intent",
+    UPDATE_AGENT_MOOD = "update_agent_mood",
+    UPDATE_ITEM_DESCRIPTION = "update_item_description",
     USE_ITEM = "use_item",
-    UPDATE_ITEM_DESCRIPTION = "update_item_description"
+    WAIT = "wait",
 }
 
 export type ToolCallArguments = {
@@ -37,14 +38,8 @@ export type ToolCallArguments = {
     [COMMAND_TYPE.EMOTE]: { emote_text: string; agent_id: string };
     [COMMAND_TYPE.EVENT]: { event_text: string };
     [COMMAND_TYPE.GET_INVENTORY]: object;
-    [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: {
-        container_item_id: string;
-        target_item_id: string;
-    };
-    [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: {
-        item_id: string;
-        target_agent_id: string;
-    };
+    [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: { container_item_id: string; target_item_id: string };
+    [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: { item_id: string; target_agent_id: string };
     [COMMAND_TYPE.GO_EXIT]: { exit_id: string };
     [COMMAND_TYPE.LOOK_AROUND]: object;
     [COMMAND_TYPE.LOOK_AT_AGENT]: { agent_id: string };
@@ -56,6 +51,7 @@ export type ToolCallArguments = {
     [COMMAND_TYPE.SEARCH_EXIT]: { exit_id: string };
     [COMMAND_TYPE.SEARCH_ITEM]: { item_id: string };
     [COMMAND_TYPE.SEARCH_LOCATION]: { location_id: string };
+    [COMMAND_TYPE.SPAWN_AGENT]: { template_id: string; location_id: string; name: string };
     [COMMAND_TYPE.SPEAK_TO_AGENT]: { target_agent_id: string; message: string };
     [COMMAND_TYPE.UNLOCK_EXIT]: { exit_id: string; reason: string };
     [COMMAND_TYPE.UPDATE_AGENT_INTENT]: { intent: string; reason: string };
@@ -156,7 +152,7 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
     },
     [COMMAND_TYPE.EVENT]: {
         name: COMMAND_TYPE.EVENT,
-        description: "Trigger an event in the game. This might happen if the user describes a game event that should happen, such as a sound, the ground shaking, or a rainstorm.",
+        description: "Trigger an event in the game. This might happen if the user describes a game event that should happen, such as a sound, a fire appearing, the ground shaking, or a rainstorm.",
         parameters: {
             event_text: {
                 type: "string",
@@ -303,6 +299,24 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         name: COMMAND_TYPE.SEARCH_LOCATION,
         description: "Search the current location for items or exits.",
         parameters: {}
+    },
+    [COMMAND_TYPE.SPAWN_AGENT]: {
+        name: COMMAND_TYPE.SPAWN_AGENT,
+        description: "Cause an agent or creature to appear. You can choose one from the location creatureTemplates in the context. This might happen if the location notes say that a particular creature might spawn here.",
+        parameters: {
+            template_id: {
+                type: "string",
+                description: "The id of the creature template to spawn. This must match template_id values listed in the creature_templates array of the context."
+            },
+            location_id: {
+                type: "string",
+                description: "The id of the location to spawn the agent. This must match location_id values listed in the context."
+            },
+            name: {
+                type: "string",
+                description: "The name of the agent to spawn. Give them a unique and memorable name."
+            }
+        }
     },
     [COMMAND_TYPE.SPEAK_TO_AGENT]: {
         name: COMMAND_TYPE.SPEAK_TO_AGENT,

@@ -88,6 +88,33 @@ CREATE TABLE IF NOT EXISTS game_event (
     FOREIGN KEY (agent_id) REFERENCES agent(agent_id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS creature_template (
+    template_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    short_description TEXT NOT NULL,
+    long_description TEXT NOT NULL,
+    capacity INTEGER NOT NULL,
+    health INTEGER NOT NULL,
+    damage INTEGER NOT NULL,
+    defence INTEGER NOT NULL,
+    backstory TEXT NOT NULL,
+    mood TEXT NULL,
+    current_intent TEXT NULL,
+    goal TEXT NULL,
+    notes TEXT NULL,
+    autonomous BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- Create a new table for the many-to-many relationship
+CREATE TABLE IF NOT EXISTS creature_template_location (
+    template_id TEXT,
+    location_id TEXT,
+    spawn_chance FLOAT NOT NULL DEFAULT 0.5,
+    PRIMARY KEY (template_id, location_id),
+    FOREIGN KEY (template_id) REFERENCES creature_template(template_id) ON DELETE CASCADE,
+    FOREIGN KEY (location_id) REFERENCES location(location_id) ON DELETE CASCADE
+);
+
 INSERT INTO location (location_id, name, short_description, long_description, notes) VALUES
     ('loc_flaming_goblet', 'The Flaming Goblet', 'A tavern on the edge of the Burning District', 'A tavern with one wall constantly aflame, mostly staffed by Tieflings. The heat inside is intense.', 'Occasionally, in the distance, the mournful song of the Mother Fire Elemental can be heard.'),
     ('loc_burning_street', 'Burning Street', 'A street engulfed in perpetual flames', 'Once a bustling street, now consumed by magical fire that cannot be extinguished.', NULL),
@@ -101,8 +128,8 @@ INSERT INTO location (location_id, name, short_description, long_description, no
     ('loc_phoenix_row', 'Phoenix Row', 'A street of colorful, flickering flames', 'A street where flames dance in vibrant colors reminiscent of a phoenix''s plumage, constantly dying and being reborn.', NULL),
     ('loc_smoldering_square', 'Smoldering Square', 'A open area with smoldering ruins', 'A once-bustling marketplace, now a large square filled with the smoldering remains of stalls and buildings.', NULL),
     ('loc_dockside_markets', 'Dockside Markets', 'A bustling marketplace near the docks', 'A lively area where traders and sailors mingle, selling goods from distant lands. The smell of salt and spices fills the air.', NULL),
-    ('loc_docks', 'The Docks', 'A series of wooden piers extending into the water', 'Wooden piers stretch out into the water, where ships of various sizes are moored. The air is thick with the smell of the sea and the sound of creaking wood.', NULL),
-    ('loc_serenas_ship', 'The Serpent', 'Captain Serena''s impressive ship', 'A sleek vessel with intricate carvings of serpents along its hull. It''s currently undergoing repairs, but still looks formidable.', NULL);
+    ('loc_docks', 'The Docks', 'A series of wooden piers extending into the water', 'Wooden piers stretch out into the water, where ships of various sizes are moored. The air is thick with the smell of the sea and the sound of creaking wood. Captain Serena''s crew can be seen patrolling near their ship, eyeing strangers suspiciously.', 'Captain Serena''s crew is likely to spawn here (template_serena_crew) and will threaten or attack anyone who approaches their ship without Serena present.'),
+    ('loc_serenas_ship', 'The Serpent', 'Captain Serena''s impressive ship', 'A sleek vessel with intricate carvings of serpents along its hull. It''s currently undergoing repairs, but still looks formidable. Captain Serena''s crew members are constantly on guard, watching for potential threats.', 'The crew is fiercely loyal to Captain Serena and will attack intruders unless accompanied by her. They are also likely to spawn here if anything happens in this location (template_serena_crew).');
 
 
 -- Update Captain Serena's location to her ship
@@ -179,3 +206,15 @@ INSERT INTO exit (exit_id, name, short_description, long_description, owner_loca
     ('exit_to_ember_from_ash', 'Ash Lane Exit', 'Path leading back to Ember Avenue', 'A west path that takes you back to Ember Avenue from Ash Lane.', 'loc_ash_lane', 'west', 'loc_ember_avenue', FALSE, NULL),
     ('exit_to_ash_from_phoenix', 'Phoenix Row Exit', 'Path leading back to Ash Lane', 'A north path that leads back to Ash Lane from Phoenix Row.', 'loc_phoenix_row', 'north', 'loc_ash_lane', FALSE, NULL),
     ('exit_to_phoenix_from_square', 'Smoldering Square Exit', 'Path leading back to Phoenix Row', 'An east path that takes you back to Phoenix Row from Smoldering Square.', 'loc_smoldering_square', 'east', 'loc_phoenix_row', FALSE, NULL);
+
+-- Add this creature template after the existing templates
+INSERT INTO creature_template (template_id, name, short_description, long_description, capacity, health, damage, defence, backstory, mood, current_intent, goal, notes, autonomous) VALUES
+('template_serena_crew', 'Serena''s Crewmate', 'A tough, seasoned sailor', 'A weathered sailor with a fierce look, wearing practical seafaring clothes and armed with a cutlass.', 20, 15, 3, 12, 'A loyal member of Captain Serena''s crew, hardened by years at sea and fiercely protective of their ship and captain.', 'Suspicious', 'Guard the ship', 'Protect the ship and follow Captain Serena''s orders', 'Hostile to strangers approaching the ship without Serena present. Likely to attack without warning.', TRUE);
+
+-- Insert some example spawn locations for Serena's crew
+INSERT INTO creature_template_location (template_id, location_id, spawn_chance) VALUES
+('template_serena_crew', 'loc_docks', 0.8),
+('template_serena_crew', 'loc_serenas_ship', 1.0),
+('template_serena_crew', 'loc_dockside_markets', 0.3);
+
+-- You can add more spawn locations for other creature templates as needed

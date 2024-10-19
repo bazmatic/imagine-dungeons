@@ -34,6 +34,7 @@ pub enum CommandType {
     RevealItem,
     SearchItem,
     SearchLocation,
+    SpawnAgent,
     SpeakToAgent,
     UnlockExit,
     UpdateAgentIntent,
