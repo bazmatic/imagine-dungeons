@@ -1,6 +1,6 @@
 import { Agent, AgentDto } from "@/entity/Agent";
 import { GameEvent } from "@/entity/GameEvent";
-import { EventDescription, OpenAiCommand } from "@/types/types";
+import { AiToolCall, EventDescription } from "@/types/types";
 import { OpenAI } from "openai";
 import { ChatCompletionMessageParam, ChatCompletionMessageToolCall } from "openai/resources";
 import { GameEventService } from "./GameEventService";
@@ -13,6 +13,8 @@ import { getAvailableTools } from "./Referee";
 
 
 const SEED = 100;
+const STRUCTURED_OUTPUT_MODEL = "gpt-4o-2024-08-06"; // "gpt-4-0613"; // "gpt-4o-2024-08-06"
+const TEXT_OUTPUT_MODEL = "gpt-4o-mini";
 
 export type AgentPromptContext = {
     observer_agent: AgentDto;
@@ -80,7 +82,7 @@ Creatures:
 
 Antagonists:
 13. The Bandits: Opportunistic individuals exploiting the chaos of the Burning District. They set ambushes, kidnap for ransom, and seek to profit from the misfortune of others.
-
+export 
 This cast of characters, entangled by the Burning District's creation, are driven by a complex web of motivations, desires, and ambitions. As Paff embarks on his quest to quench the flames, he will encounter these individuals and creatures, each playing their part in the unfolding drama of "The Burning District."
 `;
 
@@ -88,7 +90,7 @@ This cast of characters, entangled by the Burning District's creation, are drive
 
 
 // Return everything about the location that the observer agent can see
-async function getLocationContext(
+export async function getLocationContext(
     locationId: string,
     observerAgent: Agent | null
 ): Promise<AgentPromptContext> {
@@ -113,28 +115,7 @@ async function getLocationContext(
     };
 }
 
-// async function getAgentContext(observerAgent: Agent): Promise<AgentPromptContext> {
-//     const isSystem = observerAgent === null;
-//     const locationService = new LocationService();
-//     const location: LocationDto = await (
-//         await locationService.getLocationById(observerAgent.locationId)
-//     ).toDto(isSystem);
-//     const observerAgentDto: AgentDto = isSystem
-//         ? SYSTEM_AGENT
-//         : await observerAgent.toDto(true);
-
-//     return {
-//         observer_agent: observerAgentDto,
-//         location,
-//         exits: location.exits,
-//         items_present: location.items,
-//         autonomous_agents_present: location.agents.filter(agent => agent.autonomous),
-//         human_agents_present: location.agents.filter(agent => !agent.autonomous),
-//         inventory: observerAgentDto.items
-//     };
-// }
-
-async function describeRecentEvents(
+export async function describeRecentEvents(
     agentId: string,
     count: number = 20
 ): Promise<string> {
@@ -155,7 +136,7 @@ async function describeRecentEvents(
         .join("\n\n")}`;
 }
 
-function interpretAgentInstructionsSystemPrompt(): string {
+export function interpretAgentInstructionsSystemPrompt(): string {
     return `You are an AI assistant designed to turn an agent's natural language instructions into a series of actions that can be taken in a classic text adventure game.
     The agent is embedded in a game world with locations connected by exits.
     Locations contain items and other agents.
@@ -177,7 +158,7 @@ function interpretAgentInstructionsSystemPrompt(): string {
     `;
 }
 
-async function agentMakesInstructionsSystemPrompt(
+export async function agentMakesInstructionsSystemPrompt(
     agent: Agent
 ): Promise<string> {
     const location = await agent.location;
@@ -200,7 +181,7 @@ Characters present: ${agentsPresent
     Your backstory: ${agent.backstory}`;
 }
 
-function consequentEventsSystemPrompt(): string {
+export function consequentEventsSystemPrompt(): string {
     return `You are a game master for a text adventure game.
     You will be given a list of events that occurred in the game.
     Your job is to determine what (if any) events should follow from these events.
@@ -215,17 +196,13 @@ function consequentEventsSystemPrompt(): string {
 }
 
 // Given some natural language instructions, return a list of tool calls that can be made to execute the instructions
-export async function interpetAgentInstructions(
+/*export async function interpetAgentInstructions(
     instructions: string,
     actingAgent: Agent
 ): Promise<ChatCompletionMessageToolCall[]> {
     const recentEventsMessage = await describeRecentEvents(actingAgent.agentId);
     const locationId = (await actingAgent.location).locationId;
     const context = await getLocationContext(locationId, actingAgent);
-
-
-
-
     //const context = await get
     const systemPrompt = interpretAgentInstructionsSystemPrompt();
 
@@ -252,7 +229,7 @@ export async function interpetAgentInstructions(
     ];
     const openai = new OpenAI();
     const response: OpenAI.Chat.Completions.ChatCompletion =await openai.chat.completions.create({
-        model: "gpt-4o-2024-08-06",
+        model: STRUCTURED_OUTPUT_MODEL, // "gpt-4o-2024-08-06",
         messages,
         tools: getAvailableTools(actingAgent), // The tools will be different depending on the agent
         tool_choice: "required",
@@ -267,12 +244,12 @@ export async function interpetAgentInstructions(
     }
     return toolCalls;
 }
-
-
+*/
+/*
 export async function determineConsequentEventsInLocation(
     locationId: string,
     events: GameEvent[]
-): Promise<ChatCompletionMessageToolCall[]> {
+): Promise<AiToolCall[]> { //<ChatCompletionMessageToolCall[]> {
     const eventDescriptions: EventDescription[] = (
         await Promise.all(
             events.map(gameEvent => gameEvent.describe(null))
@@ -303,7 +280,7 @@ export async function determineConsequentEventsInLocation(
     const openai = new OpenAI();
     const tools = getAvailableTools(null);
     const response: OpenAI.Chat.Completions.ChatCompletion = await openai.chat.completions.create({
-        model: "gpt-4o-2024-08-06",
+        model: STRUCTURED_OUTPUT_MODEL,
         messages,
         tools,
         tool_choice: "required",
@@ -318,7 +295,9 @@ export async function determineConsequentEventsInLocation(
     }
     return toolCalls;
 }
+*/
 
+/*
 export async function agentMakesInstructions(
     actingAgent: Agent
 ): Promise<string> {
@@ -337,7 +316,7 @@ export async function agentMakesInstructions(
 
     // Get the instructions from the agent
     const response = await openai.chat.completions.create({
-        model: "gpt-4o-2024-08-06",
+        model: TEXT_OUTPUT_MODEL,
         messages,
         seed: SEED,
     });
@@ -352,4 +331,4 @@ export async function agentMakesInstructions(
     }
     return instructions;
 }
-
+*/

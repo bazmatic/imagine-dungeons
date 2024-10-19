@@ -8,7 +8,8 @@ import { GameEventService } from "@/services/GameEventService";
 import { Referee } from "@/services/Referee";
 import { GameEvent } from "@/entity/GameEvent";
 import { EventDescription } from "@/types/types";
-import { agentMakesInstructions } from "@/services/Prompts";
+import { OpenAiHelper } from "@/services/Ai";
+
 
 dotenv.config();
 
@@ -42,7 +43,9 @@ export class AgentActor {
             return [];
         }
 
-        const instructions: string = await agentMakesInstructions(agent);
+        const aiHelper = new OpenAiHelper();
+
+        const instructions: string = await aiHelper.agentMakesInstructions(agent);
         const gameEvents: GameEvent[] = await this.referee.acceptAgentInstructions(
             this.agentId,
             instructions

@@ -11,17 +11,13 @@ export type AgentCommand = {
     openaiTool: FunctionDefinition;
 };
 
-export type OpenAiCommand = {
-    type: "function";
-    function: {
-        name: COMMAND_TYPE;
-        description: string;
-        parameters: {
-            type: "object";
-            properties: Record<string, unknown>;
-            required?: string[];
-            additionalProperties: boolean;
-        };
-        strict?: boolean;
-    };
+export type AiTool = {
+    name: COMMAND_TYPE;
+    description: string;
+    parameters: Record<string, unknown>;
+};
+
+export type AiToolCall = {
+    name: COMMAND_TYPE;
+    arguments: Record<string, unknown>;
 };

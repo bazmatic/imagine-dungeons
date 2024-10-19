@@ -6,11 +6,12 @@ import { ItemService } from "./Item.service";
 import { Agent } from "@/entity/Agent";
 import { GameEvent } from "@/entity/GameEvent";
 import _ from "lodash";
-import { LocationService } from "./Location.service";
-import { OpenAiCommand } from "@/types/types";
-import { determineConsequentEventsInLocation, interpetAgentInstructions, SYSTEM_AGENT } from "./Prompts";
+import { LocationService } from "./Location.service";;
+import { SYSTEM_AGENT } from "./Prompts";
 import { COMMAND_TYPE, ToolCallArguments } from "@/types/commands";
 import { Tools } from "@/types/commands";
+import { OpenAiHelper } from "./Ai";
+import { AiTool, AiToolCall } from "@/types/types";
 
 export class Referee {
 
@@ -34,18 +35,20 @@ export class Referee {
             return [];
         }
 
+
+
         // === Ask the AI what actions should be invoked based on the user's input ===
-        const toolCalls = await interpetAgentInstructions(instructions, agent);
+        const aiHelper = new OpenAiHelper();
+        const toolCalls: AiToolCall[] = await aiHelper.interpretAgentInstructions(instructions, agent);
 
         // == Execute the tool calls to create game events ==
         const agentGameEvents: GameEvent[] = [];
         for (const toolCall of toolCalls) {
-            const toolCallArguments = JSON.parse(toolCall.function.arguments);
-            const commandType: COMMAND_TYPE = toolCall.function.name as COMMAND_TYPE;
+            const commandType: COMMAND_TYPE = toolCall.name;
             const gameEvents = await this.executeAgentToolCall(
                 agent,
                 commandType,
-                toolCallArguments
+                toolCall.arguments
             );
             // Attach the instructions to the game event
             gameEvents.forEach(gameEvent => gameEvent.input_text = instructions);
@@ -330,6 +333,8 @@ export class Referee {
         agentGameEvents: GameEvent[]
     ): Promise<GameEvent[]> {
 
+        const aiHelper = new OpenAiHelper();
+
         const eventsByLocation: Record<string, GameEvent[]> = _.groupBy(
             agentGameEvents,
             "location_id"
@@ -338,13 +343,12 @@ export class Referee {
         const consequentGameEvents: GameEvent[] = [];
         for (const locationId in eventsByLocation) {
             const events = eventsByLocation[locationId];
-            const locationToolCalls = await determineConsequentEventsInLocation(locationId, events);
+            const locationToolCalls: AiToolCall[] = await aiHelper.determineConsequentEvents(locationId, events);
             for (const toolCall of locationToolCalls) {
-                const toolCallArguments = JSON.parse(toolCall.function.arguments);
                 const gameEvents: GameEvent[] =
                     await this.executeSystemToolCall(
-                        toolCall.function.name as COMMAND_TYPE,
-                        toolCallArguments,
+                        toolCall.name as COMMAND_TYPE,
+                        toolCall.arguments,
                         locationId
                 );
                 consequentGameEvents.push(...gameEvents);
@@ -428,7 +432,7 @@ export function getAvailableCommands(
 
 export function getAvailableTools(
     agent: Agent | null,
-): OpenAiCommand[] {
+): AiTool[] {
     const availableCommands = getAvailableCommands(agent);
     return availableCommands.map(c => {
         return Tools[c]
