@@ -298,7 +298,12 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
     [COMMAND_TYPE.SEARCH_LOCATION]: {
         name: COMMAND_TYPE.SEARCH_LOCATION,
         description: "Search the current location for items or exits.",
-        parameters: {}
+        parameters: {
+            location_id: {
+                type: "string",
+                description: "The id of the location to search. This must match location_id values listed in the context."
+            }
+        }
     },
     [COMMAND_TYPE.SPAWN_AGENT]: {
         name: COMMAND_TYPE.SPAWN_AGENT,

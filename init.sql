@@ -129,7 +129,9 @@ INSERT INTO location (location_id, name, short_description, long_description, no
     ('loc_smoldering_square', 'Smoldering Square', 'A open area with smoldering ruins', 'A once-bustling marketplace, now a large square filled with the smoldering remains of stalls and buildings.', 'Fire Slaters and Ash Zombies are common sights among the smoldering ruins.'),
     ('loc_dockside_markets', 'Dockside Markets', 'A bustling marketplace near the docks', 'A lively area where traders and sailors mingle, selling goods from distant lands. The smell of salt and spices fills the air.', NULL),
     ('loc_docks', 'The Docks', 'A series of wooden piers extending into the water', 'Wooden piers stretch out into the water, where ships of various sizes are moored. The air is thick with the smell of the sea and the sound of creaking wood. Captain Serena''s crew can be seen patrolling near their ship, eyeing strangers suspiciously.', 'Captain Serena''s crew will spawn here (template_serena_crew) and will threaten or attack anyone who approaches their ship without Serena present.'),
-    ('loc_serenas_ship', 'The Serpent', 'Captain Serena''s impressive ship', 'A sleek vessel with intricate carvings of serpents along its hull. It''s currently undergoing repairs, but still looks formidable. Captain Serena''s crew members are constantly on guard, watching for potential threats.', 'The crew is fiercely loyal to Captain Serena and will attack intruders unless accompanied by her. They will spawn here if anything happens in this location (template_serena_crew).');
+    ('loc_serenas_ship', 'The Serpent', 'Captain Serena''s impressive ship', 'A sleek vessel with intricate carvings of serpents along its hull. It''s currently undergoing repairs, but still looks formidable. Captain Serena''s crew members are constantly on guard, watching for potential threats.', 'The crew is fiercely loyal to Captain Serena and will attack intruders unless accompanied by her. They will spawn here if anything happens in this location (template_serena_crew).'),
+    ('loc_captains_cabin', 'Captain''s Cabin', 'Captain Serena''s private quarters', 'A luxurious cabin filled with maps, navigational instruments, and exotic treasures. The air is heavy with the scent of spices and sea salt.', 'Crew members will immediately spawn and attack any intruders unless accompanied by Captain Serena. (template_serena_crew)'),
+    ('loc_crews_quarters', 'Crew''s Quarters', 'The living space for Captain Serena''s crew', 'A cramped area below deck filled with hammocks, personal belongings, and the strong smell of unwashed sailors. Despite the tight quarters, it''s surprisingly organized.', 'Crew members will immediately spawn and attack any intruders unless accompanied by Captain Serena. (template_serena_crew)');
 
 
 -- Update Captain Serena's location to her ship
@@ -171,7 +173,13 @@ INSERT INTO item (item_id, name, short_description, long_description, owner_agen
     ('item_phoenix_heart', 'The Phoenix Heart', 'A pulsating gemstone', 'A large gem that pulses with fiery energy, said to be the source of the district''s eternal flames.', NULL, 'loc_workshop', NULL, 5, 0, FALSE, 'Can be unlocked by the Rusty Key (item_rusty_key). Pyra (char_47802) desperately wants this item.'),
     ('item_rusty_key', 'Rusty Key', 'A small, rusty key', 'A small, rusty key that looks quite old.', NULL, NULL, 'item_wooden_box', 1, 0, FALSE, 'Opens the back door of the Flaming Goblet'),
     ('item_wooden_box', 'Wooden Box', 'A small wooden box', 'A small, unassuming wooden box with a simple latch.', NULL, 'loc_flaming_goblet', NULL, 2, 1, TRUE, 'Contains the Rusty Key'),
-    ('item_zezrans_journal', 'Zezran''s Journal', 'A partially burned book', 'A journal detailing Zezran''s experiments with fire elementals and the creation of the Phoenix Heart.', NULL, 'loc_zezrans_house', NULL, 1, 0, FALSE, 'Contains crucial information about the Phoenix Heart''s creation and potential weaknesses.');
+    ('item_zezrans_journal', 'Zezran''s Journal', 'A partially burned book', 'A journal detailing Zezran''s experiments with fire elementals and the creation of the Phoenix Heart.', NULL, 'loc_zezrans_house', NULL, 1, 0, FALSE, 'Contains crucial information about the Phoenix Heart''s creation and potential weaknesses.'),
+    ('item_captains_log', 'Captain''s Log', 'A leather-bound journal', 'A well-worn leather journal filled with Captain Serena''s neat handwriting, detailing her voyages and discoveries.', NULL, 'loc_captains_cabin', NULL, 2, 0, FALSE, 'Contains valuable information about Serena''s recent encounters with water elementals.'),
+    ('item_treasure_map', 'Mysterious Map', 'A weathered map with cryptic markings', 'An old map with strange symbols and markings, hinting at the location of a great treasure.', NULL, 'loc_captains_cabin', NULL, 1, 0, TRUE, 'Hidden in a secret compartment in Serena''s desk. May lead to a powerful artifact.'),
+    ('item_spyglass', 'Enchanted Spyglass', 'A brass spyglass with glowing runes', 'An ornate spyglass inscribed with magical runes that allow the user to see through magical illusions.', NULL, 'loc_captains_cabin', NULL, 2, 0, FALSE, 'Useful for detecting hidden magical phenomena in the Burning District.'),
+    ('item_lucky_coin', 'Lucky Silver Coin', 'A silver coin with a hole in the center', 'A silver coin with a perfectly round hole in its center, said to bring good fortune to its owner.', NULL, 'loc_crews_quarters', NULL, 1, 0, FALSE, 'Superstitious crew members believe this coin protects the ship from harm.'),
+    ('item_smuggled_goods', 'Smuggled Goods', 'A crate of contraband items', 'A small crate filled with various illegal or restricted items from different ports.', NULL, 'loc_crews_quarters', NULL, 10, 5, TRUE, 'Hidden under a loose floorboard. Could be valuable but also dangerous if discovered by authorities.'),
+    ('item_crew_manifest', 'Crew Manifest', 'A list of crew members and their roles', 'A detailed list of all crew members aboard The Serpent, including their positions and any special skills.', NULL, 'loc_crews_quarters', NULL, 1, 0, FALSE, 'Could be useful for identifying specific crew members or understanding the ship''s hierarchy.');
 
 INSERT INTO exit (exit_id, name, short_description, long_description, owner_location_id, direction, destination_id, locked, notes) VALUES
     ('exit_to_street', 'Tavern Back Door', 'The back door to the burning street', 'A heavy iron door leading out to the perpetually burning street.', 'loc_flaming_goblet', 'north', 'loc_burning_street', TRUE, 'Requires use of the Rusty Key (item_rusty_key) by an agent to unlock.'),
@@ -200,7 +208,14 @@ INSERT INTO exit (exit_id, name, short_description, long_description, owner_loca
     ('exit_to_burning_from_ember', 'Ember Avenue Exit', 'Path leading back to Burning Street', 'A southwest path that leads back to the main burning street from Ember Avenue.', 'loc_ember_avenue', 'southwest', 'loc_burning_street', FALSE, NULL),
     ('exit_to_ember_from_ash', 'Ash Lane Exit', 'Path leading back to Ember Avenue', 'A west path that takes you back to Ember Avenue from Ash Lane.', 'loc_ash_lane', 'west', 'loc_ember_avenue', FALSE, NULL),
     ('exit_to_ash_from_phoenix', 'Phoenix Row Exit', 'Path leading back to Ash Lane', 'A north path that leads back to Ash Lane from Phoenix Row.', 'loc_phoenix_row', 'north', 'loc_ash_lane', FALSE, NULL),
-    ('exit_to_phoenix_from_square', 'Smoldering Square Exit', 'Path leading back to Phoenix Row', 'An east path that takes you back to Phoenix Row from Smoldering Square.', 'loc_smoldering_square', 'east', 'loc_phoenix_row', FALSE, NULL);
+    ('exit_to_phoenix_from_square', 'Smoldering Square Exit', 'Path leading back to Phoenix Row', 'An east path that takes you back to Phoenix Row from Smoldering Square.', 'loc_smoldering_square', 'east', 'loc_phoenix_row', FALSE, NULL),
+    ('exit_to_captains_cabin', 'Captain''s Cabin Door', 'A sturdy door leading to the captain''s cabin', 'A well-crafted door with intricate carvings, leading to Captain Serena''s private quarters.', 'loc_serenas_ship', 'south', 'loc_captains_cabin', FALSE, NULL),
+    ('exit_to_ship_from_cabin', 'Cabin Exit', 'Door leading back to the ship deck', 'The exit from the captain''s cabin back to the main deck of the ship.', 'loc_captains_cabin', 'north', 'loc_serenas_ship', FALSE, NULL),
+    ('exit_to_crews_quarters', 'Hatch to Crew''s Quarters', 'A hatch leading below deck', 'A sturdy hatch in the deck that leads down to the crew''s living quarters.', 'loc_serenas_ship', 'down', 'loc_crews_quarters', FALSE, NULL),
+    ('exit_to_ship_from_quarters', 'Ladder to Deck', 'A ladder leading up to the ship''s deck', 'A ladder that ascends from the crew''s quarters back to the main deck of the ship.', 'loc_crews_quarters', 'up', 'loc_serenas_ship', FALSE, NULL);
+
+
+
 
 -- Add this creature template after the existing templates
 INSERT INTO creature_template (template_id, name, short_description, long_description, capacity, health, damage, defence, backstory, mood, current_intent, goal, notes, autonomous) VALUES
@@ -223,4 +238,10 @@ INSERT INTO creature_template_location (template_id, location_id, spawn_chance) 
 ('template_ash_zombie', 'loc_smoldering_square', 0.6),
 ('template_ash_zombie', 'loc_burning_street', 0.5),
 ('template_ash_zombie', 'loc_zezrans_house', 0.4),
-('template_ash_zombie', 'loc_phoenix_row', 0.3);
+('template_ash_zombie', 'loc_phoenix_row', 0.3),
+('template_serena_crew', 'loc_captains_cabin', 1.0),
+('template_serena_crew', 'loc_crews_quarters', 1.0);
+
+
+
+
