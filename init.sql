@@ -117,19 +117,19 @@ CREATE TABLE IF NOT EXISTS creature_template_location (
 
 INSERT INTO location (location_id, name, short_description, long_description, notes) VALUES
     ('loc_flaming_goblet', 'The Flaming Goblet', 'A tavern on the edge of the Burning District', 'A tavern with one wall constantly aflame, mostly staffed by Tieflings. The heat inside is intense.', 'Occasionally, in the distance, the mournful song of the Mother Fire Elemental can be heard.'),
-    ('loc_burning_street', 'Burning Street', 'A street engulfed in perpetual flames', 'Once a bustling street, now consumed by magical fire that cannot be extinguished.', NULL),
+    ('loc_burning_street', 'Burning Street', 'A street engulfed in perpetual flames', 'Once a bustling street, now consumed by magical fire that cannot be extinguished.', 'Fire Slaters and Ash Zombies are known to roam this area.'),
     ('loc_fire_salvagers', 'Fire Salvagers'' Camp', 'A makeshift camp of scavengers', 'A settlement of survivors who have adapted to life in the Burning District, trading in salvaged goods.', NULL),
-    ('loc_zezrans_house', 'Zezran''s House', 'A partially burned wizard''s house', 'The former residence of the wizard Zezran, now a dangerous ruin with flames licking at its walls.', NULL),
+    ('loc_zezrans_house', 'Zezran''s House', 'A partially burned wizard''s house', 'The former residence of the wizard Zezran, now a dangerous ruin with flames licking at its walls.', 'Ash Zombies occasionally wander through the ruins.'),
     ('loc_workshop', 'Zezran''s Workshop', 'A cluttered magical workshop', 'The heart of Zezran''s experiments, filled with arcane equipment and magical artifacts.', NULL),
-    ('loc_inferno_alley', 'Inferno Alley', 'A narrow alley of intense heat', 'A tight passage where the flames burn hottest, challenging even the most fire-resistant adventurers.', NULL),
-    ('loc_elemental_plaza', 'Elemental Plaza', 'A wide open area with a fire elemental', 'A former city square now dominated by a massive fire elemental, believed to be the mother of the trapped elementals.', NULL),
-    ('loc_ember_avenue', 'Ember Avenue', 'A wide street with floating embers', 'A broad avenue where glowing embers float through the air like fireflies, creating a beautiful yet dangerous spectacle.', NULL),
-    ('loc_ash_lane', 'Ash Lane', 'A street covered in deep ash', 'A narrow lane where ash has accumulated to knee-depth, making movement difficult and hiding potential dangers.', NULL),
-    ('loc_phoenix_row', 'Phoenix Row', 'A street of colorful, flickering flames', 'A street where flames dance in vibrant colors reminiscent of a phoenix''s plumage, constantly dying and being reborn.', NULL),
-    ('loc_smoldering_square', 'Smoldering Square', 'A open area with smoldering ruins', 'A once-bustling marketplace, now a large square filled with the smoldering remains of stalls and buildings.', NULL),
+    ('loc_inferno_alley', 'Inferno Alley', 'A narrow alley of intense heat', 'A tight passage where the flames burn hottest, challenging even the most fire-resistant adventurers.', 'Fire Slaters thrive in the intense heat of this alley.'),
+    ('loc_elemental_plaza', 'Elemental Plaza', 'A wide open area with a fire elemental', 'A former city square now dominated by a massive fire elemental, believed to be the mother of the trapped elementals.', 'Fire Slaters can often be found scurrying around the plaza.'),
+    ('loc_ember_avenue', 'Ember Avenue', 'A wide street with floating embers', 'A broad avenue where glowing embers float through the air like fireflies, creating a beautiful yet dangerous spectacle.', 'Fire Slaters are commonly seen darting between the floating embers.'),
+    ('loc_ash_lane', 'Ash Lane', 'A street covered in deep ash', 'A narrow lane where ash has accumulated to knee-depth, making movement difficult and hiding potential dangers.', 'Both Fire Slaters and Ash Zombies are frequently encountered here, hidden in the deep ash.'),
+    ('loc_phoenix_row', 'Phoenix Row', 'A street of colorful, flickering flames', 'A street where flames dance in vibrant colors reminiscent of a phoenix''s plumage, constantly dying and being reborn.', 'Ash Zombies occasionally shamble through, drawn by the vibrant flames.'),
+    ('loc_smoldering_square', 'Smoldering Square', 'A open area with smoldering ruins', 'A once-bustling marketplace, now a large square filled with the smoldering remains of stalls and buildings.', 'Fire Slaters and Ash Zombies are common sights among the smoldering ruins.'),
     ('loc_dockside_markets', 'Dockside Markets', 'A bustling marketplace near the docks', 'A lively area where traders and sailors mingle, selling goods from distant lands. The smell of salt and spices fills the air.', NULL),
-    ('loc_docks', 'The Docks', 'A series of wooden piers extending into the water', 'Wooden piers stretch out into the water, where ships of various sizes are moored. The air is thick with the smell of the sea and the sound of creaking wood. Captain Serena''s crew can be seen patrolling near their ship, eyeing strangers suspiciously.', 'Captain Serena''s crew is likely to spawn here (template_serena_crew) and will threaten or attack anyone who approaches their ship without Serena present.'),
-    ('loc_serenas_ship', 'The Serpent', 'Captain Serena''s impressive ship', 'A sleek vessel with intricate carvings of serpents along its hull. It''s currently undergoing repairs, but still looks formidable. Captain Serena''s crew members are constantly on guard, watching for potential threats.', 'The crew is fiercely loyal to Captain Serena and will attack intruders unless accompanied by her. They are also likely to spawn here if anything happens in this location (template_serena_crew).');
+    ('loc_docks', 'The Docks', 'A series of wooden piers extending into the water', 'Wooden piers stretch out into the water, where ships of various sizes are moored. The air is thick with the smell of the sea and the sound of creaking wood. Captain Serena''s crew can be seen patrolling near their ship, eyeing strangers suspiciously.', 'Captain Serena''s crew will spawn here (template_serena_crew) and will threaten or attack anyone who approaches their ship without Serena present.'),
+    ('loc_serenas_ship', 'The Serpent', 'Captain Serena''s impressive ship', 'A sleek vessel with intricate carvings of serpents along its hull. It''s currently undergoing repairs, but still looks formidable. Captain Serena''s crew members are constantly on guard, watching for potential threats.', 'The crew is fiercely loyal to Captain Serena and will attack intruders unless accompanied by her. They will spawn here if anything happens in this location (template_serena_crew).');
 
 
 -- Update Captain Serena's location to her ship
@@ -152,12 +152,7 @@ INSERT INTO agent (agent_id, name, short_description, long_description, owner_lo
     ('char_59731', 'Inferna', 'The fire elemental matriarch', 'A massive, majestic fire elemental with a form that vaguely resembles a female humanoid.', 'loc_elemental_plaza', 100, 'The mother of the trapped fire elementals, she guards the district and seeks to free her children.', 'Protective', 'Guard the Phoenix Heart', 'Free her children from the Phoenix Heart', 60, 6, 18, TRUE, ''),
     ('char_13498', 'Spark', 'An energetic messenger', 'A young halfling with hair that stands on end, crackling with static electricity.', 'loc_flaming_goblet', 15, 'A swift runner who delivers messages and small packages throughout the Burning District.', 'Energetic', 'Deliver messages quickly', 'Map out all the safe routes in the district', 18, 2, 14, TRUE, ''),
     ('char_75024', 'Cinder Golem', 'A lumbering ash construct', 'A large, humanoid figure made of compressed ash and burning embers.', 'loc_smoldering_square', 80, 'Created by Cinder to assist with heavy lifting and protection during salvage operations.', 'Stoic', 'Follow Cinder''s commands', 'Protect the fire salvagers', 45, 5, 16, TRUE, ''),
-    ('char_20876', 'Flamebeak', 'A fiery phoenix', 'A magnificent bird with feathers of dancing flames and eyes like glowing coals.', 'loc_phoenix_row', 20, 'A magical creature that has made its home in the Burning District, symbolizing hope and renewal.', 'Majestic', 'Soar above the burning streets', 'Inspire hope in the district''s inhabitants', 30, 3, 17, TRUE, ''),
-    ('char_fs001', 'Fire Slater Alpha', 'A fiery, insect-like creature', 'A small, isopod-like creature with a glowing red carapace that radiates heat.', 'loc_burning_street', 5, 'Native to the Elemental Plane of Fire, now inhabiting the Burning District.', 'Neutral', 'Scavenge for food', 'Survive in the Burning District', 10, 2, 15, TRUE, ''),
-    ('char_fs002', 'Fire Slater Beta', 'A heat-emitting elemental bug', 'An agile, fiery creature that can squeeze through narrow spaces.', 'loc_ash_lane', 5, 'Adapted to extreme temperatures, thriving in the ashes of the district.', 'Cautious', 'Explore ash piles', 'Find suitable nesting area', 10, 2, 15, TRUE, ''),
-    ('char_fs003', 'Fire Slater Gamma', 'A swift, flame-colored isopod', 'A small elemental creature with sharp mandibles and a defensive heat burst ability.', 'loc_ember_avenue', 5, 'Scuttled through a planar rift during the district''s transformation.', 'Defensive', 'Guard territory', 'Establish a colony', 10, 2, 15, TRUE, ''),
-    ('char_fs004', 'Fire Slater Delta', 'A nimble fire elemental bug', 'An insect-like being of living flame, capable of releasing bursts of heat.', 'loc_inferno_alley', 5, 'Drawn to the intense heat of Inferno Alley.', 'Aggressive', 'Patrol for intruders', 'Protect fire elemental interests', 10, 2, 15, TRUE, ''),
-    ('char_fs005', 'Fire Slater Epsilon', 'A heat-radiating elemental creature', 'A small, fiery isopod with the ability to move through extremely tight spaces.', 'loc_smoldering_square', 5, 'Thrives in the smoldering ruins, feeding on charred debris.', 'Curious', 'Investigate new scents', 'Expand territory', 10, 2, 15, TRUE, '');
+    ('char_20876', 'Flamebeak', 'A fiery phoenix', 'A magnificent bird with feathers of dancing flames and eyes like glowing coals.', 'loc_phoenix_row', 20, 'A magical creature that has made its home in the Burning District, symbolizing hope and renewal.', 'Majestic', 'Soar above the burning streets', 'Inspire hope in the district''s inhabitants', 30, 3, 17, TRUE, '');
 
 UPDATE agent SET autonomous = FALSE WHERE agent_id = 'char_39322';
 
@@ -209,12 +204,23 @@ INSERT INTO exit (exit_id, name, short_description, long_description, owner_loca
 
 -- Add this creature template after the existing templates
 INSERT INTO creature_template (template_id, name, short_description, long_description, capacity, health, damage, defence, backstory, mood, current_intent, goal, notes, autonomous) VALUES
-('template_serena_crew', 'Serena''s Crewmate', 'A tough, seasoned sailor', 'A weathered sailor with a fierce look, wearing practical seafaring clothes and armed with a cutlass.', 20, 15, 3, 12, 'A loyal member of Captain Serena''s crew, hardened by years at sea and fiercely protective of their ship and captain.', 'Suspicious', 'Guard the ship', 'Protect the ship and follow Captain Serena''s orders', 'Hostile to strangers approaching the ship without Serena present. Likely to attack without warning.', TRUE);
+('template_serena_crew', 'Serena''s Crewmate', 'A tough, seasoned sailor', 'A weathered sailor with a fierce look, wearing practical seafaring clothes and armed with a cutlass.', 20, 15, 3, 12, 'A loyal member of Captain Serena''s crew, hardened by years at sea and fiercely protective of their ship and captain.', 'Suspicious', 'Guard the ship', 'Protect the ship and follow Captain Serena''s orders', 'Hostile to strangers approaching the ship without Serena present. Likely to attack without warning. If a stranger does not immediately show themselves to be friendly, they will attack without delay, attempting to kill them.', TRUE),
+('template_fire_slater', 'Fire Slater', 'A fiery, insect-like creature', 'A small, isopod-like creature with a glowing red carapace that radiates heat.', 5, 10, 2, 15, 'Native to the Elemental Plane of Fire, now inhabiting the Burning District.', 'Aggressive', 'Hunt for prey', 'Consume heat and organic matter', 'Highly aggressive and will attack on sight. Capable of squeezing through tight spaces and emitting bursts of heat.', TRUE),
+('template_ash_zombie', 'Ash Zombie', 'A shambling figure made of ash', 'A humanoid creature composed of compacted ash and embers, moving with jerky motions.', 15, 20, 3, 10, 'Reanimated remains of those who perished in the initial burning of the district.', 'Hostile', 'Attack living beings', 'Spread the burning curse', 'Extremely aggressive and will relentlessly pursue any living creature it detects. Crumbles easily but reforms unless completely dispersed. Vulnerable to water.', TRUE);
 
--- Insert some example spawn locations for Serena's crew
+
 INSERT INTO creature_template_location (template_id, location_id, spawn_chance) VALUES
 ('template_serena_crew', 'loc_docks', 0.8),
 ('template_serena_crew', 'loc_serenas_ship', 1.0),
-('template_serena_crew', 'loc_dockside_markets', 0.3);
-
--- You can add more spawn locations for other creature templates as needed
+('template_serena_crew', 'loc_dockside_markets', 0.3),
+('template_fire_slater', 'loc_burning_street', 0.6),
+('template_fire_slater', 'loc_ash_lane', 0.7),
+('template_fire_slater', 'loc_ember_avenue', 0.8),
+('template_fire_slater', 'loc_inferno_alley', 0.9),
+('template_fire_slater', 'loc_smoldering_square', 0.7),
+('template_fire_slater', 'loc_elemental_plaza', 0.5),
+('template_ash_zombie', 'loc_ash_lane', 0.8),
+('template_ash_zombie', 'loc_smoldering_square', 0.6),
+('template_ash_zombie', 'loc_burning_street', 0.5),
+('template_ash_zombie', 'loc_zezrans_house', 0.4),
+('template_ash_zombie', 'loc_phoenix_row', 0.3);

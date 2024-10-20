@@ -61,7 +61,9 @@ export default async function command(
                 observerAgent,
                 gameEvent
             );
-            processedEvents.push(dto);
+            if (dto) {
+                processedEvents.push(dto);
+            }
         }
 
         // Filter out null results
@@ -82,13 +84,16 @@ export class GameEventDTO {
     public command_arguments: Record<string, unknown>;
     public general_description: string;
     public extra_detail?: string[];
-    static async fromGameEvent(observerAgent: Agent, gameEvent: GameEvent): Promise<GameEventDTO> {
+    static async fromGameEvent(observerAgent: Agent, gameEvent: GameEvent): Promise<GameEventDTO | null> {
        
 
         // Get the event description
         const eventDescription: EventDescription | null = await gameEvent.describe(
             observerAgent
         );
+        if (!eventDescription) {
+            return null;
+        }
             
         let agentName = "system";
         if (gameEvent.agent_id) {

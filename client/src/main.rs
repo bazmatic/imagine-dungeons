@@ -98,9 +98,7 @@ async fn handle_api_response(response: Response) {
 }
 
 fn print_colored_event(game_event: &GameEventDTO) {
-    println!("{}", game_event.agent_name.color("bright blue"));
-    println!("{}", game_event.general_description.color("bright black"));
-    
+    println!("{}: {}", game_event.agent_name.color("bright blue"), game_event.general_description.color("bright black"));
 
     // Display the extra text as yellow
     if let Some(extra_detail) = &game_event.extra_detail {
