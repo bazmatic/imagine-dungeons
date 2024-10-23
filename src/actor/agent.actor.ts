@@ -2,13 +2,10 @@ import dotenv from "dotenv";
 import { Agent } from "@/entity/Agent";
 import { AgentService } from "@/services/Agent.service";
 import { OpenAI } from "openai";
-import { Location } from "@/entity/Location";
-import { Item } from "@/entity/Item";
 import { GameEventService } from "@/services/GameEventService";
 import { Referee } from "@/services/Referee";
 import { GameEvent } from "@/entity/GameEvent";
-import { EventDescription } from "@/types/types";
-import { OpenAiHelper } from "@/services/Ai";
+import { OpenAiHelper } from "@/services/Ai/OpenAi";
 
 
 dotenv.config();

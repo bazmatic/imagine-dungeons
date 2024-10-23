@@ -1,4 +1,3 @@
-import { FunctionDefinition } from "openai/resources";
 import { AiTool } from "./types";
 
 export enum COMMAND_TYPE {
@@ -56,16 +55,8 @@ export type ToolCallArguments = {
     [COMMAND_TYPE.UNLOCK_EXIT]: { exit_id: string; reason: string };
     [COMMAND_TYPE.UPDATE_AGENT_INTENT]: { intent: string; reason: string };
     [COMMAND_TYPE.UPDATE_AGENT_MOOD]: { mood: string; reason: string };
-    [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: {
-        item_id: string;
-        description: string;
-        reason: string;
-    };
-    [COMMAND_TYPE.USE_ITEM]: {
-        object_type: string;
-        object_id: string;
-        item_id: string;
-    };
+    [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: { item_id: string; description: string; reason: string };
+    [COMMAND_TYPE.USE_ITEM]: { object_type: string; object_id: string; item_id: string };
     [COMMAND_TYPE.WAIT]: object;
 };
 
@@ -195,7 +186,7 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
     },
     [COMMAND_TYPE.GO_EXIT]: {
         name: COMMAND_TYPE.GO_EXIT,
-        description: "Move the agent through the specified exit. This will change the agent's location.",
+        description: "Move the agent through the specified exit. This will change the agent's location. If another agent in the same location has blocked the exit, do not execute this call. Instead call an emote to describe the agent's inability to leave.",
         parameters: {
             exit_id: {
                 type: "string",

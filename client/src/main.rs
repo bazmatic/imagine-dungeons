@@ -6,6 +6,7 @@ use imagind::{GameEventDTO};
 use colored::*;
 use reqwest::Response;
 use clearscreen; 
+use tokio::time::{sleep, Duration}; // Add this import at the top of the file
 
 const DEBUG: bool = true;
 
@@ -79,10 +80,9 @@ async fn handle_api_response(response: Response) {
         match response.json::<Vec<GameEventDTO>>().await {
             Ok(game_events) => {
                 for game_event in game_events {
-                    // if DEBUG {
-                    //     print_debug_info(&game_event);
-                    // }
                     print_colored_event(&game_event);
+                    // Add a 500ms delay after each event
+                    sleep(Duration::from_millis(500)).await;
                 }
             },
             Err(e) => {

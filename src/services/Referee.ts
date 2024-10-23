@@ -10,8 +10,9 @@ import { LocationService } from "./Location.service";;
 import { SYSTEM_AGENT } from "./Prompts";
 import { COMMAND_TYPE, ToolCallArguments } from "@/types/commands";
 import { Tools } from "@/types/commands";
-import { AnthropicAiHelper, OpenAiHelper } from "./Ai";
 import { AiTool, AiToolCall } from "@/types/types";
+import { OpenAiHelper } from "./Ai/OpenAi";
+import { OllamaAiHelper } from "./Ai/Ollama";
 
 export class Referee {
 
@@ -38,21 +39,25 @@ export class Referee {
 
 
         // === Ask the AI what actions should be invoked based on the user's input ===
-        const aiHelper = new OpenAiHelper();
+        const aiHelper = new OllamaAiHelper();
         const toolCalls: AiToolCall[] = await aiHelper.interpretAgentInstructions(instructions, agent);
 
         // == Execute the tool calls to create game events ==
         const agentGameEvents: GameEvent[] = [];
         for (const toolCall of toolCalls) {
-            const commandType: COMMAND_TYPE = toolCall.name;
-            const gameEvents = await this.executeAgentToolCall(
-                agent,
-                commandType,
-                toolCall.arguments
-            );
-            // Attach the instructions to the game event
-            gameEvents.forEach(gameEvent => gameEvent.input_text = instructions);
-            agentGameEvents.push(...gameEvents);
+            try {
+                const commandType: COMMAND_TYPE = toolCall.name;
+                const gameEvents = await this.executeAgentToolCall(
+                    agent,
+                    commandType,
+                    toolCall.arguments
+                );
+                // Attach the instructions to the game event
+                gameEvents.forEach(gameEvent => gameEvent.input_text = instructions);
+                agentGameEvents.push(...gameEvents);
+            } catch (error) {
+                console.error(`Error executing tool call: ${toolCall.name}`, error);
+            }
         }
 
         return [...agentGameEvents];
@@ -238,6 +243,7 @@ export class Referee {
                 // const updatedAgent = await agentService.getAgentById(agentId);
                 // extraDetails = await updatedAgent.lookAround();
                 break;
+
             case COMMAND_TYPE.LOOK_AROUND:
                 extraDetails = await agent.lookAround();
                 break;
@@ -362,7 +368,7 @@ export class Referee {
         agentGameEvents: GameEvent[]
     ): Promise<GameEvent[]> {
 
-        const aiHelper = new OpenAiHelper();
+        const aiHelper = new OllamaAiHelper(); //OpenAiHelper();
 
         const eventsByLocation: Record<string, GameEvent[]> = _.groupBy(
             agentGameEvents,
@@ -429,7 +435,7 @@ export function getAvailableCommands(
 
     const autonomousTools = [
         COMMAND_TYPE.UPDATE_AGENT_INTENT,
-        COMMAND_TYPE.UPDATE_AGENT_MOOD
+        COMMAND_TYPE.UPDATE_AGENT_MOOD,
     ];
 
     const nonAutonomousTools = [

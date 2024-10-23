@@ -12,6 +12,7 @@
    "dependencies": {
       "@anthropic-ai/sdk": "^0.29.2",
       "@types/lodash": "^4.17.10",
+      "axios": "^1.7.7",
       "lodash": "^4.17.21",
       "next": "14.2.13",
       "openai": "^4.67.1",

@@ -32,7 +32,7 @@ export const SYSTEM_AGENT: AgentDto = {
     label: "System",
     shortDescription: "The system",
     longDescription: "The system",
-    locationId: "system"
+locationId: "system"
 };
 
 const SCENARIO_PROMPT = `Timeline of Events

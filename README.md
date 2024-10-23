@@ -27,3 +27,5 @@ docker run -d --name imagine_dungeons -p 5432:5432 imagine_dungeons_db
 [ ] Add a "knowledge" property for agents, so they can learn things during their turns
 [ ] Edit location page to allow an admin to maintain the location.
 [ ] If the player dies, don't allow them to do anything.
+[ ] Prevent an agent from attempting to leave
+[ ] Use an item
