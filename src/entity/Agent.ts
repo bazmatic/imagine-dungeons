@@ -164,10 +164,10 @@ export class Agent implements IBaseProperties {
         const itemService = new ItemService();
         const item = await itemService.getItemById(itemId);
         if (!item) {
-            return [`That doesn't exist.`];
+            throw new Error("That doesn't exist.");
         }
         if (item.hidden) {
-            return [`You can't search that.`];
+            throw new Error("You can't search that.");
         }
         // Return the item's contents
         const contents = await item.items;
@@ -184,14 +184,14 @@ export class Agent implements IBaseProperties {
             containerItemId
         );
         if (!containerItemPresent) {
-            return [`You can't reach that.`];
+            throw new Error("You can't reach that.");
         }
         const targetItem = await itemService.getItemById(targetItemId);
         if (!targetItem) {
-            return [`That doesn't exist.`];
+            throw new Error("That doesn't exist.");
         }
         if (targetItem.ownerItemId !== containerItemId) {
-            return [`You can't reach that.`];
+            throw new Error("You can't reach that.");
         }
         await itemService.setOwnerToAgent(targetItemId, this.agentId);
         return [];
@@ -202,7 +202,7 @@ export class Agent implements IBaseProperties {
         const ownedItems = await this.items;
         const itemOwned = ownedItems.find(i => i.itemId === itemId);
         if (!itemOwned) {
-            return [`You don't have that.`];
+            throw new Error("You don't have that.");
         }
         // Set owner to agent's location
         const location = await this.location;
@@ -271,7 +271,7 @@ export class Agent implements IBaseProperties {
         const targetAgentLocation = await targetAgent.location;
         const result: string[] = [];
         if (agentLocation.locationId !== targetAgentLocation.locationId) {
-            result.push(`You can't see ${targetAgent.label}.`);
+            throw new Error(`You can't see ${targetAgent.label}.`);
         } else {
             result.push(targetAgent.longDescription);
             if (targetAgent.health <= 0) {
@@ -305,7 +305,7 @@ export class Agent implements IBaseProperties {
         const agentLocation = await this.location;
 
         if (agentLocation.locationId !== targetAgentLocation.locationId) {
-            return [`You can't see ${targetAgent.label}.`];
+            throw new Error(`You can't see ${targetAgent.label}.`);
         } else {
             if (targetAgent.autonomous) {
                 await agentService.activateAutonomy(targetAgentId, true);
@@ -321,7 +321,7 @@ export class Agent implements IBaseProperties {
         const agentLocation = await this.location;
 
         if (agentLocation.locationId !== targetAgentLocation.locationId) {
-            return [`You can't see ${targetAgent.label}.`];
+            throw new Error(`You can't see ${targetAgent.label}.`);
         } else if (targetAgent.autonomous) {
             await agentService.activateAutonomy(targetAgentId, true);
         }
@@ -397,14 +397,14 @@ export class Agent implements IBaseProperties {
             const agentLocation = await this.location;
             const targetAgentLocation = await targetAgent.location;
             if (agentLocation.locationId !== targetAgentLocation.locationId) {
-                return [`You can't see ${targetAgent.label}.`];
+                throw new Error(`You can't see ${targetAgent.label}.`);
             }
 
             // Transfer the item
             await itemService.setOwnerToAgent(itemId, targetAgentId);
             return [];
         } catch (error) {
-            return [`That didn't work.`];
+            throw new Error("That didn't work.");
         }
     }
 
@@ -416,7 +416,7 @@ export class Agent implements IBaseProperties {
         const itemService = new ItemService();
         const item = await itemService.getItemById(itemId);
         if (!item) {
-            return [`That doesn't exist.`];
+            throw new Error("That doesn't exist.");
         }
         return [];
     }
@@ -425,7 +425,7 @@ export class Agent implements IBaseProperties {
         const inventory = await this.items;
 
         if (inventory.length === 0) {
-            return ["Your inventory is empty."];
+            throw new Error("Your inventory is empty.");
         }
 
         const itemLabels = inventory.map(item => item.label).join(", ");

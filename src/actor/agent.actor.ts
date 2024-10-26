@@ -6,6 +6,7 @@ import { GameEventService } from "@/services/GameEventService";
 import { Referee } from "@/services/Referee";
 import { GameEvent } from "@/entity/GameEvent";
 import { OpenAiHelper } from "@/services/Ai/OpenAi";
+import { getAiHelper, IAiHelper } from "@/services/Ai/Ai";
 
 
 dotenv.config();
@@ -19,13 +20,13 @@ export class AgentActor {
     private agentService: AgentService;
     private gameEventService: GameEventService;
     private referee: Referee;
-    private openai: OpenAI;
+    private aiHelper: IAiHelper;
 
     constructor(public agentId: string) {
         this.agentService = new AgentService();
         this.gameEventService = new GameEventService();
         this.referee = new Referee();
-        this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        this.aiHelper = getAiHelper();
     }
 
     public async agent(): Promise<Agent> {
@@ -40,9 +41,7 @@ export class AgentActor {
             return [];
         }
 
-        const aiHelper = new OpenAiHelper();
-
-        const instructions: string = await aiHelper.agentMakesInstructions(agent);
+        const instructions: string = await this.aiHelper.agentMakesInstructions(agent);
         const gameEvents: GameEvent[] = await this.referee.acceptAgentInstructions(
             this.agentId,
             instructions

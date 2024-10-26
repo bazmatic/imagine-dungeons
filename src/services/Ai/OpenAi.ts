@@ -4,7 +4,6 @@ import {
     ChatCompletionMessageToolCall,
     ChatCompletionTool
 } from "openai/resources/chat/completions";
-import Anthropic from "@anthropic-ai/sdk";
 
 import { AiTool, AiToolCall } from "@/types/types";
 import { GameEvent } from "@/entity/GameEvent";
@@ -17,9 +16,8 @@ import {
     agentMakesInstructionsSystemPrompt
 } from "../Prompts";
 
-import { COMMAND_TYPE, Tools } from "@/types/commands";
+import { COMMAND_TYPE } from "@/types/commands";
 import { Agent } from "@/entity/Agent";
-import { ContentBlock, ToolUseBlock } from "@anthropic-ai/sdk/resources";
 import { IAiHelper } from "./Ai";
 
 const SEED = 100;
@@ -90,11 +88,22 @@ export class OpenAiHelper implements IAiHelper {
                     "What minimal set of tool calls should be made to accurately carry out the actions that the agent should carry out based on the text description they provided? Respond with a list of tool calls that should be made. If nothing seems to fit well, just use an emote."
             }
         ];
-
+        
+        const locationIdList = [context.location.id];
+        const agentIdList = [actingAgent.agentId];
+        const itemIdList = context.items_present.map(item => item.id);
+        const exitIdList = context.exits.map(exit => exit.id);
+        const creatureTemplateIdList: string[] = context.location.creatureTemplates?.map(creatureTemplate => creatureTemplate.templateId) ?? [];
         const response = await this.openai.chat.completions.create({
             model: OPEN_AI_STRUCTURED_OUTPUT_MODEL,
             messages,
-            tools: getAvailableTools(actingAgent).map(this.aiToolToOpenAiTool),
+            tools: getAvailableTools(actingAgent,
+                locationIdList,
+                agentIdList,
+                itemIdList,
+                exitIdList,
+                creatureTemplateIdList
+            ).map(this.aiToolToOpenAiTool),
             tool_choice: "required",
             seed: SEED
         });
@@ -148,8 +157,19 @@ export class OpenAiHelper implements IAiHelper {
                     "What tool calls should be made to reflect the events that occurred at this location? Be sure to only unlock exits if an agent specifically performs an action to unlock the exit, and you believe this is the correct action to take. Respond with a list of tool calls that should be made. If no tool calls are necessary, return an empty array or the 'do nothing' tool."
             }
         ];
+        const locationIdList = [locationId];
+        const agentIdList = [...context.human_agents_present, ...context.autonomous_agents_present].map(agent => agent.id);
+        const itemIdList = context.items_present.map(item => item.id);
+        const exitIdList = context.exits.map(exit => exit.id);
+        const creatureTemplateIdList = context.location.creatureTemplates?.map(creatureTemplate => creatureTemplate.templateId) ?? [];
 
-        const tools = getAvailableTools(null);
+        const tools = getAvailableTools(null,
+            locationIdList,
+            agentIdList,
+            itemIdList,
+            exitIdList,
+            creatureTemplateIdList
+        );
         const response = await this.openai.chat.completions.create({
             model: OPEN_AI_STRUCTURED_OUTPUT_MODEL,
             messages,

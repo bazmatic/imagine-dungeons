@@ -1,22 +1,24 @@
 
-import { AgentService } from "./Agent.service";
-import { GameEventService } from "./GameEventService";
-import { ExitService } from "./Exit.service";
-import { ItemService } from "./Item.service";
 import { Agent } from "@/entity/Agent";
 import { GameEvent } from "@/entity/GameEvent";
-import _ from "lodash";
-import { LocationService } from "./Location.service";;
-import { SYSTEM_AGENT } from "./Prompts";
-import { COMMAND_TYPE, ToolCallArguments } from "@/types/commands";
-import { Tools } from "@/types/commands";
+import { COMMAND_TYPE, createTools, ToolCallArguments } from "@/types/commands";
 import { AiTool, AiToolCall } from "@/types/types";
-import { OpenAiHelper } from "./Ai/OpenAi";
-import { OllamaAiHelper } from "./Ai/Ollama";
+import _ from "lodash";
+import { AgentService } from "./Agent.service";
+import { getAiHelper, IAiHelper } from "./Ai/Ai";
+import { ExitService } from "./Exit.service";
+import { GameEventService } from "./GameEventService";
+import { ItemService } from "./Item.service";
+import { LocationService } from "./Location.service";
+import { SYSTEM_AGENT } from "./Prompts";
+;
 
 export class Referee {
+    private aiHelper: IAiHelper;
 
-    constructor() {}
+    constructor() {
+        this.aiHelper = getAiHelper();
+    }
     
     /**
      * Instruct an agent to perform an action.
@@ -36,12 +38,12 @@ export class Referee {
             return [];
         }
 
-
-
         // === Ask the AI what actions should be invoked based on the user's input ===
-        const aiHelper = new OllamaAiHelper();
-        const toolCalls: AiToolCall[] = await aiHelper.interpretAgentInstructions(instructions, agent);
-
+        const toolCalls: AiToolCall[] = await this.aiHelper.interpretAgentInstructions(instructions, agent);
+        for (const toolCall of toolCalls) {
+            console.log(`Tool call: ${toolCall.name} params: ${JSON.stringify(toolCall.arguments)}`);
+        }
+        
         // == Execute the tool calls to create game events ==
         const agentGameEvents: GameEvent[] = [];
         for (const toolCall of toolCalls) {
@@ -321,19 +323,19 @@ export class Referee {
                     ).mood
                 );
                 break;
-            case COMMAND_TYPE.USE_ITEM:
-                extraDetails = await agent.useItem(
-                    (
-                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.USE_ITEM]
-                    ).item_id,
-                    (
-                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.USE_ITEM]
-                    ).object_type,
-                    (
-                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.USE_ITEM]
-                    ).object_id
-                );
-                break;
+            // case COMMAND_TYPE.USE_ITEM:
+            //     extraDetails = await agent.useItem(
+            //         (
+            //             toolCallArguments as ToolCallArguments[COMMAND_TYPE.USE_ITEM]
+            //         ).item_id,
+            //         (
+            //             toolCallArguments as ToolCallArguments[COMMAND_TYPE.USE_ITEM]
+            //         ).object_type,
+            //         (
+            //             toolCallArguments as ToolCallArguments[COMMAND_TYPE.USE_ITEM]
+            //         ).object_id
+            //     );
+            //     break;
             case COMMAND_TYPE.WAIT:
                 extraDetails = await agent.wait();
                 break;
@@ -368,7 +370,7 @@ export class Referee {
         agentGameEvents: GameEvent[]
     ): Promise<GameEvent[]> {
 
-        const aiHelper = new OllamaAiHelper(); //OpenAiHelper();
+        //const aiHelper = new OllamaAiHelper(); //OpenAiHelper();
 
         const eventsByLocation: Record<string, GameEvent[]> = _.groupBy(
             agentGameEvents,
@@ -378,7 +380,7 @@ export class Referee {
         const consequentGameEvents: GameEvent[] = [];
         for (const locationId in eventsByLocation) {
             const events = eventsByLocation[locationId];
-            const locationToolCalls: AiToolCall[] = await aiHelper. determineConsequentEvents(locationId, events);
+            const locationToolCalls: AiToolCall[] = await this.aiHelper. determineConsequentEvents(locationId, events);
             for (const toolCall of locationToolCalls) {
                 const gameEvents: GameEvent[] =
                     await this.executeSystemToolCall(
@@ -429,7 +431,7 @@ export function getAvailableCommands(
         COMMAND_TYPE.SEARCH_ITEM,
         COMMAND_TYPE.SEARCH_LOCATION,
         COMMAND_TYPE.SPEAK_TO_AGENT,
-        COMMAND_TYPE.USE_ITEM,
+        //COMMAND_TYPE.USE_ITEM,
         COMMAND_TYPE.WAIT
     ];
 
@@ -468,9 +470,21 @@ export function getAvailableCommands(
 
 export function getAvailableTools(
     agent: Agent | null,
+    locationIdList: string[],
+    agentIdList: string[],
+    itemIdList: string[],
+    exitIdList: string[],
+    creatureTemplateIdList: string[]
 ): AiTool[] {
     const availableCommands = getAvailableCommands(agent);
-    return availableCommands.map(c => {
-        return Tools[c]
-    });
+    const tools = createTools(locationIdList, agentIdList, itemIdList, exitIdList, creatureTemplateIdList);
+    //return availableCommands.map(c => tools[c]);
+    const result: AiTool[] = [];
+    for (const command of availableCommands) {
+        if (!tools[command]) {
+            debugger;
+        }
+        result.push(tools[command]);
+    }
+    return result;
 }

@@ -1,21 +1,12 @@
 import { Agent, AgentDto } from "@/entity/Agent";
-import { GameEvent } from "@/entity/GameEvent";
-import { AiToolCall, EventDescription } from "@/types/types";
-import { OpenAI } from "openai";
-import { ChatCompletionMessageParam, ChatCompletionMessageToolCall } from "openai/resources";
 import { GameEventService } from "./GameEventService";
 import { LocationService } from "./Location.service";
 import { ItemDto } from "@/entity/Item";
 import { LocationDto } from "@/entity/Location";
 import { ExitDto } from "@/entity/Exit";
 import _ from "lodash";
-import { getAvailableTools } from "./Referee";
 import { CreatureTemplateDto } from "@/entity/CreatureTemplate";
-
-
-const SEED = 100;
-const STRUCTURED_OUTPUT_MODEL = "gpt-4o-2024-08-06"; // "gpt-4-0613"; // "gpt-4o-2024-08-06"
-const TEXT_OUTPUT_MODEL = "gpt-4o-mini";
+import { EventDescription } from "@/types/types";
 
 export type AgentPromptContext = {
     observer_agent: AgentDto;
@@ -64,7 +55,7 @@ Present Day:
 
 Cast of Characters
 
-Principle Characters:
+Principal Characters:
 1. Zezran: A gifted but ambitious wizard who specialised in elemental magic. His pursuit of power led to the Burning District's creation, and his current fate remains unknown. Is he truly dead, or did he find a way to escape to the Elemental Plane of Fire?
 2. Bob Pangborn AKA "The Great Bob": A bitter and reclusive wizard, formerly a colleague of Zezran. He blames Zezran for the Burning District and desires the Phoenix Heart for himself. He is now an elderly and frail man consumed by his past and driven by greed.
 3. Paff Pinkerton: Bob's nephew, a well-meaning and determined young man who seeks to undo the tragedy of the Burning District. He is thrust into a dangerous quest to destroy the Phoenix Heart, unaware of the forces working against him.
@@ -133,6 +124,9 @@ export async function describeRecentEvents(
             recentEventDescriptions.push(eventDescription);
         }
     }
+    if (recentEventDescriptions.length === 0) {
+        return "This is the beginning of the game. Nothing has happened yet.";
+    }
     return `Here is what has happened so far:\n${recentEventDescriptions
         .map(e => `${e.general_description}\n${e.extra_detail?.join("\n")}`)
         .join("\n\n")}`;
@@ -197,7 +191,7 @@ export function consequentEventsSystemPrompt(): string {
     you can choose to change a hidden item to a visible item.
     Do not reveal an item if the agent is simply looking around. Something special must have happened.
     Only autonomous agents should perform an emote.
-    If you choose have an autonomousagent perform an emote, to indicate them doing something appropriate for the recent events, you must also include the agent_id of the agent performing the emote.
+    If you choose have an autonomous agent perform an emote, to indicate them doing something appropriate for the recent events, you must also include the agent_id of the agent performing the emote.
     If there are no relevant events, do not make any tool calls. Return an empty array.
     `;
 

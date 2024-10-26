@@ -26,7 +26,7 @@ export enum COMMAND_TYPE {
     UPDATE_AGENT_INTENT = "update_agent_intent",
     UPDATE_AGENT_MOOD = "update_agent_mood",
     UPDATE_ITEM_DESCRIPTION = "update_item_description",
-    USE_ITEM = "use_item",
+    //USE_ITEM = "use_item",
     WAIT = "wait",
 }
 
@@ -56,10 +56,10 @@ export type ToolCallArguments = {
     [COMMAND_TYPE.UPDATE_AGENT_INTENT]: { intent: string; reason: string };
     [COMMAND_TYPE.UPDATE_AGENT_MOOD]: { mood: string; reason: string };
     [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: { item_id: string; description: string; reason: string };
-    [COMMAND_TYPE.USE_ITEM]: { object_type: string; object_id: string; item_id: string };
+    //[COMMAND_TYPE.USE_ITEM]: { object_type: string; object_id: string; item_id: string };
     [COMMAND_TYPE.WAIT]: object;
 };
-
+/*
 export const CommandSynonyms: Record<string, string[]> = {
     [COMMAND_TYPE.ATTACK_AGENT]: [
         "attack",
@@ -97,18 +97,24 @@ export const CommandSynonyms: Record<string, string[]> = {
     [COMMAND_TYPE.REVEAL_ITEM]: [],
     [COMMAND_TYPE.REVEAL_EXIT]: [],
     [COMMAND_TYPE.UNLOCK_EXIT]: ["unlock", "open"],
-    [COMMAND_TYPE.USE_ITEM]: ["use", "apply"],
+    //[COMMAND_TYPE.USE_ITEM]: ["use", "apply"],
     [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: []
 };
-
-export const Tools: Record<COMMAND_TYPE, AiTool> = {
+*/
+export const createTools = (
+    locationIdList: string[],
+    agentIdList: string[],
+    itemIdList: string[],
+    exitIdList: string[],
+    creatureTemplateIdList: string[]
+): Record<COMMAND_TYPE, AiTool> => ({
     [COMMAND_TYPE.ATTACK_AGENT]: {
         name: COMMAND_TYPE.ATTACK_AGENT,
         description: "Attack an agent in the same location, in an attempt to defeat them or cause them harm. If the text suggests that the primary action is to attack an agent, then call this tool. Otherwise, do not call this tool.",
         parameters: {
             target_agent_id: {
                 type: "string",
-                description: "The id of the agent to attack. This must match agent_id values listed in the agents_present array of the context."
+                description: `The id of the agent to attack. The permitted agent values are: ${agentIdList.join(', ')}.`
             }
         }
     },
@@ -123,7 +129,7 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             item_id: {
                 type: "string",
-                description: "The id of the item to drop. This must match item_id values listed in the inventory array of the context."
+                description: `The id of the item to drop. The permitted item values are: ${itemIdList.join(', ')}.`
             }
         }
     },
@@ -137,7 +143,7 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
             },
             agent_id: {
                 type: "string",
-                description: "The id of the agent performing the emote. This must match agent_id values listed in the agents_present array of the context."
+                description: `The id of the agent performing the emote. The permitted agent values are: ${agentIdList.join(', ')}.`
             }
         }
     },
@@ -162,11 +168,11 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             container_item_id: {
                 type: "string",
-                description: "The id of the item to get the item from. This must match item_id values listed in the items_present array of the context."
+                description: `The id of the item to get the item from. The permitted item values are: ${itemIdList.join(', ')}.`
             },
             target_item_id: {
                 type: "string",
-                description: "The id of the item to get. This must match item_id values listed in the items_present array of the context."
+                description: `The id of the item to get. The permitted item values are: ${itemIdList.join(', ')}.`
             }
         }
     },
@@ -176,11 +182,11 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             item_id: {
                 type: "string",
-                description: "The id of the item to give. This must match item_id values listed in the inventory array of the context."
+                description: `The id of the item to give. The permitted item values are: ${itemIdList.join(', ')}.`
             },
             target_agent_id: {
                 type: "string",
-                description: "The id of the agent to give the item to. This must match agent_id values listed in the agents_present array of the context."
+                description: `The id of the agent to give the item to. The permitted agent values are: ${agentIdList.join(', ')}.`
             }
         }
     },
@@ -190,7 +196,7 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             exit_id: {
                 type: "string",
-                description: "The id of the exit to move through. This must match exit_id values listed in the exits array of the context."
+                description: `The id of the exit to move through. The permitted exit values are: ${exitIdList.join(', ')}.`
             }
         }
     },
@@ -205,7 +211,8 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             agent_id: {
                 type: "string",
-                description: "The id of the agent (character) to look at. This must match agent_id values listed in the agents_present array of the context."
+                description: `The id of the agent (character) to look at. The permitted agent values are: ${agentIdList.join(', ')}.`,
+                enum: agentIdList
             }
         }
     },
@@ -215,7 +222,8 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             exit_id: {
                 type: "string",
-                description: "The id of the exit to look at. This must match exit_id values listed in the exits array of the context."
+                description: `The id of the exit to look at. The permitted exit values are: ${exitIdList.join(', ')}.`,
+                enum: exitIdList
             }
         }
     },
@@ -225,17 +233,19 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             item_id: {
                 type: "string",
-                description: "The id of the item to look at. This must match item_id values listed in the items_present array or inventory array of the context."
+                description: `The id of the item to look at. The permitted item values are: ${itemIdList.join(', ')}.`,
+                enum: itemIdList
             }
         }
     },
     [COMMAND_TYPE.PICK_UP_ITEM]: {
         name: COMMAND_TYPE.PICK_UP_ITEM,
-        description: "Get, grab, collect or pick up an item in your current location, not contained in another item. The item must be visible, not hidden. If the item is hidden, do not call this tool.",
+        description: "Get or pick up an item in your current location, not contained in another item. The item must be visible, not hidden. If the item is hidden, do not call this tool.",
         parameters: {
             item_id: {
                 type: "string",
-                description: "The id of the item to get, grab, collect or pick up. This must match item_id values listed in the items_present array of the context."
+                description: `The id of the item to pick up. The permitted item values are: ${itemIdList.join(', ')}.`,
+                enum: itemIdList
             }
         }
     },
@@ -244,7 +254,8 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         description: "Change a hidden exit to a visible exit. This might happen if the user searches the location where the hidden exit is.",
         parameters: {
             exit_id: {
-                type: "string"
+                type: "string",
+                description: `The id of the exit to reveal. The permitted exit values are: ${exitIdList.join(', ')}.`
             },
             reason: {
                 type: "string",
@@ -258,7 +269,7 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             item_id: {
                 type: "string",
-                description: "The id of the item to reveal. This must match item_id values listed in the items_present array or inventory array of the context."
+                description: `The id of the item to reveal. The permitted item values are: ${itemIdList.join(', ')}.`
             },
             reason: {
                 type: "string",
@@ -272,7 +283,7 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             exit_id: {
                 type: "string",
-                description: "The id of the exit to search. This must match exit_id values listed in the exits array of the context."
+                description: `The id of the exit to search. The permitted exit values are: ${exitIdList.join(', ')}.`
             }
         }
     },
@@ -282,7 +293,7 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             item_id: {
                 type: "string",
-                description: "The id of the item to search. This must match item_id values listed in the items_present array or inventory array of the context."
+                description: `The id of the item to search. The permitted item values are: ${itemIdList.join(', ')}.`
             }
         }
     },
@@ -292,7 +303,7 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             location_id: {
                 type: "string",
-                description: "The id of the location to search. This must match location_id values listed in the context."
+                description: `The id of the location to search. The permitted location values are: ${locationIdList.join(', ')}.`
             }
         }
     },
@@ -302,11 +313,11 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             template_id: {
                 type: "string",
-                description: "The id of the creature template to spawn. This must match template_id values listed in the creature_templates array of the context."
+                description: `The id of the creature template to spawn. The permitted template values are: ${creatureTemplateIdList.join(', ')}.`
             },
             location_id: {
                 type: "string",
-                description: "The id of the location to spawn the agent. This must match location_id values listed in the context."
+                description: `The id of the location to spawn the agent. The permitted location values are: ${locationIdList.join(', ')}.`
             },
             name: {
                 type: "string",
@@ -320,7 +331,7 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             target_agent_id: {
                 type: "string",
-                description: "The id of the other agent to speak to. This must match agent_id values listed in the agents_present array of the context."
+                description: `The id of the other agent to speak to. The permitted agent values are: ${agentIdList.join(', ')}.`
             },
             message: {
                 type: "string",
@@ -334,7 +345,7 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         parameters: {
             exit_id: {
                 type: "string",
-                description: "The id of the exit to unlock. This must match exit_id values listed in the exits array of the context. Hidden exits cannot be unlocked."
+                description: `The id of the exit to unlock. The permitted exit values are: ${exitIdList.join(', ')}. Hidden exits cannot be unlocked.`
             },
             reason: {
                 type: "string",
@@ -367,10 +378,12 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
         description: "Update the description of an item. This might happen something happens to the object that should be reflected in the description.",
         parameters: {
             item_id: {
-                type: "string"
+                type: "string",
+                description: `The id of the item to update. The permitted item values are: ${itemIdList.join(', ')}.`
             },
             description: {
-                type: "string"
+                type: "string",
+                description: "The new description for the item."
             },
             reason: {
                 type: "string",
@@ -378,27 +391,31 @@ export const Tools: Record<COMMAND_TYPE, AiTool> = {
             }
         }
     },
-    [COMMAND_TYPE.USE_ITEM]: {
-        name: COMMAND_TYPE.USE_ITEM,
-        description: "Use an item on something",
-        parameters: {
-            object_type: {
-                type: "string",
-                description: "The type of object to use the item on. This must be one of the following: 'agent', 'location', 'item', or 'exit'."
-            },
-            object_id: {
-                type: "string",
-                description: "The id of the object to use the item on. This must match object_id values listed in the objects array of the context."
-            },
-            item_id: {
-                type: "string",
-                description: "The id of the item to use. This must match item_id values listed in the inventory array of the context."
-            }
-        }
-    },
+    // [COMMAND_TYPE.USE_ITEM]: {
+    //     name: COMMAND_TYPE.USE_ITEM,
+    //     description: "Use an item on something",
+    //     parameters: {
+    //         object_type: {
+    //             type: "string",
+    //             description: "The type of object to use the item on. This must be one of the following: 'agent', 'location', 'item', or 'exit'."
+    //         },
+    //         object_id: {
+    //             type: "string",
+    //             description: `The id of the object to use the item on. The permitted values depend on the object_type:
+    //             - For 'agent': ${agentIdList.join(', ')}
+    //             - For 'location': ${locationIdList.join(', ')}
+    //             - For 'item': ${itemIdList.join(', ')}
+    //             - For 'exit': ${exitIdList.join(', ')}`
+    //         },
+    //         item_id: {
+    //             type: "string",
+    //             description: `The id of the item to use. The permitted item values are: ${itemIdList.join(', ')}.`
+    //         }
+    //     }
+    // },
     [COMMAND_TYPE.WAIT]: {
         name: COMMAND_TYPE.WAIT,
         description: "Do nothing for this turn",
         parameters: {}
     }
-};
+});

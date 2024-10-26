@@ -372,31 +372,31 @@ export class GameEvent {
                 }
                 break;
             }
-            case COMMAND_TYPE.USE_ITEM: {
-                const item = await itemService.getItemById(parameters.item_id);
-                if (parameters.object_type === "agent") {
-                    const targetAgent = await agentService.getAgentById(parameters.object_id);  
-                    generalDescription = `${actorName} ${
-                        isFirstPerson ? "use" : "uses"
-                    } the ${item.label} on ${targetAgent.label}.`;
-                } else if (parameters.object_type === "location") {
-                    const targetLocation = await locationService.getLocationById(parameters.object_id);
-                    generalDescription = `${actorName} ${
-                        isFirstPerson ? "use" : "uses"
-                    } the ${item.label} on ${targetLocation.label}.`;
-                } else if (parameters.object_type === "item") {
-                    const targetItem = await itemService.getItemById(parameters.object_id);
-                    generalDescription = `${actorName} ${
-                        isFirstPerson ? "use" : "uses"
-                    } the ${item.label} on the ${targetItem.label}.`;
-                } else if (parameters.object_type === "exit") {
-                    const exit = await exitService.getById(parameters.object_id);
-                    generalDescription = `${actorName} ${
-                        isFirstPerson ? "use" : "uses"
-                    } the ${item.label} on the ${exit.name}.`;
-                }
-                break;
-            }
+            // case COMMAND_TYPE.USE_ITEM: {
+            //     const item = await itemService.getItemById(parameters.item_id);
+            //     if (parameters.object_type === "agent") {
+            //         const targetAgent = await agentService.getAgentById(parameters.object_id);  
+            //         generalDescription = `${actorName} ${
+            //             isFirstPerson ? "use" : "uses"
+            //         } the ${item.label} on ${targetAgent.label}.`;
+            //     } else if (parameters.object_type === "location") {
+            //         const targetLocation = await locationService.getLocationById(parameters.object_id);
+            //         generalDescription = `${actorName} ${
+            //             isFirstPerson ? "use" : "uses"
+            //         } the ${item.label} on ${targetLocation.label}.`;
+            //     } else if (parameters.object_type === "item") {
+            //         const targetItem = await itemService.getItemById(parameters.object_id);
+            //         generalDescription = `${actorName} ${
+            //             isFirstPerson ? "use" : "uses"
+            //         } the ${item.label} on the ${targetItem.label}.`;
+            //     } else if (parameters.object_type === "exit") {
+            //         const exit = await exitService.getById(parameters.object_id);
+            //         generalDescription = `${actorName} ${
+            //             isFirstPerson ? "use" : "uses"
+            //         } the ${item.label} on the ${exit.name}.`;
+            //     }
+            //     break;
+            // }
 
             default:
                 console.warn(`Unknown command type: ${this.command_type}`);

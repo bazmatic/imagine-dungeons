@@ -16,8 +16,9 @@ import { Agent } from "@/entity/Agent";
 import { ContentBlock, ToolUseBlock } from "@anthropic-ai/sdk/resources";
 import { IAiHelper } from "./Ai";
 
-const ANTHROPIC_STRUCTURED_OUTPUT_MODEL = "claude-3-sonnet-20240229";
+const ANTHROPIC_STRUCTURED_OUTPUT_MODEL = "claude-3-haiku-20240307"; ////"claude-3-sonnet-20240229";
 const ANTHROPIC_TEXT_OUTPUT_MODEL = "claude-3-haiku-20240307";
+
 
 export class AnthropicAiHelper implements IAiHelper {
     private anthropic: Anthropic;
@@ -67,6 +68,12 @@ export class AnthropicAiHelper implements IAiHelper {
         const context = await getLocationContext(locationId, actingAgent);
         const systemPrompt = interpretAgentInstructionsSystemPrompt();
 
+        const locationIdList = [locationId];
+        const agentIdList = [actingAgent.agentId, ...context.human_agents_present.map(agent => agent.id), ...context.autonomous_agents_present.map(agent => agent.id)];
+        const itemIdList = context.items_present.map(item => item.id);
+        const exitIdList = context.exits.map(exit => exit.id);
+        const creatureTemplateIdList = context.location.creatureTemplates?.map(creatureTemplate => creatureTemplate.templateId) ?? [];
+
         const response = await this.anthropic.messages.create({
             model: ANTHROPIC_STRUCTURED_OUTPUT_MODEL,
             max_tokens: 1000,
@@ -82,7 +89,13 @@ export class AnthropicAiHelper implements IAiHelper {
                         "What minimal set of tool calls should be made to accurately carry out the actions that the agent should carry out based on the text description they provided? Respond with a list of tool calls that should be made. If nothing seems to fit well, just use an emote."
                 }
             ],
-            tools: getAvailableTools(actingAgent).map(
+            tools: getAvailableTools(actingAgent,
+                locationIdList,
+                agentIdList,
+                itemIdList,
+                exitIdList,
+                creatureTemplateIdList 
+            ).map(
                 this.aiToolToAnthropicTool
             )
         });
@@ -105,6 +118,12 @@ export class AnthropicAiHelper implements IAiHelper {
         const context = await getLocationContext(locationId, null);
         const systemPrompt = consequentEventsSystemPrompt();
 
+        const locationIdList = [locationId];
+        const agentIdList = [...context.human_agents_present, ...context.autonomous_agents_present].map(agent => agent.id);
+        const itemIdList = context.items_present.map(item => item.id);
+        const exitIdList = context.exits.map(exit => exit.id);
+        const creatureTemplateIdList = context.location.creatureTemplates?.map(creatureTemplate => creatureTemplate.templateId) ?? [];
+
         const response = await this.anthropic.messages.create({
             model: ANTHROPIC_STRUCTURED_OUTPUT_MODEL,
             max_tokens: 1000,
@@ -122,7 +141,13 @@ Here is the current context: ${JSON.stringify(context, null, 4)}`,
                         "What tool calls should be made to reflect the events that occurred at this location? Be sure to only unlock exits if an agent specifically performs an action to unlock the exit, and you believe this is the correct action to take. Respond with a list of tool calls that should be made. If no tool calls are necessary, return an empty array or the 'do nothing' tool."
                 }
             ],
-            tools: getAvailableTools(null).map(this.aiToolToAnthropicTool)
+            tools: getAvailableTools(null,
+                locationIdList,
+                agentIdList,
+                itemIdList,
+                exitIdList,
+                creatureTemplateIdList
+            ).map(this.aiToolToAnthropicTool)
         });
 
         const toolCalls = response.content.filter(
