@@ -43,7 +43,7 @@ export default async function command(
         // Check the impact value of each event. If they are greater than zero, then work out what happens next
         const totalImpact = referee.calculateTotalImpact(combinedEvents);
         console.log(`Total impact: ${totalImpact}`);
-        if (totalImpact > 1) {
+        if (totalImpact > 0) {
                 // === Autonomous agents act ===
             // This may change to running on their own thread in the future
             const autonomousAgentGameEvents: GameEvent[] = await worldService.autonomousAgentsAct();

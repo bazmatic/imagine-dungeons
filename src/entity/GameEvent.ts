@@ -372,6 +372,14 @@ export class GameEvent {
                 }
                 break;
             }
+
+            case COMMAND_TYPE.DISPLAY_HELP_TEXT: {
+                generalDescription = "Here is a list of commands you can use:";
+                if (this.output_text) {
+                    extraDetail.push(this.output_text);
+                }
+                break;
+            }
             // case COMMAND_TYPE.USE_ITEM: {
             //     const item = await itemService.getItemById(parameters.item_id);
             //     if (parameters.object_type === "agent") {

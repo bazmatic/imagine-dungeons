@@ -10,6 +10,7 @@ export enum COMMAND_TYPE {
     GET_ITEM_FROM_ITEM = "get_item_from_item",
     GIVE_ITEM_TO_AGENT = "give_item_to_agent",
     GO_EXIT = "go_exit",
+    DISPLAY_HELP_TEXT = "display_help_text",
     LOOK_AROUND = "look_around",
     LOOK_AT_AGENT = "look_at_agent",
     LOOK_AT_EXIT = "look_at_exit",
@@ -33,6 +34,7 @@ export enum COMMAND_TYPE {
 export type ToolCallArguments = {
     [COMMAND_TYPE.ATTACK_AGENT]: { target_agent_id: string };
     [COMMAND_TYPE.DROP_ITEM]: { item_id: string };
+    [COMMAND_TYPE.DISPLAY_HELP_TEXT]: object;
     [COMMAND_TYPE.DO_NOTHING]: object;
     [COMMAND_TYPE.EMOTE]: { emote_text: string; agent_id: string };
     [COMMAND_TYPE.EVENT]: { event_text: string };
@@ -69,6 +71,7 @@ export const CommandSynonyms: Record<string, string[]> = {
         "assault",
         "battle"
     ],
+    [COMMAND_TYPE.DISPLAY_HELP_TEXT]: ["help", "commands", "manual"],
     [COMMAND_TYPE.DO_NOTHING]: ["wait", "stand still", "idle"],
     [COMMAND_TYPE.DROP_ITEM]: [
         "drop",
@@ -118,6 +121,11 @@ export const createTools = (
             }
         }
     },
+    [COMMAND_TYPE.DISPLAY_HELP_TEXT]: {
+        name: COMMAND_TYPE.DISPLAY_HELP_TEXT,
+        description: "Display the help text to the user so they can see the list of commands they can use.",
+        parameters: {}
+    },
     [COMMAND_TYPE.DO_NOTHING]: {
         name: COMMAND_TYPE.DO_NOTHING,
         description: "Do nothing",
@@ -135,7 +143,7 @@ export const createTools = (
     },
     [COMMAND_TYPE.EMOTE]: {
         name: COMMAND_TYPE.EMOTE,
-        description: "Perform an action that has no direct effect, or express a visible action or emotion. This can be used as a catch-all if nothing else seems to fit. Do not include any speech. Do not do anything that is covered by other commands. Describe the action from a third-person perspective. Do not prefix with the agent's name, simply output the emote text.",
+        description: "Perform an action not covered by other commands, that expresses a visible action or emotion. This can be used as a catch-all if nothing else seems to fit. Do not include any speech. Do not do anything that is covered by other commands. Describe the action from a third-person perspective. Do not prefix with the agent's name, simply output the emote text. The action must accurately reflect the agent's command.",
         parameters: {
             emote_text: {
                 type: "string",
@@ -375,7 +383,7 @@ export const createTools = (
     },
     [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: {
         name: COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION,
-        description: "Update the description of an item. This might happen something physical happens to the object that should be reflected in the description, so that if anyone looks at it, the change will be obvious.",
+        description: "Signify that an item has physically changed, perhaps from being crumpled, cracked, or otherwise altered. This change must be reflected in the description of the item. Do not use this tool to change to owner of an item.",
         parameters: {
             item_id: {
                 type: "string",

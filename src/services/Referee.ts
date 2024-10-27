@@ -250,6 +250,9 @@ export class Referee {
                     ).target_agent_id
                 );
                 break;
+            case COMMAND_TYPE.DISPLAY_HELP_TEXT:
+                extraDetails = displayHelpText(agent);
+                break;
             case COMMAND_TYPE.DO_NOTHING:
                 break;
             case COMMAND_TYPE.DROP_ITEM:
@@ -467,27 +470,6 @@ export class Referee {
     }
 }
 
-// Use a traditional parsing technique to determine the commands
-//TODO: Finish this
-// async function basicCommandInterpreter(instructions: string, actingAgent: Agent): Promise<void> {
-//     // The first word is a verb, the rest is a list of arguments
-//     // Clean up the text to remove punctuation and make it easier to parse
-//     const verb = instructions.split(" ")[0].toLowerCase();
-//     const args = instructions.split(" ").slice(1);
-
-//     const availableCommands = getAvailableCommands(actingAgent);
-//     const matchingCommands: COMMAND_TYPE[] = [];
-//     for (const command of availableCommands) {
-//         if (CommandSynonyms[command].includes(verb)) {
-//             matchingCommands.push(command);
-//         }
-//     }
-//     // Try each one
-//     for (const command of matchingCommands) {
-//         const tool = Tools[command];
-//     }
-// }
-
 export function getAvailableCommands(agent: Agent | null): COMMAND_TYPE[] {
     const commonTools = [
         COMMAND_TYPE.ATTACK_AGENT,
@@ -563,4 +545,14 @@ export function getAvailableTools(
         result.push(tools[command]);
     }
     return result;
+}
+
+function displayHelpText(agent: Agent | null): string[] {
+    const availableCommands = getAvailableCommands(agent);
+    const result: string[] = ["Here is a list of commands you can use:"];
+    for (const command of availableCommands) {
+        const tool = 
+        result.push(`- ${command}`);
+    }
+    return result;  
 }

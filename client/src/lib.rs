@@ -17,6 +17,7 @@ pub struct GameEventDTO {
 #[serde(rename_all = "snake_case")]
 pub enum CommandType {
     AttackAgent,
+    DisplayHelpText,
     DoNothing,
     DropItem,
     Emote,

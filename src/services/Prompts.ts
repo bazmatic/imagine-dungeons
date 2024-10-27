@@ -188,7 +188,7 @@ export function consequentEventsSystemPrompt(): string {
     return `You are a game master for a text adventure game.
     You will be given a chronological list of events that occurred in the game, from the earliest to the most recent and most important.
     Your job is to determine what (if any) important new events should be triggered as a consequence of these events.
-    This might include revealing hidden items, triggering new events, etc.
+    Triggered events might include revealing hidden items, triggering new events, changing the appearance of an item etc.
     Skip unimportant events that are already evident from previous events.
     If an agent actively searches for hidden items, or your notes indicate that an action warrants it,
     you may choose an event to appropriately change a hidden item to a visible item.
