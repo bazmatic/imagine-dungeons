@@ -2,7 +2,7 @@ import { Agent } from "@/entity/Agent";
 import { GameEvent } from "@/entity/GameEvent";
 import {
     COMMAND_TYPE,
-    CommandSynonyms,
+    COMMANDS,
     createTools,
     ToolCallArguments
 } from "@/types/commands";
@@ -15,6 +15,7 @@ import { GameEventService } from "./GameEventService";
 import { ItemService } from "./Item.service";
 import { LocationService } from "./Location.service";
 import { SYSTEM_AGENT } from "./Prompts";
+
 export class Referee {
     private aiHelper: IAiHelper;
 
@@ -88,18 +89,15 @@ export class Referee {
 
         return [...agentGameEvents];
     }
-    // TODO: Parse the command properly and return the command type and arguments
-    private parseCommand(instructions: string): AiToolCall | null {
-        //} commandArguments: ToolCallArguments[COMMAND_TYPE] | null } {
-        // The first word is a verb, the rest is a list of arguments
-        const verb = instructions.toLowerCase();
-        //const args = instructions.split(" ").slice(1);
 
-        // For each command type, check if the verb is in the list of synonyms
-        for (const commandType of Object.values(COMMAND_TYPE)) {
-            if (CommandSynonyms[commandType]?.includes(verb)) {
+    private parseCommand(instructions: string): AiToolCall | null {
+        const verb = instructions.toLowerCase();
+
+        // Check each command's synonyms
+        for (const [commandType, commandInfo] of Object.entries(COMMANDS)) {
+            if (commandInfo.synonyms.includes(verb)) {
                 return {
-                    name: commandType,
+                    name: commandType as COMMAND_TYPE,
                     arguments: {}
                 };
             }
@@ -113,7 +111,6 @@ export class Referee {
         locationId: string
     ): Promise<GameEvent[]> {
         const outputText: string[] = [];
-        //let actingAgent: Agent | null = null;
         const agentService = new AgentService();
         const gameEventService = new GameEventService();
         const exitService = new ExitService();
@@ -133,11 +130,8 @@ export class Referee {
                 break;
 
             case COMMAND_TYPE.REVEAL_ITEM: {
-                // Get the item
-                const itemId = (
-                    toolCallArguments as ToolCallArguments[COMMAND_TYPE.REVEAL_ITEM]
-                ).item_id;
-                const item = await itemService.getItemById(itemId);
+                const { item_id } = toolCallArguments as ToolCallArguments[COMMAND_TYPE.REVEAL_ITEM];
+                const item = await itemService.getItemById(item_id);
                 if (!item) {
                     throw new Error("That item doesn't exist.");
                 }
@@ -147,86 +141,64 @@ export class Referee {
                 if (!item.hidden) {
                     throw new Error("That item is not hidden.");
                 }
-                await itemService.revealItem(itemId);
+                await itemService.revealItem(item_id);
                 break;
             }
 
-            case COMMAND_TYPE.REVEAL_EXIT:
-                await exitService.revealExit(
-                    (
-                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.REVEAL_EXIT]
-                    ).exit_id
-                );
+            case COMMAND_TYPE.REVEAL_EXIT: {
+                const { exit_id } = toolCallArguments as ToolCallArguments[COMMAND_TYPE.REVEAL_EXIT];
+                await exitService.revealExit(exit_id);
                 break;
-            case COMMAND_TYPE.UNLOCK_EXIT:
-                const exitId = (
-                    toolCallArguments as ToolCallArguments[COMMAND_TYPE.UNLOCK_EXIT]
-                ).exit_id;
+            }
+
+            case COMMAND_TYPE.UNLOCK_EXIT: {
+                const { exit_id } = toolCallArguments as ToolCallArguments[COMMAND_TYPE.UNLOCK_EXIT];
                 const exits = await location.exits;
-                const exit = exits.find(e => e.exitId === exitId);
+                const exit = exits.find(e => e.exitId === exit_id);
                 if (!exit) {
                     outputText.push("That is not an exit.");
                     break;
                 }
                 if (exit.locked) {
-                    await exitService.unlockExit(exitId);
+                    await exitService.unlockExit(exit_id);
                 }
                 break;
-            case COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION:
-                const itemId = (
-                    toolCallArguments as ToolCallArguments[COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]
-                ).item_id;
-                const item = await itemService.getItemById(itemId);
+            }
+
+            case COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION: {
+                const { item_id, description } = toolCallArguments as ToolCallArguments[COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION];
+                const item = await itemService.getItemById(item_id);
                 if (!item) {
                     outputText.push("That item doesn't exist.");
                     break;
                 }
-                await itemService.updateItemDescription(
-                    (
-                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]
-                    ).item_id,
-                    (
-                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]
-                    ).description
-                );
+                await itemService.updateItemDescription(item_id, description);
                 break;
+            }
 
-            case COMMAND_TYPE.SPAWN_AGENT:
-                const templateId = (
-                    toolCallArguments as ToolCallArguments[COMMAND_TYPE.SPAWN_AGENT]
-                ).template_id;
-                const locationId = (
-                    toolCallArguments as ToolCallArguments[COMMAND_TYPE.SPAWN_AGENT]
-                ).location_id;
-                const name = (
-                    toolCallArguments as ToolCallArguments[COMMAND_TYPE.SPAWN_AGENT]
-                ).name;
+            case COMMAND_TYPE.SPAWN_AGENT: {
+                const { template_id, location_id, name } = toolCallArguments as ToolCallArguments[COMMAND_TYPE.SPAWN_AGENT];
                 await agentService.spawnAgentFromTemplate(
-                    templateId,
-                    locationId,
+                    template_id,
+                    location_id,
                     name
                 );
-                //outputText.push(`${newAgent.label} arrives.`);
                 break;
-
-            case COMMAND_TYPE.DO_NOTHING:
-                break;
+            }
 
             default:
                 console.warn(`Unknown command type: ${commandType}`);
                 return [];
         }
-        const agentsPresent = await agentService.getAgentsByLocation(
-            locationId
-        );
 
+        const agentsPresent = await agentService.getAgentsByLocation(locationId);
         const gameEvent: GameEvent = await gameEventService.makeGameEvent(
-            SYSTEM_AGENT.id, //TODO: fetch the actual system agent from DB
+            SYSTEM_AGENT.id,
             locationId,
-            "", //No input text available here, as this is a system event
+            "",
             commandType,
             JSON.stringify(toolCallArguments),
-            outputText.join("\n"), //TODO: makeGameEvent should take an array of strings
+            outputText.join("\n"),
             agentsPresent.map(agent => agent.agentId)
         );
         return [gameEvent];
@@ -452,13 +424,14 @@ export class Referee {
 
     public calculateTotalImpact(events: GameEvent[]): number {
         const zeroImpactCommands = [
+            COMMAND_TYPE.DISPLAY_HELP_TEXT,
             COMMAND_TYPE.DO_NOTHING,
-            COMMAND_TYPE.WAIT,
-            COMMAND_TYPE.LOOK_AROUND,
             COMMAND_TYPE.GET_INVENTORY,
+            COMMAND_TYPE.LOOK_AROUND,
             COMMAND_TYPE.LOOK_AT_AGENT,
             COMMAND_TYPE.LOOK_AT_EXIT,
-            COMMAND_TYPE.LOOK_AT_ITEM
+            COMMAND_TYPE.LOOK_AT_ITEM,
+            COMMAND_TYPE.WAIT,
         ];
         const result = events.reduce((sum, event) => {
             if (zeroImpactCommands.includes(event.command_type)) {
@@ -471,7 +444,19 @@ export class Referee {
 }
 
 export function getAvailableCommands(agent: Agent | null): COMMAND_TYPE[] {
-    const commonTools = [
+    if (!agent) {
+        return [
+            COMMAND_TYPE.DO_NOTHING,
+            COMMAND_TYPE.EVENT,
+            COMMAND_TYPE.REVEAL_EXIT,
+            COMMAND_TYPE.REVEAL_ITEM,
+            COMMAND_TYPE.SPAWN_AGENT,
+            COMMAND_TYPE.UNLOCK_EXIT,
+            COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION
+        ];
+    }
+
+    const commonCommands = [
         COMMAND_TYPE.ATTACK_AGENT,
         COMMAND_TYPE.DO_NOTHING,
         COMMAND_TYPE.DROP_ITEM,
@@ -483,41 +468,25 @@ export function getAvailableCommands(agent: Agent | null): COMMAND_TYPE[] {
         COMMAND_TYPE.SEARCH_ITEM,
         COMMAND_TYPE.SEARCH_LOCATION,
         COMMAND_TYPE.SPEAK_TO_AGENT,
-        //COMMAND_TYPE.USE_ITEM,
         COMMAND_TYPE.WAIT
     ];
 
-    const autonomousTools = [
-        COMMAND_TYPE.UPDATE_AGENT_INTENT,
-        COMMAND_TYPE.UPDATE_AGENT_MOOD
-    ];
+    if (agent.autonomous) {
+        return [
+            ...commonCommands,
+            COMMAND_TYPE.UPDATE_AGENT_INTENT,
+            COMMAND_TYPE.UPDATE_AGENT_MOOD
+        ];
+    }
 
-    const nonAutonomousTools = [
+    return [
+        ...commonCommands,
         COMMAND_TYPE.GET_INVENTORY,
         COMMAND_TYPE.LOOK_AROUND,
         COMMAND_TYPE.LOOK_AT_AGENT,
         COMMAND_TYPE.LOOK_AT_EXIT,
         COMMAND_TYPE.LOOK_AT_ITEM
     ];
-
-    const refereeTools = [
-        COMMAND_TYPE.DO_NOTHING,
-        COMMAND_TYPE.EVENT,
-        COMMAND_TYPE.REVEAL_EXIT,
-        COMMAND_TYPE.REVEAL_ITEM,
-        COMMAND_TYPE.SPAWN_AGENT,
-        COMMAND_TYPE.UNLOCK_EXIT,
-        COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION
-    ];
-
-    if (!agent) {
-        return refereeTools;
-    }
-    if (!agent.autonomous) {
-        return [...commonTools, ...nonAutonomousTools];
-    } else {
-        return [...commonTools, ...autonomousTools];
-    }
 }
 
 export function getAvailableTools(
@@ -536,23 +505,15 @@ export function getAvailableTools(
         exitIdList,
         creatureTemplateIdList
     );
-    //return availableCommands.map(c => tools[c]);
-    const result: AiTool[] = [];
-    for (const command of availableCommands) {
-        if (!tools[command]) {
-            debugger;
-        }
-        result.push(tools[command]);
-    }
-    return result;
+    return availableCommands.map(commandType => tools[commandType]);
 }
 
 function displayHelpText(agent: Agent | null): string[] {
     const availableCommands = getAvailableCommands(agent);
-    const result: string[] = ["Here is a list of commands you can use:"];
+    const result: string[] = ["Here is a list of things you can do:"];
     for (const command of availableCommands) {
-        const tool = 
-        result.push(`- ${command}`);
+        result.push(`- ${COMMANDS[command].description}`); //: ${COMMANDS[command].synonyms.join(", ")}`);
     }
+    result.push("You can also try doing things not mentioned above.")
     return result;  
 }

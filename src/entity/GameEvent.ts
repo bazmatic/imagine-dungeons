@@ -271,8 +271,8 @@ export class GameEvent {
                 // <Agent> checks their inventory.
                 // <Description of inventory>
                 generalDescription = `${actorName} ${
-                    isFirstPerson ? "check" : "checks"
-                } their inventory.`;
+                    isFirstPerson ? "check your" : "checks their"
+                } inventory.`;
 
                 if (this.output_text && showPrivateDetail) {
                     extraDetail.push(this.output_text);
@@ -374,8 +374,9 @@ export class GameEvent {
             }
 
             case COMMAND_TYPE.DISPLAY_HELP_TEXT: {
-                generalDescription = "Here is a list of commands you can use:";
-                if (this.output_text) {
+                generalDescription = `${actorName} considers their options.`;
+                if (this.output_text && showPrivateDetail) {
+                    generalDescription = "Here is a list of commands you can use:";
                     extraDetail.push(this.output_text);
                 }
                 break;

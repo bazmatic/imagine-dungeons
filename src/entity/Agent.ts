@@ -436,8 +436,8 @@ export class Agent implements IBaseProperties {
             throw new Error("Your inventory is empty.");
         }
 
-        const itemLabels = inventory.map(item => item.label).join(", ");
-        return [`Your inventory contains: ${itemLabels}`];
+        //const itemLabels = inventory.map(item => item.label).join(", ");
+        return [`Your inventory contains:`, ...inventory.map(item => `- ${item.label}`)];
     }
 
     public async itemIsAccessible(itemId: string): Promise<boolean> {

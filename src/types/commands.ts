@@ -1,5 +1,6 @@
 import { AiTool } from "./types";
 
+// Keep the enum as-is since it's used in other parts of the codebase
 export enum COMMAND_TYPE {
     ATTACK_AGENT = "attack_agent",
     DO_NOTHING = "do_nothing",
@@ -27,403 +28,550 @@ export enum COMMAND_TYPE {
     UPDATE_AGENT_INTENT = "update_agent_intent",
     UPDATE_AGENT_MOOD = "update_agent_mood",
     UPDATE_ITEM_DESCRIPTION = "update_item_description",
-    //USE_ITEM = "use_item",
     WAIT = "wait",
 }
 
+// Define the structure for command information
+export type CommandInfo<TArgs = any> = {
+    type: COMMAND_TYPE;
+    description: string;
+    synonyms: string[];
+    arguments: TArgs;
+    tool: (params: {
+        locationIdList: string[];
+        agentIdList: string[];
+        itemIdList: string[];
+        exitIdList: string[];
+        creatureTemplateIdList: string[];
+    }) => AiTool;
+};
+
+type COMMAND_LOOKUP = {
+    [key in COMMAND_TYPE]: CommandInfo;
+};
+
+// Unified command definitions
+export const COMMANDS: COMMAND_LOOKUP = {
+    [COMMAND_TYPE.ATTACK_AGENT]: {
+        type: COMMAND_TYPE.ATTACK_AGENT,
+        description: "Attack something",
+        synonyms: ["attack", "fight", "hit", "strike", "assault", "battle"],
+        arguments: {} as { target_agent_id: string },
+        tool: ({ agentIdList }: { agentIdList: string[] }) => ({
+            name: COMMAND_TYPE.ATTACK_AGENT,
+            description: "Attack an agent in the same location, in an attempt to defeat them or cause them harm. If the text suggests that the primary action is to attack an agent, then call this tool. Otherwise, do not call this tool.",
+            parameters: {
+                target_agent_id: {
+                    type: "string",
+                    description: `The id of the agent to attack. The permitted agent values are: ${agentIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.DO_NOTHING]: {
+        type: COMMAND_TYPE.DO_NOTHING,
+        description: "Do nothing",
+        synonyms: ["wait", "stand still", "idle"],
+        arguments: {} as object,
+        tool: () => ({
+            name: COMMAND_TYPE.DO_NOTHING,
+            description: "Do nothing",
+            parameters: {}
+        })
+    },
+
+    [COMMAND_TYPE.DROP_ITEM]: {
+        type: COMMAND_TYPE.DROP_ITEM,
+        description: "Drop an item",
+        synonyms: ["drop", "discard", "put down", "leave", "abandon"],
+        arguments: {} as { item_id: string },
+        tool: ({ itemIdList }: { itemIdList: string[] }) => ({
+            name: COMMAND_TYPE.DROP_ITEM,
+            description: "Drop an item",
+            parameters: {
+                item_id: {
+                    type: "string",
+                    description: `The id of the item to drop. The permitted item values are: ${itemIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: {
+        type: COMMAND_TYPE.GET_ITEM_FROM_ITEM,
+        description: "Get an item from an container item",
+        synonyms: ["get", "take", "remove"],
+        arguments: {} as { container_item_id: string; target_item_id: string },
+        tool: ({ itemIdList }: { itemIdList: string[] }) => ({
+            name: COMMAND_TYPE.GET_ITEM_FROM_ITEM,
+            description: "Get an item from an container item. This might happen if the user asks you to get something from a container or bag. Do not call this tool to pick something up that is not in a container. The container must be visible, not hidden. The container must be owned by the agent, or be in the agent's current location.",
+            parameters: {
+                container_item_id: {
+                    type: "string",
+                    description: `The id of the container, within which is the item sought. The permitted item values are: ${itemIdList.join(', ')}.`
+                },
+                target_item_id: {
+                    type: "string",
+                    description: `The id of the item to get from the container. The permitted item values are: ${itemIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.SPAWN_AGENT]: {
+        type: COMMAND_TYPE.SPAWN_AGENT,
+        description: "Cause an agent or creature to appear",
+        synonyms: [],
+        arguments: {} as { template_id: string; location_id: string; name: string },
+        tool: ({ locationIdList, creatureTemplateIdList }: { locationIdList: string[]; creatureTemplateIdList: string[] }) => ({
+            name: COMMAND_TYPE.SPAWN_AGENT,
+            description: "Cause an agent or creature to appear. You can choose one from the location creatureTemplates in the context. This might happen if the location notes say that a particular creature might spawn here.",
+            parameters: {
+                template_id: {
+                    type: "string",
+                    description: `The id of the creature template to spawn. The permitted template values are: ${creatureTemplateIdList.join(', ')}.`
+                },
+                location_id: {
+                    type: "string",
+                    description: `The id of the location to spawn the agent. The permitted location values are: ${locationIdList.join(', ')}.`
+                },
+                name: {
+                    type: "string",
+                    description: "The name of the agent to spawn. Give them a unique and memorable name."
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.SPEAK_TO_AGENT]: {
+        type: COMMAND_TYPE.SPEAK_TO_AGENT,
+        description: "Speak to an agent",
+        synonyms: ["speak to", "say", "ask", "tell"],
+        arguments: {} as { target_agent_id: string; message: string },
+        tool: ({ agentIdList }: { agentIdList: string[] }) => ({
+            name: COMMAND_TYPE.SPEAK_TO_AGENT,
+            description: "Speak to an agent who is in the same location. You should call this if an agent has just spoken to you. If the input text starts with 'talk to' or 'say' or 'ask' or 'tell', then they are indicating that this tool should be called. Only return the spoken text, without any additional descriptive text. Exclude quotation marks. Eg: Hello Bob, how are you?",
+            parameters: {
+                target_agent_id: {
+                    type: "string",
+                    description: `The id of the other agent to speak to. The permitted agent values are: ${agentIdList.join(', ')}.`
+                },
+                message: {
+                    type: "string",
+                    description: "The message to speak to the other agent, without any additional descriptive text. Exclude quotation marks."
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: {
+        type: COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION,
+        description: "Update an item's description",
+        synonyms: [],
+        arguments: {} as { item_id: string; description: string; reason: string },
+        tool: ({ itemIdList }: { itemIdList: string[] }) => ({
+            name: COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION,
+            description: "Signify that an item has physically changed, perhaps from being crumpled, cracked, or otherwise altered. This change must be reflected in the description of the item. Do not use this tool to change to owner of an item.",
+            parameters: {
+                item_id: {
+                    type: "string",
+                    description: `The id of the item to update. The permitted item values are: ${itemIdList.join(', ')}.`
+                },
+                description: {
+                    type: "string",
+                    description: "The new description for the item."
+                },
+                reason: {
+                    type: "string",
+                    description: "The reason for updating the item description. This should be a short explanation for why the item description is being updated."
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.SEARCH_LOCATION]: {
+        type: COMMAND_TYPE.SEARCH_LOCATION,
+        description: "Search the current location for items or exits",
+        synonyms: ["search", "loot"],
+        arguments: {} as { location_id: string },
+        tool: ({ locationIdList }: { locationIdList: string[] }) => ({
+            name: COMMAND_TYPE.SEARCH_LOCATION,
+            description: "Search the current location for items or exits.",
+            parameters: {
+                location_id: {
+                    type: "string",
+                    description: `The id of the location to search. The permitted location values are: ${locationIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.REVEAL_EXIT]: {
+        type: COMMAND_TYPE.REVEAL_EXIT,
+        description: "Change a hidden exit to a visible exit",
+        synonyms: [],
+        arguments: {} as { exit_id: string; reason: string },
+        tool: ({ exitIdList }: { exitIdList: string[] }) => ({
+            name: COMMAND_TYPE.REVEAL_EXIT,
+            description: "Change a hidden exit to a visible exit. This might happen if the user searches the location where the hidden exit is.",
+            parameters: {
+                exit_id: {
+                    type: "string",
+                    description: `The id of the exit to reveal. The permitted exit values are: ${exitIdList.join(', ')}.`
+                },
+                reason: {
+                    type: "string",
+                    description: "The reason for revealing the exit. This should be a short explanation for why the exit is being revealed."
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.LOOK_AROUND]: {
+        type: COMMAND_TYPE.LOOK_AROUND,
+        description: "Look around the current location to get a description of what you can see",
+        synonyms: ["look", "observe", "survey", "examine room", "examine area"],
+        arguments: {} as { location_id: string },
+        tool: ({ locationIdList }: { locationIdList: string[] }) => ({
+            name: COMMAND_TYPE.LOOK_AROUND,
+            description: "Look around the current location to get a description of what you can see.",
+            parameters: {
+                location_id: {
+                    type: "string",
+                    description: `The id of the location to look at. The permitted location values are: ${locationIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.LOOK_AT_AGENT]: {
+        type: COMMAND_TYPE.LOOK_AT_AGENT,
+        description: "Look at a specific agent to get a detailed description of them",
+        synonyms: ["examine", "inspect", "observe"],
+        arguments: {} as { target_agent_id: string },
+        tool: ({ agentIdList }: { agentIdList: string[] }) => ({
+            name: COMMAND_TYPE.LOOK_AT_AGENT,
+            description: "Look at a specific agent to get a detailed description of them.",
+            parameters: {
+                target_agent_id: {
+                    type: "string",
+                    description: `The id of the agent to look at. The permitted agent values are: ${agentIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.LOOK_AT_ITEM]: {
+        type: COMMAND_TYPE.LOOK_AT_ITEM,
+        description: "Look at a specific item to get a detailed description of it",
+        synonyms: ["examine", "inspect", "observe"],
+        arguments: {} as { item_id: string },
+        tool: ({ itemIdList }: { itemIdList: string[] }) => ({
+            name: COMMAND_TYPE.LOOK_AT_ITEM,
+            description: "Look at a specific item to get a detailed description of it.",
+            parameters: {
+                item_id: {
+                    type: "string",
+                    description: `The id of the item to look at. The permitted item values are: ${itemIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.UPDATE_AGENT_INTENT]: {
+        type: COMMAND_TYPE.UPDATE_AGENT_INTENT,
+        description: "Update a game agent's current intention or goal",
+        synonyms: [],
+        arguments: {} as { agent_id: string; intent: string; reason: string },
+        tool: ({ agentIdList }) => ({
+            name: COMMAND_TYPE.UPDATE_AGENT_INTENT,
+            description: "Update an agent's current intention or goal. This might happen if something significant changes in their environment or situation.",
+            parameters: {
+                agent_id: {
+                    type: "string",
+                    description: `The id of the agent whose intent to update. The permitted agent values are: ${agentIdList.join(', ')}.`
+                },
+                intent: {
+                    type: "string",
+                    description: "The new intention or goal for the agent."
+                },
+                reason: {
+                    type: "string",
+                    description: "The reason for updating the agent's intent. This should be a short explanation for why the intent is being updated."
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.UPDATE_AGENT_MOOD]: {
+        type: COMMAND_TYPE.UPDATE_AGENT_MOOD,
+        description: "Update a game agent's current emotional state",
+        synonyms: [],
+        arguments: {} as { agent_id: string; mood: string; reason: string },
+        tool: ({ agentIdList }) => ({
+            name: COMMAND_TYPE.UPDATE_AGENT_MOOD,
+            description: "Update an agent's current emotional state. This might happen in response to events or interactions.",
+            parameters: {
+                agent_id: {
+                    type: "string",
+                    description: `The id of the agent whose mood to update. The permitted agent values are: ${agentIdList.join(', ')}.`
+                },
+                mood: {
+                    type: "string",
+                    description: "The new mood or emotional state for the agent."
+                },
+                reason: {
+                    type: "string",
+                    description: "The reason for updating the agent's mood. This should be a short explanation for why the mood is being updated."
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.REVEAL_ITEM]: {
+        type: COMMAND_TYPE.REVEAL_ITEM,
+        description: "Make a hidden item visible",
+        synonyms: [],
+        arguments: {} as { item_id: string; reason: string },
+        tool: ({ itemIdList }) => ({
+            name: COMMAND_TYPE.REVEAL_ITEM,
+            description: "Make a hidden item visible. This might happen when searching a location or container.",
+            parameters: {
+                item_id: {
+                    type: "string",
+                    description: `The id of the item to reveal. The permitted item values are: ${itemIdList.join(', ')}.`
+                },
+                reason: {
+                    type: "string",
+                    description: "The reason for revealing the item. This should be a short explanation for why the item is being revealed."
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.UNLOCK_EXIT]: {
+        type: COMMAND_TYPE.UNLOCK_EXIT,
+        description: "Unlock a locked exit using an appropriate item (like a key)",
+        synonyms: ["unlock", "open"],
+        arguments: {} as { exit_id: string; item_id: string },
+        tool: ({ exitIdList, itemIdList }) => ({
+            name: COMMAND_TYPE.UNLOCK_EXIT,
+            description: "Unlock a locked exit using an appropriate item (like a key).",
+            parameters: {
+                exit_id: {
+                    type: "string",
+                    description: `The id of the exit to unlock. The permitted exit values are: ${exitIdList.join(', ')}.`
+                },
+                item_id: {
+                    type: "string",
+                    description: `The id of the item to use for unlocking. The permitted item values are: ${itemIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.EVENT]: {
+        type: COMMAND_TYPE.EVENT,
+        description: "Describe an event or change in the environment that isn't covered by other commands.",
+        synonyms: [],
+        arguments: {} as { event_text: string },
+        tool: () => ({
+            name: COMMAND_TYPE.EVENT,
+            description: "Describe an event or change in the environment that isn't covered by other commands.",
+            parameters: {
+                event_text: {
+                    type: "string",
+                    description: "A description of what is happening in the environment."
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.DISPLAY_HELP_TEXT]: {
+        type: COMMAND_TYPE.DISPLAY_HELP_TEXT,
+        description: "Display a list of available commands and how to use them.",
+        synonyms: ["help", "commands", "?"],
+        arguments: {} as object,
+        tool: () => ({
+            name: COMMAND_TYPE.DISPLAY_HELP_TEXT,
+            description: "Display a list of available commands and how to use them.",
+            parameters: {}
+        })
+    },
+
+    [COMMAND_TYPE.WAIT]: {
+        type: COMMAND_TYPE.WAIT,
+        description: "Do nothing and let time pass.",
+        synonyms: ["wait", "pause", "hold"],
+        arguments: {} as object,
+        tool: () => ({
+            name: COMMAND_TYPE.WAIT,
+            description: "Do nothing and let time pass.",
+            parameters: {}
+        })
+    },
+
+    [COMMAND_TYPE.EMOTE]: {
+        type: COMMAND_TYPE.EMOTE,
+        description: "Express an emotion or perform an action that others can observe.",
+        synonyms: ["emote", "express", "show", "display"],
+        arguments: {} as { emote_text: string },
+        tool: () => ({
+            name: COMMAND_TYPE.EMOTE,
+            description: "Express an emotion or perform an action that others can observe.",
+            parameters: {
+                emote_text: {
+                    type: "string",
+                    description: "A description of the action or emotion being expressed."
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.LOOK_AT_EXIT]: {
+        type: COMMAND_TYPE.LOOK_AT_EXIT,
+        description: "Look at a specific exit to get a detailed description of it",
+        synonyms: ["examine exit", "inspect exit", "look at exit"],
+        arguments: {} as { exit_id: string },
+        tool: ({ exitIdList }) => ({
+            name: COMMAND_TYPE.LOOK_AT_EXIT,
+            description: "Look at a specific exit to get a detailed description of it.",
+            parameters: {
+                exit_id: {
+                    type: "string",
+                    description: `The id of the exit to look at. The permitted exit values are: ${exitIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.SEARCH_EXIT]: {
+        type: COMMAND_TYPE.SEARCH_EXIT,
+        description: "Search an exit carefully to potentially discover hidden features or information.",
+        synonyms: ["search exit", "examine exit carefully", "investigate exit"],
+        arguments: {} as { exit_id: string },
+        tool: ({ exitIdList }) => ({
+            name: COMMAND_TYPE.SEARCH_EXIT,
+            description: "Search an exit carefully to potentially discover hidden features or information.",
+            parameters: {
+                exit_id: {
+                    type: "string",
+                    description: `The id of the exit to search. The permitted exit values are: ${exitIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.SEARCH_ITEM]: {
+        type: COMMAND_TYPE.SEARCH_ITEM,
+        description: "Search an item carefully to potentially discover hidden features or items within.",
+        synonyms: ["search item", "examine item carefully", "investigate item"],
+        arguments: {} as { item_id: string },
+        tool: ({ itemIdList }) => ({
+            name: COMMAND_TYPE.SEARCH_ITEM,
+            description: "Search an item carefully to potentially discover hidden features or items within.",
+            parameters: {
+                item_id: {
+                    type: "string",
+                    description: `The id of the item to search. The permitted item values are: ${itemIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.GET_INVENTORY]: {
+        type: COMMAND_TYPE.GET_INVENTORY,
+        description: "Check what items you are currently carrying in your inventory.",
+        synonyms: ["inventory", "i", "check inventory", "show inventory", "items"],
+        arguments: {} as object,
+        tool: () => ({
+            name: COMMAND_TYPE.GET_INVENTORY,
+            description: "Check what items you are currently carrying in your inventory.",
+            parameters: {}
+        })
+    },
+
+    [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: {
+        type: COMMAND_TYPE.GIVE_ITEM_TO_AGENT,
+        description: "Give an item from your inventory to another agent.",
+        synonyms: ["give", "hand", "pass", "offer"],
+        arguments: {} as { item_id: string; target_agent_id: string },
+        tool: ({ itemIdList, agentIdList }) => ({
+            name: COMMAND_TYPE.GIVE_ITEM_TO_AGENT,
+            description: "Give an item from your inventory to another agent.",
+            parameters: {
+                item_id: {
+                    type: "string",
+                    description: `The id of the item to give. The permitted item values are: ${itemIdList.join(', ')}.`
+                },
+                target_agent_id: {
+                    type: "string",
+                    description: `The id of the agent to give the item to. The permitted agent values are: ${agentIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.GO_EXIT]: {
+        type: COMMAND_TYPE.GO_EXIT,
+        description: "Move through an exit to enter a new location.",
+        synonyms: ["go", "move", "walk", "run", "enter", "leave", "exit"],
+        arguments: {} as { exit_id: string },
+        tool: ({ exitIdList }) => ({
+            name: COMMAND_TYPE.GO_EXIT,
+            description: "Move through an exit to enter a new location.",
+            parameters: {
+                exit_id: {
+                    type: "string",
+                    description: `The id of the exit to use. The permitted exit values are: ${exitIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+    [COMMAND_TYPE.PICK_UP_ITEM]: {
+        type: COMMAND_TYPE.PICK_UP_ITEM,
+        description: "Pick up an item from the current location.",
+        synonyms: ["take", "grab", "get", "collect", "pick up"],
+        arguments: {} as { item_id: string },
+        tool: ({ itemIdList }) => ({
+            name: COMMAND_TYPE.PICK_UP_ITEM,
+            description: "Pick up an item from the current location.",
+            parameters: {
+                item_id: {
+                    type: "string",
+                    description: `The id of the item to pick up. The permitted item values are: ${itemIdList.join(', ')}.`
+                }
+            }
+        })
+    },
+
+} as const;
+
+// Generate ToolCallArguments type from COMMANDS
 export type ToolCallArguments = {
-    [COMMAND_TYPE.ATTACK_AGENT]: { target_agent_id: string };
-    [COMMAND_TYPE.DROP_ITEM]: { item_id: string };
-    [COMMAND_TYPE.DISPLAY_HELP_TEXT]: object;
-    [COMMAND_TYPE.DO_NOTHING]: object;
-    [COMMAND_TYPE.EMOTE]: { emote_text: string; agent_id: string };
-    [COMMAND_TYPE.EVENT]: { event_text: string };
-    [COMMAND_TYPE.GET_INVENTORY]: object;
-    [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: { container_item_id: string; target_item_id: string };
-    [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: { item_id: string; target_agent_id: string };
-    [COMMAND_TYPE.GO_EXIT]: { exit_id: string };
-    [COMMAND_TYPE.LOOK_AROUND]: object;
-    [COMMAND_TYPE.LOOK_AT_AGENT]: { agent_id: string };
-    [COMMAND_TYPE.LOOK_AT_EXIT]: { exit_id: string };
-    [COMMAND_TYPE.LOOK_AT_ITEM]: { item_id: string };
-    [COMMAND_TYPE.PICK_UP_ITEM]: { item_id: string };
-    [COMMAND_TYPE.REVEAL_EXIT]: { exit_id: string; reason: string };
-    [COMMAND_TYPE.REVEAL_ITEM]: { item_id: string; reason: string };
-    [COMMAND_TYPE.SEARCH_EXIT]: { exit_id: string };
-    [COMMAND_TYPE.SEARCH_ITEM]: { item_id: string };
-    [COMMAND_TYPE.SEARCH_LOCATION]: { location_id: string };
-    [COMMAND_TYPE.SPAWN_AGENT]: { template_id: string; location_id: string; name: string };
-    [COMMAND_TYPE.SPEAK_TO_AGENT]: { target_agent_id: string; message: string };
-    [COMMAND_TYPE.UNLOCK_EXIT]: { exit_id: string; reason: string };
-    [COMMAND_TYPE.UPDATE_AGENT_INTENT]: { intent: string; reason: string };
-    [COMMAND_TYPE.UPDATE_AGENT_MOOD]: { mood: string; reason: string };
-    [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: { item_id: string; description: string; reason: string };
-    //[COMMAND_TYPE.USE_ITEM]: { object_type: string; object_id: string; item_id: string };
-    [COMMAND_TYPE.WAIT]: object;
+    [K in keyof typeof COMMANDS]: (typeof COMMANDS)[K]['arguments']
 };
 
-export const CommandSynonyms: Record<string, string[]> = {
-    [COMMAND_TYPE.ATTACK_AGENT]: [
-        "attack",
-        "fight",
-        "hit",
-        "strike",
-        "assault",
-        "battle"
-    ],
-    [COMMAND_TYPE.DISPLAY_HELP_TEXT]: ["help", "commands", "manual"],
-    [COMMAND_TYPE.DO_NOTHING]: ["wait", "stand still", "idle"],
-    [COMMAND_TYPE.DROP_ITEM]: [
-        "drop",
-        "discard",
-        "put down",
-        "leave",
-        "abandon"
-    ],
-    [COMMAND_TYPE.EMOTE]: ["emote", "express", "show", "display"],
-    [COMMAND_TYPE.GET_INVENTORY]: ["inventory", "i"],
-    [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: ["get", "take", "remove"],
-    [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: ["give", "hand", "pass", "offer"],
-    [COMMAND_TYPE.GO_EXIT]: ["go", "move", "walk", "run", "enter", "exit"],
-    [COMMAND_TYPE.LOOK_AROUND]: ["exits", "look", "look around", "observe", "survey", "scan"],
-    [COMMAND_TYPE.LOOK_AT_AGENT]: ["look", "examine", "inspect", "observe"],
-    [COMMAND_TYPE.LOOK_AT_EXIT]: [],
-    [COMMAND_TYPE.LOOK_AT_ITEM]: [],
-    [COMMAND_TYPE.PICK_UP_ITEM]: ["pick up", "take", "grab", "get"],
-    [COMMAND_TYPE.SPEAK_TO_AGENT]: ["speak to", "say", "ask", "tell"],
-    [COMMAND_TYPE.UPDATE_AGENT_INTENT]: [],
-    [COMMAND_TYPE.UPDATE_AGENT_MOOD]: [],
-    [COMMAND_TYPE.WAIT]: ["wait", "pause", "hold", "delay"],
-    [COMMAND_TYPE.SEARCH_ITEM]: ["search", "loot"],
-    [COMMAND_TYPE.SEARCH_LOCATION]: ["search", "loot"],
-    [COMMAND_TYPE.SEARCH_EXIT]: ["search", "loot"],
-    [COMMAND_TYPE.REVEAL_ITEM]: [],
-    [COMMAND_TYPE.REVEAL_EXIT]: [],
-    [COMMAND_TYPE.UNLOCK_EXIT]: ["unlock", "open"],
-    //[COMMAND_TYPE.USE_ITEM]: ["use", "apply"],
-    [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: []
-};
-
+// Tool creation function
 export const createTools = (
     locationIdList: string[],
     agentIdList: string[],
     itemIdList: string[],
     exitIdList: string[],
     creatureTemplateIdList: string[]
-): Record<COMMAND_TYPE, AiTool> => ({
-    [COMMAND_TYPE.ATTACK_AGENT]: {
-        name: COMMAND_TYPE.ATTACK_AGENT,
-        description: "Attack an agent in the same location, in an attempt to defeat them or cause them harm. If the text suggests that the primary action is to attack an agent, then call this tool. Otherwise, do not call this tool.",
-        parameters: {
-            target_agent_id: {
-                type: "string",
-                description: `The id of the agent to attack. The permitted agent values are: ${agentIdList.join(', ')}.`
-            }
-        }
-    },
-    [COMMAND_TYPE.DISPLAY_HELP_TEXT]: {
-        name: COMMAND_TYPE.DISPLAY_HELP_TEXT,
-        description: "Display the help text to the user so they can see the list of commands they can use.",
-        parameters: {}
-    },
-    [COMMAND_TYPE.DO_NOTHING]: {
-        name: COMMAND_TYPE.DO_NOTHING,
-        description: "Do nothing",
-        parameters: {}
-    },
-    [COMMAND_TYPE.DROP_ITEM]: {
-        name: COMMAND_TYPE.DROP_ITEM,
-        description: "Drop an item",
-        parameters: {
-            item_id: {
-                type: "string",
-                description: `The id of the item to drop. The permitted item values are: ${itemIdList.join(', ')}.`
-            }
-        }
-    },
-    [COMMAND_TYPE.EMOTE]: {
-        name: COMMAND_TYPE.EMOTE,
-        description: "Perform an action not covered by other commands, that expresses a visible action or emotion. This can be used as a catch-all if nothing else seems to fit. Do not include any speech. Do not do anything that is covered by other commands. Describe the action from a third-person perspective. Do not prefix with the agent's name, simply output the emote text. The action must accurately reflect the agent's command.",
-        parameters: {
-            emote_text: {
-                type: "string",
-                description: "A description of the character's expression, or emotional state that others can observe."
-            },
-            agent_id: {
-                type: "string",
-                description: `The id of the agent performing the emote. The permitted agent values are: ${agentIdList.join(', ')}.`
-            }
-        }
-    },
-    [COMMAND_TYPE.EVENT]: {
-        name: COMMAND_TYPE.EVENT,
-        description: "Trigger an event in the game. This might happen if the user describes a game event that should happen, such as a sound, a fire appearing, the ground shaking, or a rainstorm.",
-        parameters: {
-            event_text: {
-                type: "string",
-                description: "A description of the event to trigger. This should be a short, simple description of the event."
-            }
-        }
-    },
-    [COMMAND_TYPE.GET_INVENTORY]: {
-        name: COMMAND_TYPE.GET_INVENTORY,
-        description: "Get a list of items in your inventory",
-        parameters: {}
-    },
-    [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: {
-        name: COMMAND_TYPE.GET_ITEM_FROM_ITEM,
-        description: "Get an item from an container item. This might happen if the user asks you to get something from a container or bag. Do not call this tool to pick something up that is not in a container. The container must be visible, not hidden. The container must be owned by the agent, or be in the agent's current location.",
-        parameters: {
-            container_item_id: {
-                type: "string",
-                description: `The id of the container, within which is the item sought. The permitted item values are: ${itemIdList.join(', ')}.`
-            },
-            target_item_id: {
-                type: "string",
-                description: `The id of the item to get from the container. The permitted item values are: ${itemIdList.join(', ')}.`
-            }
-        }
-    },
-    [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: {
-        name: COMMAND_TYPE.GIVE_ITEM_TO_AGENT,
-        description: "Give an item from your inventory to another agent in the same location. If your agent wants an item from another agent, do not call this tool. Instead, call the 'speak_to_agent' tool to ask the other agent if they have the item and want to give it.",
-        parameters: {
-            item_id: {
-                type: "string",
-                description: `The id of the item to give. The permitted item values are: ${itemIdList.join(', ')}.`
-            },
-            target_agent_id: {
-                type: "string",
-                description: `The id of the agent to give the item to. The permitted agent values are: ${agentIdList.join(', ')}.`
-            }
-        }
-    },
-    [COMMAND_TYPE.GO_EXIT]: {
-        name: COMMAND_TYPE.GO_EXIT,
-        description: "Move the agent through the specified exit. This will change the agent's location. If another agent in the same location has blocked the exit, do not execute this call. Instead call an emote to describe the agent's inability to leave.",
-        parameters: {
-            exit_id: {
-                type: "string",
-                description: `The id of the exit to move through. The permitted exit values are: ${exitIdList.join(', ')}.`
-            }
-        }
-    },
-    [COMMAND_TYPE.LOOK_AROUND]: {
-        name: COMMAND_TYPE.LOOK_AROUND,
-        description: "Take a very detailed look around the current location.",
-        parameters: {}
-    },
-    [COMMAND_TYPE.LOOK_AT_AGENT]: {
-        name: COMMAND_TYPE.LOOK_AT_AGENT,
-        description: "Look at a game character present in the same location, eg 'look at Bob'. If (and only if) the text suggests that the primary action is to look at a character, then call this tool. Otherwise, do not call this tool.",
-        parameters: {
-            agent_id: {
-                type: "string",
-                description: `The id of the agent (character) to look at. The permitted agent values are: ${agentIdList.join(', ')}.`,
-                enum: agentIdList
-            }
-        }
-    },
-    [COMMAND_TYPE.LOOK_AT_EXIT]: {
-        name: COMMAND_TYPE.LOOK_AT_EXIT,
-        description: "Look at an exit",
-        parameters: {
-            exit_id: {
-                type: "string",
-                description: `The id of the exit to look at. The permitted exit values are: ${exitIdList.join(', ')}.`,
-                enum: exitIdList
-            }
-        }
-    },
-    [COMMAND_TYPE.LOOK_AT_ITEM]: {
-        name: COMMAND_TYPE.LOOK_AT_ITEM,
-        description: "Look at or examine an item. If (and only if) the text suggests that the primary action is to look at or examine an item, then call this tool. Otherwise, do not call this tool.",
-        parameters: {
-            item_id: {
-                type: "string",
-                description: `The id of the item to look at. The permitted item values are: ${itemIdList.join(', ')}.`,
-                enum: itemIdList
-            }
-        }
-    },
-    [COMMAND_TYPE.PICK_UP_ITEM]: {
-        name: COMMAND_TYPE.PICK_UP_ITEM,
-        description: "Get item, grab an item, or pick up an item in your current location, not contained in another item. The item must be visible, not hidden. If the item is hidden, do not call this tool.",
-        parameters: {
-            item_id: {
-                type: "string",
-                description: `The id of the item to pick up. The permitted item values are: ${itemIdList.join(', ')}.`,
-                enum: itemIdList
-            }
-        }
-    },
-    [COMMAND_TYPE.REVEAL_EXIT]: {
-        name: COMMAND_TYPE.REVEAL_EXIT,
-        description: "Change a hidden exit to a visible exit. This might happen if the user searches the location where the hidden exit is.",
-        parameters: {
-            exit_id: {
-                type: "string",
-                description: `The id of the exit to reveal. The permitted exit values are: ${exitIdList.join(', ')}.`
-            },
-            reason: {
-                type: "string",
-                description: "The reason for revealing the exit. This should be a short explanation for why the exit is being revealed."
-            }
-        }
-    },
-    [COMMAND_TYPE.REVEAL_ITEM]: {
-        name: COMMAND_TYPE.REVEAL_ITEM,
-        description: "Change a hidden item to a visible item. This might happen if the user searches the location or containing item where the hidden item is. Do not use this to create new items. Only reveal an item if it has an ownerKind of 'location' (i.e is not contained within another item or owned by an agent).",
-        parameters: {
-            item_id: {
-                type: "string",
-                description: `The id of the item to reveal. The permitted item values are: ${itemIdList.join(', ')}.`
-            },
-            reason: {
-                type: "string",
-                description: "The reason for revealing the item. This should be a short explanation for why the item is being revealed."
-            }
-        }
-    },
-    [COMMAND_TYPE.SEARCH_EXIT]: {
-        name: COMMAND_TYPE.SEARCH_EXIT,
-        description: "Search an exit for hidden items or information. If (and only if) the text suggests that the primary action is to search an exit, then call this tool. Otherwise, do not call this tool.",
-        parameters: {
-            exit_id: {
-                type: "string",
-                description: `The id of the exit to search. The permitted exit values are: ${exitIdList.join(', ')}.`
-            }
-        }
-    },
-    [COMMAND_TYPE.SEARCH_ITEM]: {
-        name: COMMAND_TYPE.SEARCH_ITEM,
-        description: "Open or search inside a container item for hidden items or information inside. Call this tool only if (and only if) the text suggests that the primary action is to open or search inside an item, then call this tool.",
-        parameters: {
-            item_id: {
-                type: "string",
-                description: `The id of the item to search. The permitted item values are: ${itemIdList.join(', ')}.`
-            }
-        }
-    },
-    [COMMAND_TYPE.SEARCH_LOCATION]: {
-        name: COMMAND_TYPE.SEARCH_LOCATION,
-        description: "Search the current location for items or exits.",
-        parameters: {
-            location_id: {
-                type: "string",
-                description: `The id of the location to search. The permitted location values are: ${locationIdList.join(', ')}.`
-            }
-        }
-    },
-    [COMMAND_TYPE.SPAWN_AGENT]: {
-        name: COMMAND_TYPE.SPAWN_AGENT,
-        description: "Cause an agent or creature to appear. You can choose one from the location creatureTemplates in the context. This might happen if the location notes say that a particular creature might spawn here.",
-        parameters: {
-            template_id: {
-                type: "string",
-                description: `The id of the creature template to spawn. The permitted template values are: ${creatureTemplateIdList.join(', ')}.`
-            },
-            location_id: {
-                type: "string",
-                description: `The id of the location to spawn the agent. The permitted location values are: ${locationIdList.join(', ')}.`
-            },
-            name: {
-                type: "string",
-                description: "The name of the agent to spawn. Give them a unique and memorable name."
-            }
-        }
-    },
-    [COMMAND_TYPE.SPEAK_TO_AGENT]: {
-        name: COMMAND_TYPE.SPEAK_TO_AGENT,
-        description: "Speak to an agent who is in the same location. You should call this if an agent has just spoken to you. If the input text starts with 'talk to' or 'say' or 'ask' or 'tell', then they are indicating that this tool should be called. Only return the spoken text, without any additional descriptive text. Exclude quotation marks. Eg: Hello Bob, how are you?",
-        parameters: {
-            target_agent_id: {
-                type: "string",
-                description: `The id of the other agent to speak to. The permitted agent values are: ${agentIdList.join(', ')}.`
-            },
-            message: {
-                type: "string",
-                description: "The message to speak to the other agent, without any additional descriptive text. Exclude quotation marks."
-            }
-        }
-    },
-    [COMMAND_TYPE.UNLOCK_EXIT]: {
-        name: COMMAND_TYPE.UNLOCK_EXIT,
-        description: "Unlock an exit. Do not do this lightly. This only happens under special circumstances, such as the correct key being used to unlock the exit. An agent must initiate this action by doing something specific to unlock the exit. For example, it is not enough to simply pick up a key. The user must state that the key was used to unlock the exit.",
-        parameters: {
-            exit_id: {
-                type: "string",
-                description: `The id of the exit to unlock. The permitted exit values are: ${exitIdList.join(', ')}. Hidden exits cannot be unlocked.`
-            },
-            reason: {
-                type: "string",
-                description: "The reason for unlocking the exit. This should be a short explanation for why the exit is being unlocked."
-            }
-        }
-    },
-    [COMMAND_TYPE.UPDATE_AGENT_INTENT]: {
-        name: COMMAND_TYPE.UPDATE_AGENT_INTENT,
-        description: "Update your short-term goals so you can remember what you are doing. Briefly describing what you are doing or planning to do next. This overrides any previous intent. This does not change your location. The game state does not change when you update your intent. Your intent should begin with 'I intend to...'",
-        parameters: {
-            intent: {
-                type: "string",
-                description: "Your new short-term goals. Briefly describing what you are doing or planning to do next."
-            }
-        }
-    },
-    [COMMAND_TYPE.UPDATE_AGENT_MOOD]: {
-        name: COMMAND_TYPE.UPDATE_AGENT_MOOD,
-        description: "Update your mood. This overrides any previous mood. This does not change your location. The game state does not change when you update your mood. If something has happened that is likely to have affected your emotional state, this tool should be called. Pass text that would fit after the words 'I am feeling...' but do not actually include the words 'I am feeling...'",
-        parameters: {
-            mood: {
-                type: "string",
-                description: "Your new mood. This should be a single word or phrase describing your emotional state."
-            }
-        }
-    },
-    [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: {
-        name: COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION,
-        description: "Signify that an item has physically changed, perhaps from being crumpled, cracked, or otherwise altered. This change must be reflected in the description of the item. Do not use this tool to change to owner of an item.",
-        parameters: {
-            item_id: {
-                type: "string",
-                description: `The id of the item to update. The permitted item values are: ${itemIdList.join(', ')}.`
-            },
-            description: {
-                type: "string",
-                description: "The new description for the item."
-            },
-            reason: {
-                type: "string",
-                description: "The reason for updating the item description. This should be a short explanation for why the item description is being updated."
-            }
-        }
-    },
-    // [COMMAND_TYPE.USE_ITEM]: {
-    //     name: COMMAND_TYPE.USE_ITEM,
-    //     description: "Use an item on something",
-    //     parameters: {
-    //         object_type: {
-    //             type: "string",
-    //             description: "The type of object to use the item on. This must be one of the following: 'agent', 'location', 'item', or 'exit'."
-    //         },
-    //         object_id: {
-    //             type: "string",
-    //             description: `The id of the object to use the item on. The permitted values depend on the object_type:
-    //             - For 'agent': ${agentIdList.join(', ')}
-    //             - For 'location': ${locationIdList.join(', ')}
-    //             - For 'item': ${itemIdList.join(', ')}
-    //             - For 'exit': ${exitIdList.join(', ')}`
-    //         },
-    //         item_id: {
-    //             type: "string",
-    //             description: `The id of the item to use. The permitted item values are: ${itemIdList.join(', ')}.`
-    //         }
-    //     }
-    // },
-    [COMMAND_TYPE.WAIT]: {
-        name: COMMAND_TYPE.WAIT,
-        description: "Do nothing for this turn",
-        parameters: {}
-    }
-});
+): Record<COMMAND_TYPE, AiTool> => {
+    const params = { locationIdList, agentIdList, itemIdList, exitIdList, creatureTemplateIdList };
+    return Object.fromEntries(
+        Object.entries(COMMANDS).map(([key, info]) => [
+            key,
+            info.tool(params)
+        ])
+    ) as Record<COMMAND_TYPE, AiTool>;
+};
+
+// Helper function to get synonyms
+export const getCommandSynonyms = (command: COMMAND_TYPE): string[] => 
+    COMMANDS[command]?.synonyms ?? [];
+
