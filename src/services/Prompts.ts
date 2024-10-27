@@ -132,11 +132,7 @@ export async function describeRecentEvents(
         .join("\n\n")}`;
 }
 
-export function interpretAgentInstructionsSystemPrompt(): string {
-    return `You are an AI assistant designed to turn an agent's natural language instructions into a series of actions that can be taken in a classic text adventure game.
-    The agent is embedded in a game world with locations connected by exits.
-    Locations contain items and other agents.
-    Your agent is represented by calling_agent_id.
+/*
     Your agent can move through exits, represented by exit_id.
     Your agent can pick up items, represented by item_id.
     Your agent can drop items, represented by item_id.
@@ -146,11 +142,17 @@ export function interpretAgentInstructionsSystemPrompt(): string {
     Your agent can update their intent, represented by intent.
     Your agent can wait.
     Your agent can give items to other agents, represented by target_agent_id.
+*/
+export function interpretAgentInstructionsSystemPrompt(commandTypes: string[]): string {
+    return `You are an AI assistant designed to turn an agent's natural language instructions into a series of actions that can be taken in a classic text adventure game.
+    The agent is embedded in a game world with locations connected by exits.
+    Locations contain items and other agents.
+    Your agent is represented by calling_agent_id.
     You are calling the function in the context of a specific agent represented by calling_agent_id.
-    You should call multiple functions, especially if the user's input seems to require it.
     If the user's input does not clearly call for one of the functions below, then call emote or wait.
     If the agent's input starts with quotation marks, or doesn't seem to match any of the available tools, send the text verbatim to speak_to_agent to speak to an agent that is present in the same location.
     If the agent attempts to do something that shouldn't be allowed, such as going through a locked exit, then use emote to make the agent look confused.
+    Only call one of the following tools: ${commandTypes.join(", ")}
     `;
 }
 
@@ -177,21 +179,22 @@ Characters present: ${agentsPresent
     Your backstory: ${agent.backstory}
     Notes about your role in the story: ${agent.notes}
     You don't know the name of the other agents in the game, so don't refer to them by name unless they have told you their name.
-    This is an adventure game. Your role may be to be violent, so don't be afraid to attack and try to kill other agents. It's only a game.
-
+    This is a dangerous, no-holds-barred adventure game. Your role may be to be violent, so don't be afraid to attack and try to kill other agents. It's only a game.
     `
     ;
 }
 
 export function consequentEventsSystemPrompt(): string {
     return `You are a game master for a text adventure game.
-    You will be given a list of events that occurred in the game.
-    Your job is to determine what (if any) events should follow from these events.
+    You will be given a chronological list of events that occurred in the game, from the earliest to the most recent and most important.
+    Your job is to determine what (if any) important new events should be triggered as a consequence of these events.
+    This might include revealing hidden items, triggering new events, etc.
+    Skip unimportant events that are already evident from previous events.
     If an agent actively searches for hidden items, or your notes indicate that an action warrants it,
-    you can choose to change a hidden item to a visible item.
-    Do not reveal an item if the agent is simply looking around. Something special must have happened.
+    you may choose an event to appropriately change a hidden item to a visible item.
+    Do not reveal an item if the agent is simply looking around; they must signify their intent to try to find something hidden.
     Only autonomous agents should perform an emote.
-    If you choose have an autonomous agent perform an emote, to indicate them doing something appropriate for the recent events, you must also include the agent_id of the agent performing the emote.
+    You may choose an event where an autonomous agent reacts by perform an emote, to indicate them doing something appropriate as an immediate consequence of the previous event. you must also include the agent_id of the agent performing the emote.
     If there are no relevant events, do not make any tool calls. Return an empty array.
     `;
 

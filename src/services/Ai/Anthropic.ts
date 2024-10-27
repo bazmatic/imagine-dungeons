@@ -66,13 +66,22 @@ export class AnthropicAiHelper implements IAiHelper {
         );
         const locationId = (await actingAgent.location).locationId;
         const context = await getLocationContext(locationId, actingAgent);
-        const systemPrompt = interpretAgentInstructionsSystemPrompt();
-
         const locationIdList = [locationId];
         const agentIdList = [actingAgent.agentId, ...context.human_agents_present.map(agent => agent.id), ...context.autonomous_agents_present.map(agent => agent.id)];
         const itemIdList = context.items_present.map(item => item.id);
         const exitIdList = context.exits.map(exit => exit.id);
         const creatureTemplateIdList = context.location.creatureTemplates?.map(creatureTemplate => creatureTemplate.templateId) ?? [];
+
+        const tools = getAvailableTools(actingAgent,
+            locationIdList,
+            agentIdList,
+            itemIdList,
+            exitIdList,
+            creatureTemplateIdList 
+        ).map(
+            this.aiToolToAnthropicTool
+        )
+        const systemPrompt = interpretAgentInstructionsSystemPrompt(tools.map(tool => tool.name));
 
         const response = await this.anthropic.messages.create({
             model: ANTHROPIC_STRUCTURED_OUTPUT_MODEL,
@@ -89,15 +98,7 @@ export class AnthropicAiHelper implements IAiHelper {
                         "What minimal set of tool calls should be made to accurately carry out the actions that the agent should carry out based on the text description they provided? Respond with a list of tool calls that should be made. If nothing seems to fit well, just use an emote."
                 }
             ],
-            tools: getAvailableTools(actingAgent,
-                locationIdList,
-                agentIdList,
-                itemIdList,
-                exitIdList,
-                creatureTemplateIdList 
-            ).map(
-                this.aiToolToAnthropicTool
-            )
+            tools
         });
 
         // Filter, getting just the tool_use blocks
@@ -172,7 +173,7 @@ Here is the current context: ${JSON.stringify(context, null, 4)}`,
                 {
                     role: "user",
                     content:
-                        "What do you want to do? Type your instructions and I'll tell you what happens next. Avoid doing the same thing twice in a row. Try something different."
+                        "What do you want to do? Describe your next step using simple language as if you were typing it into a text adventure game and I'll tell you what happens next. Use first person. Be specific, describing the action you will take, such as getting something, talking to someone, attacking something, or moving through an exit. Avoid doing the same thing twice in a row. Try something different."
                 }
             ]
         });

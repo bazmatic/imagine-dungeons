@@ -1,7 +1,11 @@
-
 import { Agent } from "@/entity/Agent";
 import { GameEvent } from "@/entity/GameEvent";
-import { COMMAND_TYPE, createTools, ToolCallArguments } from "@/types/commands";
+import {
+    COMMAND_TYPE,
+    CommandSynonyms,
+    createTools,
+    ToolCallArguments
+} from "@/types/commands";
 import { AiTool, AiToolCall } from "@/types/types";
 import _ from "lodash";
 import { AgentService } from "./Agent.service";
@@ -11,15 +15,13 @@ import { GameEventService } from "./GameEventService";
 import { ItemService } from "./Item.service";
 import { LocationService } from "./Location.service";
 import { SYSTEM_AGENT } from "./Prompts";
-;
-
 export class Referee {
     private aiHelper: IAiHelper;
 
     constructor() {
         this.aiHelper = getAiHelper();
     }
-    
+
     /**
      * Instruct an agent to perform an action.
      * @param agentId The ID of the agent to instruct.
@@ -38,31 +40,71 @@ export class Referee {
             return [];
         }
 
-        // === Ask the AI what actions should be invoked based on the user's input ===
-        const toolCalls: AiToolCall[] = await this.aiHelper.interpretAgentInstructions(instructions, agent);
-        for (const toolCall of toolCalls) {
-            console.log(`Tool call: ${toolCall.name} params: ${JSON.stringify(toolCall.arguments)}`);
+        let toolCalls: AiToolCall[] = [];
+
+        // == Check to see if the command is just one word and matches a command type ==
+        const parsedToolCall: AiToolCall | null =
+            this.parseCommand(instructions);
+        if (parsedToolCall) {
+            toolCalls = [parsedToolCall];
+        } else {
+            // === Ask the AI what actions should be invoked based on the user's input ===
+            toolCalls = await this.aiHelper.interpretAgentInstructions(
+                instructions,
+                agent
+            );
+            for (const toolCall of toolCalls) {
+                console.log(
+                    `Tool call: ${toolCall.name} params: ${JSON.stringify(
+                        toolCall.arguments
+                    )}`
+                );
+            }
         }
-        
+
         // == Execute the tool calls to create game events ==
         const agentGameEvents: GameEvent[] = [];
         for (const toolCall of toolCalls) {
+            const commandType: COMMAND_TYPE = toolCall.name;
+            let gameEvents: GameEvent[] = [];
             try {
-                const commandType: COMMAND_TYPE = toolCall.name;
-                const gameEvents = await this.executeAgentToolCall(
+                gameEvents = await this.executeAgentToolCall(
                     agent,
                     commandType,
                     toolCall.arguments
                 );
-                // Attach the instructions to the game event
-                gameEvents.forEach(gameEvent => gameEvent.input_text = instructions);
-                agentGameEvents.push(...gameEvents);
-            } catch (error) {
-                console.error(`Error executing tool call: ${toolCall.name}`, error);
+            } catch (error: any) {
+                console.error(
+                    `Error executing tool call: ${toolCall.name}`,
+                    error.message ?? error
+                );
             }
+            // Attach the instructions to the game event
+            gameEvents.forEach(
+                gameEvent => (gameEvent.input_text = instructions)
+            );
+            agentGameEvents.push(...gameEvents);
         }
 
         return [...agentGameEvents];
+    }
+    // TODO: Parse the command properly and return the command type and arguments
+    private parseCommand(instructions: string): AiToolCall | null {
+        //} commandArguments: ToolCallArguments[COMMAND_TYPE] | null } {
+        // The first word is a verb, the rest is a list of arguments
+        const verb = instructions.toLowerCase();
+        //const args = instructions.split(" ").slice(1);
+
+        // For each command type, check if the verb is in the list of synonyms
+        for (const commandType of Object.values(COMMAND_TYPE)) {
+            if (CommandSynonyms[commandType]?.includes(verb)) {
+                return {
+                    name: commandType,
+                    arguments: {}
+                };
+            }
+        }
+        return null;
     }
 
     private async executeSystemToolCall(
@@ -85,12 +127,11 @@ export class Referee {
 
             case COMMAND_TYPE.EVENT:
                 outputText.push(
-                    (
-                        toolCallArguments as ToolCallArguments[COMMAND_TYPE.EVENT]
-                    ).event_text
+                    (toolCallArguments as ToolCallArguments[COMMAND_TYPE.EVENT])
+                        .event_text
                 );
                 break;
-   
+
             case COMMAND_TYPE.REVEAL_ITEM: {
                 // Get the item
                 const itemId = (
@@ -98,16 +139,13 @@ export class Referee {
                 ).item_id;
                 const item = await itemService.getItemById(itemId);
                 if (!item) {
-                    //outputText.push("That item doesn't exist.");
-                    break;
+                    throw new Error("That item doesn't exist.");
                 }
                 if (item.ownerItemId) {
-                    //outputText.push("That item is inside something else.");
-                    break;
+                    throw new Error("That item is inside something else.");
                 }
                 if (!item.hidden) {
-                    //outputText.push("That item is not hidden.");
-                    break;
+                    throw new Error("That item is not hidden.");
                 }
                 await itemService.revealItem(itemId);
                 break;
@@ -163,7 +201,11 @@ export class Referee {
                 const name = (
                     toolCallArguments as ToolCallArguments[COMMAND_TYPE.SPAWN_AGENT]
                 ).name;
-                await agentService.spawnAgentFromTemplate(templateId, locationId, name);
+                await agentService.spawnAgentFromTemplate(
+                    templateId,
+                    locationId,
+                    name
+                );
                 //outputText.push(`${newAgent.label} arrives.`);
                 break;
 
@@ -200,7 +242,7 @@ export class Referee {
         const agentService = new AgentService();
         const gameEventService = new GameEventService();
 
-            switch (commandType) {
+        switch (commandType) {
             case COMMAND_TYPE.ATTACK_AGENT:
                 extraDetails = await agent.attackAgent(
                     (
@@ -344,17 +386,18 @@ export class Referee {
                 return [];
         }
         const location = await agent.location;
-        const agentsPresent = await agentService.getAgentsByLocation(location.locationId); 
-        const agentGameEvent: GameEvent =
-            await gameEventService.makeGameEvent(
-                agentId,
-                location.locationId,
-                "", //No input text available here
-                commandType,
-                JSON.stringify(toolCallArguments),
-                extraDetails.join("\n"),
-                agentsPresent.map(agent => agent.agentId)
-            );
+        const agentsPresent = await agentService.getAgentsByLocation(
+            location.locationId
+        );
+        const agentGameEvent: GameEvent = await gameEventService.makeGameEvent(
+            agentId,
+            location.locationId,
+            "", //No input text available here
+            commandType,
+            JSON.stringify(toolCallArguments),
+            extraDetails.join("\n"),
+            agentsPresent.map(agent => agent.agentId)
+        );
 
         return [agentGameEvent];
     }
@@ -369,7 +412,6 @@ export class Referee {
     public async determineConsequentEvents(
         agentGameEvents: GameEvent[]
     ): Promise<GameEvent[]> {
-
         //const aiHelper = new OllamaAiHelper(); //OpenAiHelper();
 
         const eventsByLocation: Record<string, GameEvent[]> = _.groupBy(
@@ -380,18 +422,48 @@ export class Referee {
         const consequentGameEvents: GameEvent[] = [];
         for (const locationId in eventsByLocation) {
             const events = eventsByLocation[locationId];
-            const locationToolCalls: AiToolCall[] = await this.aiHelper. determineConsequentEvents(locationId, events);
-            for (const toolCall of locationToolCalls) {
-                const gameEvents: GameEvent[] =
-                    await this.executeSystemToolCall(
-                        toolCall.name as COMMAND_TYPE,
-                        toolCall.arguments,
-                        locationId
+            const locationToolCalls: AiToolCall[] =
+                await this.aiHelper.determineConsequentEvents(
+                    locationId,
+                    events
                 );
-                consequentGameEvents.push(...gameEvents);
+            for (const toolCall of locationToolCalls) {
+                try {
+                    const gameEvents: GameEvent[] =
+                        await this.executeSystemToolCall(
+                            toolCall.name as COMMAND_TYPE,
+                            toolCall.arguments,
+                            locationId
+                        );
+                    consequentGameEvents.push(...gameEvents);
+                } catch (error: any) {
+                    console.error(
+                        `Error executing system tool call: ${toolCall.name}`,
+                        error.message ?? error
+                    );
+                }
             }
         }
         return consequentGameEvents;
+    }
+
+    public calculateTotalImpact(events: GameEvent[]): number {
+        const zeroImpactCommands = [
+            COMMAND_TYPE.DO_NOTHING,
+            COMMAND_TYPE.WAIT,
+            COMMAND_TYPE.LOOK_AROUND,
+            COMMAND_TYPE.GET_INVENTORY,
+            COMMAND_TYPE.LOOK_AT_AGENT,
+            COMMAND_TYPE.LOOK_AT_EXIT,
+            COMMAND_TYPE.LOOK_AT_ITEM
+        ];
+        const result = events.reduce((sum, event) => {
+            if (zeroImpactCommands.includes(event.command_type)) {
+                return sum;
+            }
+            return sum + 1;
+        }, 0);
+        return result;
     }
 }
 
@@ -413,12 +485,10 @@ export class Referee {
 //     // Try each one
 //     for (const command of matchingCommands) {
 //         const tool = Tools[command];
-//     }    
+//     }
 // }
 
-export function getAvailableCommands(
-    agent: Agent | null,
-): COMMAND_TYPE[] {
+export function getAvailableCommands(agent: Agent | null): COMMAND_TYPE[] {
     const commonTools = [
         COMMAND_TYPE.ATTACK_AGENT,
         COMMAND_TYPE.DO_NOTHING,
@@ -437,7 +507,7 @@ export function getAvailableCommands(
 
     const autonomousTools = [
         COMMAND_TYPE.UPDATE_AGENT_INTENT,
-        COMMAND_TYPE.UPDATE_AGENT_MOOD,
+        COMMAND_TYPE.UPDATE_AGENT_MOOD
     ];
 
     const nonAutonomousTools = [
@@ -477,7 +547,13 @@ export function getAvailableTools(
     creatureTemplateIdList: string[]
 ): AiTool[] {
     const availableCommands = getAvailableCommands(agent);
-    const tools = createTools(locationIdList, agentIdList, itemIdList, exitIdList, creatureTemplateIdList);
+    const tools = createTools(
+        locationIdList,
+        agentIdList,
+        itemIdList,
+        exitIdList,
+        creatureTemplateIdList
+    );
     //return availableCommands.map(c => tools[c]);
     const result: AiTool[] = [];
     for (const command of availableCommands) {

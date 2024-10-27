@@ -171,6 +171,9 @@ export class Agent implements IBaseProperties {
         }
         // Return the item's contents
         const contents = await item.items;
+        if (contents.length === 0) {
+            return [`You find nothing in the ${item.label}.`];
+        }
         const contentsLabels = contents.map(i => i.label).join(", ");
         return [`You find ${contentsLabels} in the ${item.label}.`];
     }
@@ -391,6 +394,11 @@ export class Agent implements IBaseProperties {
             // Check if the item is in the agent's inventory
             if (!(await this.ownsItem(itemId))) {
                 throw new Error("Item not found in inventory");
+            }
+
+            // Check if you're not trying to give an item to yourself
+            if (this.agentId === targetAgentId) {
+                throw new Error("You can't give an item to yourself.");
             }
 
             // Check if the target agent is in the same location

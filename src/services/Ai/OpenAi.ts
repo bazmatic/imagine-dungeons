@@ -65,7 +65,19 @@ export class OpenAiHelper implements IAiHelper {
         );
         const locationId = (await actingAgent.location).locationId;
         const context = await getLocationContext(locationId, actingAgent);
-        const systemPrompt = interpretAgentInstructionsSystemPrompt();
+        const locationIdList = [context.location.id];
+        const agentIdList = [actingAgent.agentId];
+        const itemIdList = context.items_present.map(item => item.id);
+        const exitIdList = context.exits.map(exit => exit.id);
+        const creatureTemplateIdList: string[] = context.location.creatureTemplates?.map(creatureTemplate => creatureTemplate.templateId) ?? [];
+        const tools = getAvailableTools(actingAgent,
+            locationIdList,
+            agentIdList,
+            itemIdList,
+            exitIdList,
+            creatureTemplateIdList
+        );
+        const systemPrompt = interpretAgentInstructionsSystemPrompt(tools.map(tool => tool.name));
 
         const messages: ChatCompletionMessageParam[] = [
             { role: "system", content: systemPrompt },
@@ -89,21 +101,10 @@ export class OpenAiHelper implements IAiHelper {
             }
         ];
         
-        const locationIdList = [context.location.id];
-        const agentIdList = [actingAgent.agentId];
-        const itemIdList = context.items_present.map(item => item.id);
-        const exitIdList = context.exits.map(exit => exit.id);
-        const creatureTemplateIdList: string[] = context.location.creatureTemplates?.map(creatureTemplate => creatureTemplate.templateId) ?? [];
         const response = await this.openai.chat.completions.create({
             model: OPEN_AI_STRUCTURED_OUTPUT_MODEL,
             messages,
-            tools: getAvailableTools(actingAgent,
-                locationIdList,
-                agentIdList,
-                itemIdList,
-                exitIdList,
-                creatureTemplateIdList
-            ).map(this.aiToolToOpenAiTool),
+            tools: tools.map(this.aiToolToOpenAiTool),
             tool_choice: "required",
             seed: SEED
         });

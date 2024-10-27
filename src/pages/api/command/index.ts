@@ -21,12 +21,16 @@ export default async function command(
     const referee = new Referee();
     const worldService = new WorldService();
     const agentService = new AgentService();
+    const combinedEvents: GameEvent[] = [];
     try {
         const observerAgent = await agentService.getAgentById(agentId);
         const directUserGameEvents: GameEvent[] = await referee.acceptAgentInstructions(
             agentId,
             command
         );
+        // Add the events to the combined events
+        combinedEvents.push(...directUserGameEvents);
+        console.log(`Direct user game events: ${directUserGameEvents.length}`);
  
         //const combinedUserGameEvents = [...directUserGameEvents, ...consequentUserGameEvents];
 
@@ -36,26 +40,37 @@ export default async function command(
             await gameEventService.saveGameEvent(gameEvent);
         }
 
-        // === Autonomous agents act ===
-        // This may change to running on their own thread in the future
-        const autonomousAgentGameEvents: GameEvent[] = await worldService.autonomousAgentsAct();
-        // Save all autonomous agent results to the database
-        for (const gameEvent of autonomousAgentGameEvents) {
-            await gameEventService.saveGameEvent(gameEvent);
-        }
+        // Check the impact value of each event. If they are greater than zero, then work out what happens next
+        const totalImpact = referee.calculateTotalImpact(combinedEvents);
+        console.log(`Total impact: ${totalImpact}`);
+        if (totalImpact > 1) {
+                // === Autonomous agents act ===
+            // This may change to running on their own thread in the future
+            const autonomousAgentGameEvents: GameEvent[] = await worldService.autonomousAgentsAct();
+            combinedEvents.push(...autonomousAgentGameEvents);
+            console.log(`Autonomous agent game events: ${autonomousAgentGameEvents.length}`);
+           
+            // Save all autonomous agent results to the database
+            for (const gameEvent of autonomousAgentGameEvents) {
+                await gameEventService.saveGameEvent(gameEvent);
+            }
 
-        const consequentUserGameEvents: GameEvent[] = await referee.determineConsequentEvents([...directUserGameEvents, ...autonomousAgentGameEvents]);
-        for (const gameEvent of consequentUserGameEvents) {
-            await gameEventService.saveGameEvent(gameEvent);
+            // === Determine the consequent events ===
+            const consequentUserGameEvents: GameEvent[] = await referee.determineConsequentEvents([...directUserGameEvents, ...autonomousAgentGameEvents]);
+            console.log(`Consequent user game events: ${consequentUserGameEvents.length}`);
+            combinedEvents.push(...consequentUserGameEvents);
+            for (const gameEvent of consequentUserGameEvents) {
+                await gameEventService.saveGameEvent(gameEvent);
+            }
         }
 
         // == Format the results ==
         // Combine the results 
-        const combinedResults = [...directUserGameEvents, ...consequentUserGameEvents, ...autonomousAgentGameEvents];
+        //const combinedResults = [...directUserGameEvents, ...consequentUserGameEvents, ...autonomousAgentGameEvents];
 
         // Process each game event into a DTO
         const processedEvents: GameEventDTO[] = [];
-        for (const gameEvent of combinedResults) {
+        for (const gameEvent of combinedEvents) {
             // Convert the game event to DTO
             const dto = await GameEventDTO.fromGameEvent(
                 observerAgent,

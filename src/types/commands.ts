@@ -59,7 +59,7 @@ export type ToolCallArguments = {
     //[COMMAND_TYPE.USE_ITEM]: { object_type: string; object_id: string; item_id: string };
     [COMMAND_TYPE.WAIT]: object;
 };
-/*
+
 export const CommandSynonyms: Record<string, string[]> = {
     [COMMAND_TYPE.ATTACK_AGENT]: [
         "attack",
@@ -78,14 +78,14 @@ export const CommandSynonyms: Record<string, string[]> = {
         "abandon"
     ],
     [COMMAND_TYPE.EMOTE]: ["emote", "express", "show", "display"],
-    [COMMAND_TYPE.GET_INVENTORY]: ["inventory"],
+    [COMMAND_TYPE.GET_INVENTORY]: ["inventory", "i"],
     [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: ["get", "take", "remove"],
     [COMMAND_TYPE.GIVE_ITEM_TO_AGENT]: ["give", "hand", "pass", "offer"],
     [COMMAND_TYPE.GO_EXIT]: ["go", "move", "walk", "run", "enter", "exit"],
-    [COMMAND_TYPE.LOOK_AROUND]: ["look around", "observe", "survey", "scan"],
+    [COMMAND_TYPE.LOOK_AROUND]: ["exits", "look", "look around", "observe", "survey", "scan"],
     [COMMAND_TYPE.LOOK_AT_AGENT]: ["look", "examine", "inspect", "observe"],
-    [COMMAND_TYPE.LOOK_AT_EXIT]: ["look", "examine"],
-    [COMMAND_TYPE.LOOK_AT_ITEM]: ["look", "examine"],
+    [COMMAND_TYPE.LOOK_AT_EXIT]: [],
+    [COMMAND_TYPE.LOOK_AT_ITEM]: [],
     [COMMAND_TYPE.PICK_UP_ITEM]: ["pick up", "take", "grab", "get"],
     [COMMAND_TYPE.SPEAK_TO_AGENT]: ["speak to", "say", "ask", "tell"],
     [COMMAND_TYPE.UPDATE_AGENT_INTENT]: [],
@@ -100,7 +100,7 @@ export const CommandSynonyms: Record<string, string[]> = {
     //[COMMAND_TYPE.USE_ITEM]: ["use", "apply"],
     [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: []
 };
-*/
+
 export const createTools = (
     locationIdList: string[],
     agentIdList: string[],
@@ -164,15 +164,15 @@ export const createTools = (
     },
     [COMMAND_TYPE.GET_ITEM_FROM_ITEM]: {
         name: COMMAND_TYPE.GET_ITEM_FROM_ITEM,
-        description: "Get an item from an container item. This might happen if the user asks you to get something from a container or bag. The container must be visible, not hidden. The container must be owned by the agent, or be in the agent's current location.",
+        description: "Get an item from an container item. This might happen if the user asks you to get something from a container or bag. Do not call this tool to pick something up that is not in a container. The container must be visible, not hidden. The container must be owned by the agent, or be in the agent's current location.",
         parameters: {
             container_item_id: {
                 type: "string",
-                description: `The id of the item to get the item from. The permitted item values are: ${itemIdList.join(', ')}.`
+                description: `The id of the container, within which is the item sought. The permitted item values are: ${itemIdList.join(', ')}.`
             },
             target_item_id: {
                 type: "string",
-                description: `The id of the item to get. The permitted item values are: ${itemIdList.join(', ')}.`
+                description: `The id of the item to get from the container. The permitted item values are: ${itemIdList.join(', ')}.`
             }
         }
     },
@@ -229,7 +229,7 @@ export const createTools = (
     },
     [COMMAND_TYPE.LOOK_AT_ITEM]: {
         name: COMMAND_TYPE.LOOK_AT_ITEM,
-        description: "Look at an item. If (and only if) the text suggests that the primary action is to look at an item, then call this tool. Otherwise, do not call this tool.",
+        description: "Look at or examine an item. If (and only if) the text suggests that the primary action is to look at or examine an item, then call this tool. Otherwise, do not call this tool.",
         parameters: {
             item_id: {
                 type: "string",
@@ -240,7 +240,7 @@ export const createTools = (
     },
     [COMMAND_TYPE.PICK_UP_ITEM]: {
         name: COMMAND_TYPE.PICK_UP_ITEM,
-        description: "Get or pick up an item in your current location, not contained in another item. The item must be visible, not hidden. If the item is hidden, do not call this tool.",
+        description: "Get item, grab an item, or pick up an item in your current location, not contained in another item. The item must be visible, not hidden. If the item is hidden, do not call this tool.",
         parameters: {
             item_id: {
                 type: "string",
@@ -289,7 +289,7 @@ export const createTools = (
     },
     [COMMAND_TYPE.SEARCH_ITEM]: {
         name: COMMAND_TYPE.SEARCH_ITEM,
-        description: "Open, search inside, or look inside an item for hidden items or information. If (and only if) the text suggests that the primary action is to open, search, or look inside an item, then call this tool. Otherwise, do not call this tool.",
+        description: "Open or search inside a container item for hidden items or information inside. Call this tool only if (and only if) the text suggests that the primary action is to open or search inside an item, then call this tool.",
         parameters: {
             item_id: {
                 type: "string",
@@ -375,7 +375,7 @@ export const createTools = (
     },
     [COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION]: {
         name: COMMAND_TYPE.UPDATE_ITEM_DESCRIPTION,
-        description: "Update the description of an item. This might happen something happens to the object that should be reflected in the description.",
+        description: "Update the description of an item. This might happen something physical happens to the object that should be reflected in the description, so that if anyone looks at it, the change will be obvious.",
         parameters: {
             item_id: {
                 type: "string",

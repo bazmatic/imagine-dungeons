@@ -28,7 +28,7 @@ export class GameEventService {
         gameEvent.command_type = commandType;
         gameEvent.command_arguments = commandArguments;
         gameEvent.output_text = outputText;
-        gameEvent.agents_present = agentsPresent;
+        gameEvent.agents_present = agentId ? [agentId, ...agentsPresent] : agentsPresent;
         return gameEvent;
     }
 

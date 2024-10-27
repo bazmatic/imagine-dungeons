@@ -88,16 +88,6 @@ export class OllamaAiHelper implements IAiHelper {
         const recentEventsMessage = await describeRecentEvents(actingAgent.agentId);
         const locationId = (await actingAgent.location).locationId;
         const context: AgentPromptContext= await getLocationContext(locationId, actingAgent);
-        const systemPrompt = interpretAgentInstructionsSystemPrompt();
-
-        // Context in English
-        const contextInEnglish = this.contextInEnglish(context);
-        const messages = [
-            { role: "user", content: systemPrompt },
-            { role: "user", content: recentEventsMessage },
-            { role: "user", content: contextInEnglish },
-            { role: "user", content: `Here is what the agent said they want to do: '${instructions}'. What tool calls best fit the agent's intent?`},
-        ];
 
         const locationIdList = [context.location.id];
         const agentIdList = [actingAgent.agentId, ...context.human_agents_present.map(agent => agent.id), ...context.autonomous_agents_present.map(agent => agent.id)];
@@ -113,6 +103,17 @@ export class OllamaAiHelper implements IAiHelper {
             creatureTemplateIdList
         );
         const tools = availableTools.map(this.aiToolToOllamaTool);
+
+        const systemPrompt = interpretAgentInstructionsSystemPrompt(tools.map(tool => tool.name));
+
+        // Context in English
+        const contextInEnglish = this.contextInEnglish(context);
+        const messages = [
+            { role: "user", content: systemPrompt },
+            { role: "user", content: recentEventsMessage },
+            { role: "user", content: contextInEnglish },
+            { role: "user", content: `Here is what the agent said they want to do: '${instructions}'. What tool calls best fit the agent's intent?`},
+        ];
 
         const response = await this.ollamaRequest(messages, tools);
         if (!response) {
