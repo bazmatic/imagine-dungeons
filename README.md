@@ -45,7 +45,7 @@ The system follows a layered architecture:
 ┌─────────────────────▼───────────────────────────────────────┐
 │                 Next.js API Layer                           │
 │  - /api/command (main game endpoint)                        │
-│  - /api/agent, /api/location, /api/item (data endpoints)   │
+│  - /api/agent, /api/location, /api/item (data endpoints)    │
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────────────┐
