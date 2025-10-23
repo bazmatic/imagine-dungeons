@@ -2,7 +2,8 @@
 import { Agent } from "@/entity/Agent";
 import { GameEvent } from "@/entity/GameEvent";
 import { AiToolCall } from "@/types/types";
-import { AnthropicAiHelper } from "./Anthropic";
+// import { AnthropicAiHelper } from "./Anthropic";
+import { OpenAiHelper } from "./OpenAi";
 
 
 export interface IAiHelper {
@@ -12,5 +13,5 @@ export interface IAiHelper {
 }
 
 
-export const getAiHelper = () => new AnthropicAiHelper();
+export const getAiHelper = () => new OpenAiHelper(); //new AnthropicAiHelper();
 

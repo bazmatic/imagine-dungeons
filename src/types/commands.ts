@@ -373,12 +373,12 @@ export const COMMANDS: COMMAND_LOOKUP = {
 
     [COMMAND_TYPE.EVENT]: {
         type: COMMAND_TYPE.EVENT,
-        description: "Describe an event or change in the environment that isn't covered by other commands.",
+        description: "Use this command to make something unexpected happen.Describe an event or change in the environment that you decide to make happen to surprise everyone. Examples: make it rain, cause a weird sound to occur, an earth tremor, etc",
         synonyms: [],
         arguments: {} as { event_text: string },
         tool: () => ({
             name: COMMAND_TYPE.EVENT,
-            description: "Describe an event or change in the environment that isn't covered by other commands.",
+            description: "",
             parameters: {
                 event_text: {
                     type: "string",

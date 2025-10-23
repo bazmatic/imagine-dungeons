@@ -56,18 +56,15 @@ export default async function command(
             }
 
             // === Determine the consequent events ===
-            const consequentUserGameEvents: GameEvent[] = await referee.determineConsequentEvents([...directUserGameEvents, ...autonomousAgentGameEvents]);
-            console.log(`Consequent user game events: ${consequentUserGameEvents.length}`);
-            combinedEvents.push(...consequentUserGameEvents);
-            for (const gameEvent of consequentUserGameEvents) {
+            const consequentAgentGameEvents: GameEvent[] = await referee.determineConsequentEvents([...directUserGameEvents, ...autonomousAgentGameEvents]);
+            console.log(`Consequent agent game events: ${consequentAgentGameEvents.length}`);
+            combinedEvents.push(...consequentAgentGameEvents);
+            for (const gameEvent of consequentAgentGameEvents) {
                 await gameEventService.saveGameEvent(gameEvent);
             }
         }
 
         // == Format the results ==
-        // Combine the results 
-        //const combinedResults = [...directUserGameEvents, ...consequentUserGameEvents, ...autonomousAgentGameEvents];
-
         // Process each game event into a DTO
         const processedEvents: GameEventDTO[] = [];
         for (const gameEvent of combinedEvents) {

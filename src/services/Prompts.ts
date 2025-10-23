@@ -190,6 +190,7 @@ export function consequentEventsSystemPrompt(): string {
     Your job is to determine what (if any) important new events should be triggered as a consequence of these events.
     Triggered events might include revealing hidden items, triggering new events, changing the appearance of an item etc.
     Skip unimportant events that are already evident from previous events.
+    Each consequent event you choose must be unique and different from the others you choose; don't repeat yourself.
     If an agent actively searches for hidden items, or your notes indicate that an action warrants it,
     you may choose an event to appropriately change a hidden item to a visible item.
     Do not reveal an item if the agent is simply looking around; they must signify their intent to try to find something hidden.

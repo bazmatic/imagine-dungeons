@@ -21,8 +21,8 @@ import { Agent } from "@/entity/Agent";
 import { IAiHelper } from "./Ai";
 
 const SEED = 100;
-const OPEN_AI_STRUCTURED_OUTPUT_MODEL = "gpt-4o-mini"; //"gpt-4o-2024-08-06";
-const OPEN_AI_TEXT_OUTPUT_MODEL = "gpt-4o-mini";
+const OPEN_AI_STRUCTURED_OUTPUT_MODEL = "o3-mini"; // "gpt-4o-mini"; //"gpt-4o-2024-08-06";
+const OPEN_AI_TEXT_OUTPUT_MODEL = "o3-mini"; //"gpt-4o-mini";
 
 export class OpenAiHelper implements IAiHelper {
     private openai: OpenAI;

@@ -381,6 +381,11 @@ export class GameEvent {
                 }
                 break;
             }
+
+            case COMMAND_TYPE.DO_NOTHING: {
+                generalDescription = `${actorName} does nothing.`;
+                break;
+            }
             // case COMMAND_TYPE.USE_ITEM: {
             //     const item = await itemService.getItemById(parameters.item_id);
             //     if (parameters.object_type === "agent") {
