@@ -310,16 +310,25 @@ Game Event → Context Analysis → Observer-Specific Description → Client Dis
 - Docker (optional, for database)
 
 ### Database Setup
-1. **Using Docker (Recommended)**:
+1. **Using the setup script (Recommended)**:
+   ```bash
+   ./setup-database.sh
+   ```
+
+2. **Using Docker**:
    ```bash
    docker build -t imagine_dungeons_db .
    docker run -d --name imagine_dungeons -p 5432:5432 imagine_dungeons_db
    ```
 
-2. **Manual Setup**:
-   - Create PostgreSQL database: `imagine_dungeons`
-   - User: `baz`, Password: `baz`
-   - Run `init.sql` to create tables and seed data
+3. **Manual Setup**:
+   ```bash
+   # Create database schema
+   psql -h localhost -p 5432 -U baz -d imagine_dungeons -f schema.sql
+   
+   # Load sample data
+   psql -h localhost -p 5432 -U baz -d imagine_dungeons -f data.sql
+   ```
 
 ### Server Setup
 ```bash

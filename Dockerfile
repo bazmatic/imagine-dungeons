@@ -6,7 +6,8 @@ ENV POSTGRES_USER=baz
 ENV POSTGRES_PASSWORD=baz
 
 # Copy initialization scripts
-COPY ./init.sql /docker-entrypoint-initdb.d/
+COPY ./schema.sql /docker-entrypoint-initdb.d/01-schema.sql
+COPY ./data.sql /docker-entrypoint-initdb.d/02-data.sql
 
 # Expose the PostgreSQL port
 EXPOSE 5432
